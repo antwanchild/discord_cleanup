@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv(".env.discord_cleanup")
 
-BOT_VERSION = "2.0.0"
+BOT_VERSION = "2.0.1"
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
@@ -202,66 +202,39 @@ async def purge_channel(channel, days_old: int) -> dict:
     bulk_cutoff = datetime.now(timezone.utc) - timedelta(days=13)
     guild = channel.guild
     total_deleted = 0
-    bulk_deleted = 0
-    individual_deleted = 0
     rate_limit_count = 0
     retry_count = 0
     oldest_message_date = None
 
     if not channel.permissions_for(guild.me).manage_messages:
         log.warning(f"Skipping #{channel.name} — missing Manage Messages permission")
-        return {"count": -1, "bulk": 0, "individual": 0, "rate_limits": 0, "retries": 0, "oldest": None, "days": days_old}
+        return {"count": -1, "rate_limits": 0, "retries": 0, "oldest": None, "days": days_old}
 
     log.info(f"Starting purge on #{channel.name} | Days: {days_old} | Cutoff: {cutoff.strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
     while True:
         try:
-            bulk_messages = []
-            individual_messages = []
+            messages_to_delete = []
 
             async for msg in channel.history(limit=100, before=cutoff):
                 if oldest_message_date is None or msg.created_at < oldest_message_date:
                     oldest_message_date = msg.created_at
+                # Only bulk delete within 13 day window
                 if msg.created_at > bulk_cutoff:
-                    bulk_messages.append(msg)
-                else:
-                    individual_messages.append(msg)
+                    messages_to_delete.append(msg)
 
-            if not bulk_messages and not individual_messages:
+            if not messages_to_delete:
                 log.info(f"#{channel.name} — no more messages to delete")
                 break
 
-            if bulk_messages:
-                if len(bulk_messages) == 1:
-                    await bulk_messages[0].delete()
-                else:
-                    await channel.delete_messages(bulk_messages)
-                bulk_deleted += len(bulk_messages)
-                total_deleted += len(bulk_messages)
-                log.info(f"#{channel.name} — bulk deleted {len(bulk_messages)} | Running total: {total_deleted}")
-                await asyncio.sleep(1.5)
+            if len(messages_to_delete) == 1:
+                await messages_to_delete[0].delete()
+            else:
+                await channel.delete_messages(messages_to_delete)
 
-            if individual_messages:
-                log.info(f"#{channel.name} — {len(individual_messages)} messages older than 13 days, deleting individually...")
-                for msg in individual_messages:
-                    try:
-                        await msg.delete()
-                        individual_deleted += 1
-                        total_deleted += 1
-                        await asyncio.sleep(1)
-                    except discord.errors.HTTPException as e:
-                        if e.status == 429:
-                            rate_limit_count += 1
-                            retry_count += 1
-                            retry_after = getattr(e, 'retry_after', RETRY_DELAY)
-                            log.warning(f"#{channel.name} — rate limited during individual delete. Retrying in {retry_after:.1f}s...")
-                            await asyncio.sleep(retry_after)
-                            await msg.delete()
-                            individual_deleted += 1
-                            total_deleted += 1
-                        else:
-                            log.error(f"#{channel.name} — failed to delete message {msg.id}: {e}")
-                log.info(f"#{channel.name} — individually deleted {individual_deleted} | Running total: {total_deleted}")
+            total_deleted += len(messages_to_delete)
+            log.info(f"#{channel.name} — deleted batch of {len(messages_to_delete)} | Running total: {total_deleted}")
+            await asyncio.sleep(1.5)
 
         except discord.errors.HTTPException as e:
             if e.status == 429:
@@ -275,10 +248,10 @@ async def purge_channel(channel, days_old: int) -> dict:
                 break
         except discord.Forbidden:
             log.error(f"#{channel.name} — Forbidden. Check bot permissions.")
-            return {"count": -1, "bulk": 0, "individual": 0, "rate_limits": 0, "retries": 0, "oldest": None, "days": days_old}
+            return {"count": -1, "rate_limits": 0, "retries": 0, "oldest": None, "days": days_old}
 
-    log.info(f"#{channel.name} — complete | Total: {total_deleted} | Bulk: {bulk_deleted} | Individual: {individual_deleted} | Rate limits: {rate_limit_count}")
-    return {"count": total_deleted, "bulk": bulk_deleted, "individual": individual_deleted, "rate_limits": rate_limit_count, "retries": retry_count, "oldest": oldest_message_date, "days": days_old}
+    log.info(f"#{channel.name} — complete | Total: {total_deleted} | Rate limits: {rate_limit_count} | Retries: {retry_count}")
+    return {"count": total_deleted, "rate_limits": rate_limit_count, "retries": retry_count, "oldest": oldest_message_date, "days": days_old}
 
 
 async def purge_all_channels():
@@ -387,13 +360,10 @@ async def purge_all_channels():
             if stats["count"] == -1:
                 active_lines.append(f"　🚫 `#{ch_name}` — skipped (missing permissions)")
             elif stats["count"] > 0:
-                detail = f"bulk: {stats['bulk']}"
-                if stats["individual"] > 0:
-                    detail += f", individual: {stats['individual']}"
                 if stats["is_override"]:
-                    active_lines.append(f"　🗑️ `#{ch_name}` — **{stats['count']}** deleted ({stats['days']}d ⚡override, {detail})")
+                    active_lines.append(f"　🗑️ `#{ch_name}` — **{stats['count']}** deleted ({stats['days']}d ⚡override)")
                 else:
-                    active_lines.append(f"　🗑️ `#{ch_name}` — **{stats['count']}** deleted ({detail})")
+                    active_lines.append(f"　🗑️ `#{ch_name}` — **{stats['count']}** deleted")
 
         if active_lines:
             if cat_data["default_days"]:
@@ -407,13 +377,10 @@ async def purge_all_channels():
         if stats["count"] == -1:
             breakdown_lines.append(f"🚫 `#{ch_name}` — skipped (missing permissions)")
         elif stats["count"] > 0:
-            detail = f"bulk: {stats['bulk']}"
-            if stats["individual"] > 0:
-                detail += f", individual: {stats['individual']}"
             if stats["is_override"]:
-                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{stats['count']}** deleted ({stats['days']}d ⚡override, {detail})")
+                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{stats['count']}** deleted ({stats['days']}d ⚡override)")
             else:
-                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{stats['count']}** deleted ({detail})")
+                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{stats['count']}** deleted")
 
     if not breakdown_lines:
         breakdown_lines.append("✅ No messages deleted this run")
