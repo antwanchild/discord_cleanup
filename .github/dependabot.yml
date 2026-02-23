@@ -1,5 +1,12 @@
 version: 2
 updates:
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees:
+      - "antwanchild"
+      
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
