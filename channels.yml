@@ -1,28 +1,37 @@
 channels:
-  # Configured categories
+  # --- CATEGORIES ---
+  # Bot will automatically clean all text channels under this category
+  # using the default retention from DEFAULT_RETENTION in .env
   - id: 234567890123456789
     name: Radarr
     type: category
 
+  # Category with a retention override — overrides DEFAULT_RETENTION
   - id: 345678901234567890
     name: Sonarr
     type: category
+    days: 4
 
-  # Sub channel overrides
+  # --- SUB CHANNEL OVERRIDES ---
+  # Override retention for a specific channel inside a category
   - id: 123456789012345678
     name: radarr-movies
     days: 3
 
-  # Excluded channel
+  # --- EXCLUSIONS ---
+  # Exclude a specific channel from cleanup entirely
+  # Silently skipped in notification, logged in log file
   - id: 789012345678901234
     name: radarr-important
     exclude: true
 
-  # Standalone channels
+  # --- STANDALONE CHANNELS ---
+  # Individual channel not part of a configured category
+  # Uses DEFAULT_RETENTION from .env
   - id: 567890123456789012
     name: crowdsec
 
-  # Standalone override
+  # Individual channel with retention override
   - id: 678901234567890123
     name: notifications
     days: 14
