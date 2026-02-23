@@ -587,15 +587,35 @@ async def cleanup_status(interaction: discord.Interaction):
 
     next_run_str = next_run.strftime('%Y-%m-%d %I:%M %p')
 
-    # Build channel list
-    channel_lines = []
+    # Group channels by category_name from channel_map
+    category_groups = {}
+    standalone_lines = []
+
     for channel_id, ch_config in channel_map.items():
         channel = interaction.guild.get_channel(channel_id)
         ch_name = channel.name if channel else str(channel_id)
-        if ch_config["is_override"]:
-            channel_lines.append(f"\u3000`#{ch_name}` — {ch_config['days']}d ⚡override")
+        retention = f"{ch_config['days']}d ⚡override" if ch_config["is_override"] else f"{ch_config['days']}d"
+        cat_name = ch_config["category_name"]
+        cat_default = ch_config["category_default"]
+
+        if cat_name and cat_default is not None:
+            if cat_name not in category_groups:
+                category_groups[cat_name] = {
+                    "default_days": cat_default,
+                    "channels": []
+                }
+            category_groups[cat_name]["channels"].append(f"\u3000`#{ch_name}` — {retention}")
         else:
-            channel_lines.append(f"\u3000`#{ch_name}` — {ch_config['days']}d")
+            standalone_lines.append(f"`#{ch_name}` — {retention}")
+
+    # Format breakdown
+    channel_lines = []
+    for cat_name, cat_data in category_groups.items():
+        channel_lines.append(f"📁 **{cat_name}** ({cat_data['default_days']}d default)")
+        channel_lines.extend(cat_data["channels"])
+
+    for line in standalone_lines:
+        channel_lines.append(f"🗑️ {line}")
 
     # Count excluded channels
     excluded = [ch for ch in raw_channels if ch.get("exclude", False)]
@@ -627,6 +647,7 @@ async def cleanup_status(interaction: discord.Interaction):
 
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
 
 
 @cleanup_group.error
