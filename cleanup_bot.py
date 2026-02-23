@@ -278,7 +278,11 @@ async def run_cleanup(guild, single_channel_id=None):
     # Calculate cutoffs once for the entire run
     run_time = datetime.now(timezone.utc)
     bulk_cutoff = run_time - timedelta(days=13)
-    log.info(f"Run cutoff: {run_time.strftime('%Y-%m-%d %H:%M:%S')} UTC | Bulk cutoff: {bulk_cutoff.strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    
+    # Display in local time for readability
+    local_run_time = datetime.now()
+    local_bulk_cutoff = local_run_time - timedelta(days=13)
+    log.info(f"Run cutoff: {local_run_time.strftime('%Y-%m-%d %H:%M:%S')} | Bulk cutoff: {local_bulk_cutoff.strftime('%Y-%m-%d %H:%M:%S')} | TZ: {os.getenv('TZ', 'UTC')}")
 
     channel_map = build_channel_map(guild)
 
