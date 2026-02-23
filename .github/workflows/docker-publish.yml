@@ -28,7 +28,6 @@ jobs:
 
           COMMIT_MSG=$(git log --format=%B --no-merges -n 1)
           
-
           if echo "$COMMIT_MSG" | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
           elif echo "$COMMIT_MSG" | grep -q "#minor"; then
