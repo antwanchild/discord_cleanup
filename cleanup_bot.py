@@ -32,17 +32,26 @@ with open("channels.yml", "r") as f:
 RETRY_DELAY = 300
 
 # --- Logging Setup ---
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+numeric_level = getattr(logging, LOG_LEVEL, logging.INFO)
+
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(numeric_level)
 
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
+console_handler.setLevel(numeric_level)
 formatter = logging.Formatter(
     "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
+
+# Set discord.py loggers to WARNING unless DEBUG is explicitly set
+discord_log_level = numeric_level if LOG_LEVEL == "DEBUG" else logging.WARNING
+logging.getLogger("discord").setLevel(discord_log_level)
+logging.getLogger("discord.http").setLevel(discord_log_level)
+logging.getLogger("discord.gateway").setLevel(discord_log_level)
 
 # Prevent discord.py from adding its own handler
 logging.getLogger("discord").propagate = True
@@ -64,7 +73,7 @@ def setup_run_log():
             h.close()
 
     file_handler = logging.FileHandler(log_path, mode="a")
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(numeric_level)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
@@ -74,6 +83,7 @@ def setup_run_log():
         f"Config snapshot | "
         f"CLEAN_TIMES={CLEAN_TIMES} | "
         f"TZ={os.getenv('TZ', 'UTC')} | "
+        f"LOG_LEVEL={LOG_LEVEL} | "
         f"LOG_MAX_FILES={LOG_MAX_FILES} | "
         f"DEFAULT_RETENTION={DEFAULT_RETENTION}"
     )
@@ -488,10 +498,8 @@ async def on_ready():
 
     start_scheduler()
 
-
 @bot.event
 async def on_resumed():
     log.info("Bot resumed connection — scheduler already running")
-
 
 bot.run(TOKEN)
