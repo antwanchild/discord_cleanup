@@ -570,6 +570,8 @@ async def cleanup_channel(interaction: discord.Interaction, channel: discord.Tex
 @cleanup_group.command(name="status", description="Show current bot configuration and next scheduled run")
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_status(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
     channel_map = build_channel_map(interaction.guild)
 
     # Next scheduled run
@@ -646,7 +648,7 @@ async def cleanup_status(interaction: discord.Interaction):
         )
 
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.followup.send_message(embed=embed, ephemeral=True)
 
 
 
