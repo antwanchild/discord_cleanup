@@ -212,10 +212,9 @@ intents.messages = True
 bot = commands.Bot(command_prefix=None, intents=intents)
 
 
-async def purge_channel(channel, days_old: int) -> dict:
+async def purge_channel(channel, days_old: int, bulk_cutoff: datetime) -> dict:
     """Purges old messages from a single channel. Returns stats dict."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=days_old)
-    bulk_cutoff = datetime.now(timezone.utc) - timedelta(days=13)
     guild = channel.guild
     total_deleted = 0
     rate_limit_count = 0
@@ -276,6 +275,10 @@ async def run_cleanup(guild, single_channel_id=None):
         log.error("Log channel not found. Check LOG_CHANNEL_ID in .env.discord_cleanup")
         return
 
+    # Calculate cutoffs once for the entire run
+    run_start = datetime.now()
+    bulk_cutoff = datetime.now(timezone.utc) - timedelta(days=13)
+
     channel_map = build_channel_map(guild)
 
     # If single channel specified filter down to just that one
@@ -304,7 +307,7 @@ async def run_cleanup(guild, single_channel_id=None):
             has_warnings = True
             continue
 
-        stats = await purge_channel(channel, ch_config["days"])
+        stats = await purge_channel(channel, ch_config["days"], bulk_cutoff)
         stats["is_override"] = ch_config["is_override"]
 
         if stats["count"] > 0:
