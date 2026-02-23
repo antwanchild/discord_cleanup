@@ -86,3 +86,11 @@ jobs:
           package-type: container
           min-versions-to-keep: 10
           delete-untagged-versions: true
+
+      - name: Delete old GitHub Releases
+        uses: dev-drprasad/delete-older-releases@v0.3.3
+        with:
+          keep_latest: 12
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
