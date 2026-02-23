@@ -238,7 +238,6 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                         oldest_message_date = msg.created_at
                 if msg.created_at > bulk_cutoff:
                     messages_to_delete.append(msg)
-
             if not messages_to_delete:
                 log.info(f"#{channel.name} — no more messages to delete")
                 break
