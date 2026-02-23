@@ -93,7 +93,7 @@ def setup_run_log():
 
 def build_channel_map(guild):
     """
-    Builds a map of channel_id -> {days, category_name, category_default, is_override, excluded}
+    Builds a map of channel_id -> {days, category_name, category_default, is_override}
     Handles categories, individual overrides, exclusions, default retention,
     and auto-detects Discord category name for individually listed channels.
     """
@@ -142,16 +142,14 @@ def build_channel_map(guild):
                     "days": override_map[sub_channel.id],
                     "category_name": cat_name,
                     "category_default": cat_days,
-                    "is_override": True,
-                    "excluded": False
+                    "is_override": True
                 }
             else:
                 channel_map[sub_channel.id] = {
                     "days": cat_days,
                     "category_name": cat_name,
                     "category_default": cat_days,
-                    "is_override": False,
-                    "excluded": False
+                    "is_override": False
                 }
 
     # Process individually listed channels
@@ -189,8 +187,7 @@ def build_channel_map(guild):
             "days": days,
             "category_name": cat_name,
             "category_default": cat_default,
-            "is_override": is_override,
-            "excluded": False
+            "is_override": is_override
         }
 
     return channel_map
@@ -202,8 +199,7 @@ intents.message_content = True
 intents.guilds = True
 intents.messages = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
-tree = bot.tree
+bot = commands.Bot(command_prefix=None, intents=intents)
 
 
 async def purge_channel(channel, days_old: int) -> dict:
@@ -213,12 +209,11 @@ async def purge_channel(channel, days_old: int) -> dict:
     guild = channel.guild
     total_deleted = 0
     rate_limit_count = 0
-    retry_count = 0
     oldest_message_date = None
 
     if not channel.permissions_for(guild.me).manage_messages:
         log.warning(f"Skipping #{channel.name} — missing Manage Messages permission")
-        return {"count": -1, "rate_limits": 0, "retries": 0, "oldest": None, "days": days_old}
+        return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old}
 
     log.info(f"Starting purge on #{channel.name} | Days: {days_old} | Cutoff: {cutoff.strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
@@ -248,7 +243,6 @@ async def purge_channel(channel, days_old: int) -> dict:
         except discord.errors.HTTPException as e:
             if e.status == 429:
                 rate_limit_count += 1
-                retry_count += 1
                 retry_after = getattr(e, 'retry_after', RETRY_DELAY)
                 log.warning(f"#{channel.name} — rate limited (hit #{rate_limit_count}). Retrying in {retry_after:.1f}s...")
                 await asyncio.sleep(retry_after)
@@ -257,10 +251,10 @@ async def purge_channel(channel, days_old: int) -> dict:
                 break
         except discord.Forbidden:
             log.error(f"#{channel.name} — Forbidden. Check bot permissions.")
-            return {"count": -1, "rate_limits": 0, "retries": 0, "oldest": None, "days": days_old}
+            return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old}
 
-    log.info(f"#{channel.name} — complete | Total: {total_deleted} | Rate limits: {rate_limit_count} | Retries: {retry_count}")
-    return {"count": total_deleted, "rate_limits": rate_limit_count, "retries": retry_count, "oldest": oldest_message_date, "days": days_old}
+    log.info(f"#{channel.name} — complete | Total: {total_deleted} | Rate limits: {rate_limit_count}")
+    return {"count": total_deleted, "rate_limits": rate_limit_count, "oldest": oldest_message_date, "days": days_old}
 
 
 async def run_cleanup(guild, single_channel_id=None):
@@ -449,9 +443,8 @@ async def cleanup_channel(interaction: discord.Interaction, channel: discord.Tex
     await run_cleanup(interaction.guild, single_channel_id=channel.id)
 
 
-@cleanup_run.error
-@cleanup_channel.error
-async def cleanup_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+@cleanup_group.error
+async def cleanup_group_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message("⛔ You need Administrator permissions to use this command.", ephemeral=True)
 
@@ -488,9 +481,9 @@ async def on_ready():
     log.info(f"Default retention: {DEFAULT_RETENTION} days")
     log.info(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)}")
 
-    # Register slash commands
-    tree.add_command(cleanup_group)
-    await tree.sync()
+    # Register slash commands once
+    bot.tree.add_command(cleanup_group)
+    await bot.tree.sync()
     log.info("Slash commands registered and synced")
 
     start_scheduler()
