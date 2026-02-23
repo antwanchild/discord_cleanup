@@ -1,4 +1,6 @@
 import discord
+from discord import app_commands
+from discord.ext import commands
 import schedule
 import time
 import asyncio
@@ -17,7 +19,7 @@ with open("VERSION", "r") as f:
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
-CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "06:00").split(",") if t.strip()]
+CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if t.strip()]
 LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
 DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
 LOG_DIR = "/app/logs"
@@ -47,7 +49,6 @@ logging.getLogger("discord").propagate = True
 discord.utils.setup_logging = lambda *args, **kwargs: None
 
 log = logging.getLogger("discord-cleanup")
-
 
 
 def setup_run_log():
@@ -195,12 +196,14 @@ def build_channel_map(guild):
     return channel_map
 
 
+# --- Bot Setup ---
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.messages = True
 
-client = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
+tree = bot.tree
 
 
 async def purge_channel(channel, days_old: int) -> dict:
@@ -226,7 +229,6 @@ async def purge_channel(channel, days_old: int) -> dict:
             async for msg in channel.history(limit=100, before=cutoff):
                 if oldest_message_date is None or msg.created_at < oldest_message_date:
                     oldest_message_date = msg.created_at
-                # Only bulk delete within 13 day window
                 if msg.created_at > bulk_cutoff:
                     messages_to_delete.append(msg)
 
@@ -261,16 +263,24 @@ async def purge_channel(channel, days_old: int) -> dict:
     return {"count": total_deleted, "rate_limits": rate_limit_count, "retries": retry_count, "oldest": oldest_message_date, "days": days_old}
 
 
-async def purge_all_channels():
+async def run_cleanup(guild, single_channel_id=None):
+    """Core cleanup logic used by both scheduler and slash commands."""
     setup_run_log()
 
-    log_channel = client.get_channel(LOG_CHANNEL_ID)
+    log_channel = bot.get_channel(LOG_CHANNEL_ID)
     if not log_channel:
         log.error("Log channel not found. Check LOG_CHANNEL_ID in .env.discord_cleanup")
         return
 
-    guild = log_channel.guild
     channel_map = build_channel_map(guild)
+
+    # If single channel specified filter down to just that one
+    if single_channel_id:
+        if single_channel_id in channel_map:
+            channel_map = {single_channel_id: channel_map[single_channel_id]}
+        else:
+            log.warning(f"Channel ID {single_channel_id} not in configured channels")
+            return
 
     log.info(f"Starting cleanup run on server: {guild.name} across {len(channel_map)} channel(s)...")
 
@@ -360,7 +370,6 @@ async def purge_all_channels():
     # --- Build Breakdown ---
     breakdown_lines = []
 
-    # Categories first — only show if they have activity
     for cat_name, cat_data in category_results.items():
         active_lines = []
         for ch_name, stats in cat_data["channels"].items():
@@ -379,7 +388,6 @@ async def purge_all_channels():
                 breakdown_lines.append(f"📁 **{cat_name}**")
             breakdown_lines.extend(active_lines)
 
-    # Standalone channels — only show if active
     for ch_name, stats in standalone_results.items():
         if stats["count"] == -1:
             breakdown_lines.append(f"🚫 `#{ch_name}` — skipped (missing permissions)")
@@ -416,9 +424,42 @@ async def purge_all_channels():
     await log_channel.send(embed=embed)
 
 
+# --- Slash Commands ---
+cleanup_group = app_commands.Group(name="cleanup", description="Discord Cleanup Bot commands")
+
+
+@cleanup_group.command(name="run", description="Trigger a full cleanup run on all configured channels")
+@app_commands.checks.has_permissions(administrator=True)
+async def cleanup_run(interaction: discord.Interaction):
+    await interaction.response.send_message("🧹 Full cleanup started — report will be posted to the log channel when complete.", ephemeral=True)
+    log.info(f"Manual full cleanup triggered by {interaction.user} in #{interaction.channel.name}")
+    await run_cleanup(interaction.guild)
+
+
+@cleanup_group.command(name="channel", description="Trigger cleanup on a specific configured channel")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(channel="The channel to clean up")
+async def cleanup_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    channel_map = build_channel_map(interaction.guild)
+    if channel.id not in channel_map:
+        await interaction.response.send_message(f"⚠️ `#{channel.name}` is not in your configured channels. Check `channels.yml`.", ephemeral=True)
+        return
+    await interaction.response.send_message(f"🧹 Cleanup started for `#{channel.name}` — report will be posted to the log channel when complete.", ephemeral=True)
+    log.info(f"Manual channel cleanup triggered by {interaction.user} for #{channel.name}")
+    await run_cleanup(interaction.guild, single_channel_id=channel.id)
+
+
+@cleanup_run.error
+@cleanup_channel.error
+async def cleanup_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        await interaction.response.send_message("⛔ You need Administrator permissions to use this command.", ephemeral=True)
+
+
 def schedule_runner():
     def job():
-        asyncio.run_coroutine_threadsafe(purge_all_channels(), client.loop)
+        for guild in bot.guilds:
+            asyncio.run_coroutine_threadsafe(run_cleanup(guild), bot.loop)
 
     for t in CLEAN_TIMES:
         schedule.every().day.at(t).do(job)
@@ -441,17 +482,23 @@ def start_scheduler():
     thread.start()
 
 
-@client.event
+@bot.event
 async def on_ready():
-    log.info(f"Logged in as {client.user} | v{BOT_VERSION}")
+    log.info(f"Logged in as {bot.user} | v{BOT_VERSION}")
     log.info(f"Default retention: {DEFAULT_RETENTION} days")
     log.info(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)}")
+
+    # Register slash commands
+    tree.add_command(cleanup_group)
+    await tree.sync()
+    log.info("Slash commands registered and synced")
+
     start_scheduler()
 
 
-@client.event
+@bot.event
 async def on_resumed():
     log.info("Bot resumed connection — scheduler already running")
 
 
-client.run(TOKEN)
+bot.run(TOKEN)
