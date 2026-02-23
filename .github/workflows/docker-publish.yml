@@ -36,6 +36,8 @@ jobs:
 
           echo $NEW_VERSION > VERSION
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          # Save original commit message for release notes
+          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
 
       - name: Commit bumped version
         run: |
@@ -66,7 +68,7 @@ jobs:
         with:
           tag_name: v${{ steps.bump.outputs.version }}
           name: v${{ steps.bump.outputs.version }}
-          body: ${{ github.event.head_commit.message }}
+          body: ${{ steps.bump.outputs.commit_msg }}
           generate_release_notes: true
 
       - name: Delete old GHCR images
