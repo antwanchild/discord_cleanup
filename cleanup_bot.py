@@ -14,8 +14,7 @@ load_dotenv(".env.discord_cleanup")
 # Read version from VERSION file
 with open("VERSION", "r") as f:
     BOT_VERSION = f.read().strip()
-
-
+    
 TOKEN = os.getenv("DISCORD_TOKEN")
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if t.strip()]
