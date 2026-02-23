@@ -14,10 +14,10 @@ load_dotenv(".env.discord_cleanup")
 # Read version from VERSION file
 with open("VERSION", "r") as f:
     BOT_VERSION = f.read().strip()
-    
+
 TOKEN = os.getenv("DISCORD_TOKEN")
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
-CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if t.strip()]
+CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "06:00").split(",") if t.strip()]
 LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
 DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
 LOG_DIR = "/app/logs"
