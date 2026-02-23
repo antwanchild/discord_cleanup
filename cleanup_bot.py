@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv(".env.discord_cleanup")
 
-BOT_VERSION = "2.0.1"
+BOT_VERSION = "2.0.2"
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
@@ -40,7 +40,12 @@ formatter = logging.Formatter(
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
+# Prevent discord.py from adding its own handler
+logging.getLogger("discord").propagate = True
+discord.utils.setup_logging = lambda *args, **kwargs: None
+
 log = logging.getLogger("discord-cleanup")
+
 
 
 def setup_run_log():
