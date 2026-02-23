@@ -1,0 +1,28 @@
+channels:
+  # Configured categories
+  - id: 234567890123456789
+    name: Radarr
+    type: category
+
+  - id: 345678901234567890
+    name: Sonarr
+    type: category
+
+  # Sub channel overrides
+  - id: 123456789012345678
+    name: radarr-movies
+    days: 3
+
+  # Excluded channel
+  - id: 789012345678901234
+    name: radarr-important
+    exclude: true
+
+  # Standalone channels
+  - id: 567890123456789012
+    name: crowdsec
+
+  # Standalone override
+  - id: 678901234567890123
+    name: notifications
+    days: 14
