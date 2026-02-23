@@ -212,9 +212,9 @@ intents.messages = True
 bot = commands.Bot(command_prefix=None, intents=intents)
 
 
-async def purge_channel(channel, days_old: int, bulk_cutoff: datetime) -> dict:
+async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time: datetime) -> dict:
     """Purges old messages from a single channel. Returns stats dict."""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days_old)
+    cutoff = run_time - timedelta(days=days_old)
     guild = channel.guild
     total_deleted = 0
     rate_limit_count = 0
@@ -276,8 +276,8 @@ async def run_cleanup(guild, single_channel_id=None):
         return
 
     # Calculate cutoffs once for the entire run
-    run_start = datetime.now()
-    bulk_cutoff = datetime.now(timezone.utc) - timedelta(days=13)
+    run_time = datetime.now(timezone.utc)
+    bulk_cutoff = run_time - timedelta(days=13)
 
     channel_map = build_channel_map(guild)
 
@@ -307,7 +307,7 @@ async def run_cleanup(guild, single_channel_id=None):
             has_warnings = True
             continue
 
-        stats = await purge_channel(channel, ch_config["days"], bulk_cutoff)
+        stats = await purge_channel(channel, ch_config["days"], bulk_cutoff, run_time)
         stats["is_override"] = ch_config["is_override"]
 
         if stats["count"] > 0:
@@ -502,8 +502,10 @@ async def on_ready():
 
     start_scheduler()
 
+
 @bot.event
 async def on_resumed():
     log.info("Bot resumed connection — scheduler already running")
+
 
 bot.run(TOKEN)
