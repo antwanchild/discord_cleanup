@@ -13,32 +13,32 @@ import yaml
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
-load_dotenv(”.env.discord_cleanup”)
+load_dotenv(".env.discord_cleanup")
 
 # Read version from VERSION file
 
-with open(“VERSION”, “r”) as f:
+with open("VERSION", "r") as f:
 BOT_VERSION = f.read().strip()
 
-TOKEN = os.getenv(“DISCORD_TOKEN”)
-LOG_CHANNEL_ID = int(os.getenv(“LOG_CHANNEL_ID”))
-CLEAN_TIMES = [t.strip() for t in os.getenv(“CLEAN_TIME”, “03:00”).split(”,”) if t.strip()]
-LOG_MAX_FILES = int(os.getenv(“LOG_MAX_FILES”, 7))
-DEFAULT_RETENTION = int(os.getenv(“DEFAULT_RETENTION”, 7))
-LOG_DIR = “/app/logs”
-LAST_VERSION_FILE = “/app/logs/last_version”
+TOKEN = os.getenv("DISCORD_TOKEN")
+LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
+CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if t.strip()]
+LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
+DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
+LOG_DIR = "/app/logs"
+LAST_VERSION_FILE = "/app/logs/last_version"
 
 # Load channels from channels.yml
 
-with open(“channels.yml”, “r”) as f:
+with open("channels.yml", "r") as f:
 config = yaml.safe_load(f)
-raw_channels = config.get(“channels”, [])
+raw_channels = config.get("channels", [])
 
 RETRY_DELAY = 300
 
 # — Logging Setup —
 
-LOG_LEVEL = os.getenv(“LOG_LEVEL”, “INFO”).upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 numeric_level = getattr(logging, LOG_LEVEL, logging.INFO)
 
 logger = logging.getLogger()
@@ -47,28 +47,28 @@ logger.setLevel(numeric_level)
 console_handler = logging.StreamHandler()
 console_handler.setLevel(numeric_level)
 formatter = logging.Formatter(
-“%(asctime)s [%(levelname)s] %(name)s: %(message)s”,
-datefmt=”%Y-%m-%d %H:%M:%S”
+"%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+datefmt="%Y-%m-%d %H:%M:%S"
 )
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 # Set discord.py loggers to WARNING unless DEBUG is explicitly set
 
-discord_log_level = numeric_level if LOG_LEVEL == “DEBUG” else logging.WARNING
-logging.getLogger(“discord”).setLevel(discord_log_level)
-logging.getLogger(“discord.http”).setLevel(discord_log_level)
-logging.getLogger(“discord.gateway”).setLevel(discord_log_level)
+discord_log_level = numeric_level if LOG_LEVEL == "DEBUG" else logging.WARNING
+logging.getLogger("discord").setLevel(discord_log_level)
+logging.getLogger("discord.http").setLevel(discord_log_level)
+logging.getLogger("discord.gateway").setLevel(discord_log_level)
 
 # Prevent discord.py from adding its own handler
 
-logging.getLogger(“discord”).propagate = True
+logging.getLogger("discord").propagate = True
 discord.utils.setup_logging = lambda *args, **kwargs: None
 
-log = logging.getLogger(“discord-cleanup”)
+log = logging.getLogger("discord-cleanup")
 
 def setup_run_log():
-“”“Creates a new date stamped log file for this run and cleans up old ones.”””
+"""Creates a new date stamped log file for this run and cleans up old ones."""
 os.makedirs(LOG_DIR, exist_ok=True)
 
 
@@ -110,11 +110,11 @@ for filename in os.listdir(LOG_DIR):
 
 
 def build_channel_map(guild):
-“””
+"""
 Builds a map of channel_id -> {days, category_name, category_default, is_override}
 Handles categories, individual overrides, exclusions, default retention,
 and auto-detects Discord category name for individually listed channels.
-“””
+"""
 override_map = {}
 exclude_set = set()
 category_map = {}
@@ -213,8 +213,8 @@ return channel_map
 
 
 def validate_channels(guild):
-“”“Validates all configured channels exist in the guild on startup.”””
-log.info(“Validating configured channels…”)
+"""Validates all configured channels exist in the guild on startup."""
+log.info("Validating configured channels…")
 issues = 0
 
 
@@ -244,7 +244,7 @@ else:
 
 
 async def post_deploy_notification(guild):
-“”“Posts a deploy notification to the log channel if this is a new version.”””
+"""Posts a deploy notification to the log channel if this is a new version."""
 os.makedirs(LOG_DIR, exist_ok=True)
 
 
@@ -304,14 +304,14 @@ bot = commands.Bot(command_prefix=None, intents=intents)
 shutdown_event = asyncio.Event()
 
 def handle_shutdown(signum, frame):
-log.info(“Shutdown signal received — finishing current operation before stopping…”)
+log.info("Shutdown signal received — finishing current operation before stopping…")
 asyncio.get_event_loop().call_soon_threadsafe(shutdown_event.set)
 
 signal.signal(signal.SIGTERM, handle_shutdown)
 signal.signal(signal.SIGINT, handle_shutdown)
 
 async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time: datetime) -> dict:
-“”“Purges old messages from a single channel. Returns stats dict.”””
+"""Purges old messages from a single channel. Returns stats dict."""
 cutoff = run_time - timedelta(days=days_old)
 guild = channel.guild
 total_deleted = 0
@@ -371,7 +371,7 @@ return {"count": total_deleted, "rate_limits": rate_limit_count, "oldest": oldes
 
 
 async def run_cleanup(guild, single_channel_id=None):
-“”“Core cleanup logic used by both scheduler and slash commands.”””
+"""Core cleanup logic used by both scheduler and slash commands."""
 setup_run_log()
 
 
@@ -548,28 +548,28 @@ await log_channel.send(embed=embed)
 
 # — Slash Commands —
 
-cleanup_group = app_commands.Group(name=“cleanup”, description=“Discord Cleanup Bot commands”)
+cleanup_group = app_commands.Group(name="cleanup", description="Discord Cleanup Bot commands")
 
-@cleanup_group.command(name=“run”, description=“Trigger a full cleanup run on all configured channels”)
+@cleanup_group.command(name="run", description="Trigger a full cleanup run on all configured channels")
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_run(interaction: discord.Interaction):
-await interaction.response.send_message(“🧹 Full cleanup started — report will be posted to the log channel when complete.”, ephemeral=True)
-log.info(f”Manual full cleanup triggered by {interaction.user} in #{interaction.channel.name}”)
+await interaction.response.send_message("🧹 Full cleanup started — report will be posted to the log channel when complete.", ephemeral=True)
+log.info(f"Manual full cleanup triggered by {interaction.user} in #{interaction.channel.name}")
 await run_cleanup(interaction.guild)
 
-@cleanup_group.command(name=“channel”, description=“Trigger cleanup on a specific configured channel”)
+@cleanup_group.command(name="channel", description="Trigger cleanup on a specific configured channel")
 @app_commands.checks.has_permissions(administrator=True)
-@app_commands.describe(channel=“The channel to clean up”)
+@app_commands.describe(channel="The channel to clean up")
 async def cleanup_channel(interaction: discord.Interaction, channel: discord.TextChannel):
 channel_map = build_channel_map(interaction.guild)
 if channel.id not in channel_map:
-await interaction.response.send_message(f”⚠️ `#{channel.name}` is not in your configured channels. Check `channels.yml`.”, ephemeral=True)
+await interaction.response.send_message(f"⚠️ `#{channel.name}` is not in your configured channels. Check `channels.yml`.", ephemeral=True)
 return
-await interaction.response.send_message(f”🧹 Cleanup started for `#{channel.name}` — report will be posted to the log channel when complete.”, ephemeral=True)
-log.info(f”Manual channel cleanup triggered by {interaction.user} for #{channel.name}”)
+await interaction.response.send_message(f"🧹 Cleanup started for `#{channel.name}` — report will be posted to the log channel when complete.", ephemeral=True)
+log.info(f"Manual channel cleanup triggered by {interaction.user} for #{channel.name}")
 await run_cleanup(interaction.guild, single_channel_id=channel.id)
 
-@cleanup_group.command(name=“status”, description=“Show current bot configuration and next scheduled run”)
+@cleanup_group.command(name="status", description="Show current bot configuration and next scheduled run")
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_status(interaction: discord.Interaction):
 channel_map = build_channel_map(interaction.guild)
@@ -635,7 +635,7 @@ await interaction.response.send_message(embed=embed, ephemeral=True)
 @cleanup_group.error
 async def cleanup_group_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
 if isinstance(error, app_commands.MissingPermissions):
-await interaction.response.send_message(“⛔ You need Administrator permissions to use this command.”, ephemeral=True)
+await interaction.response.send_message("⛔ You need Administrator permissions to use this command.", ephemeral=True)
 
 def schedule_runner():
 def job():
@@ -657,8 +657,8 @@ log.info("Scheduler stopped")
 
 
 def start_scheduler():
-if any(t.name == “scheduler” for t in threading.enumerate()):
-log.info(“Scheduler already running — skipping”)
+if any(t.name == "scheduler" for t in threading.enumerate()):
+log.info("Scheduler already running — skipping")
 return
 
 
@@ -669,9 +669,9 @@ thread.start()
 
 @bot.event
 async def on_ready():
-log.info(f”Logged in as {bot.user} | v{BOT_VERSION}”)
-log.info(f”Default retention: {DEFAULT_RETENTION} days”)
-log.info(f”Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {’, ’.join(CLEAN_TIMES)}”)
+log.info(f"Logged in as {bot.user} | v{BOT_VERSION}")
+log.info(f"Default retention: {DEFAULT_RETENTION} days")
+log.info(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {’, ’.join(CLEAN_TIMES)}")
 
 
 # Validate channels and post deploy notification for each guild
@@ -689,12 +689,12 @@ start_scheduler()
 
 @bot.event
 async def on_resumed():
-log.info(“Bot resumed connection — scheduler already running”)
+log.info("Bot resumed connection — scheduler already running")
 
 async def shutdown():
-log.info(“Shutting down bot…”)
+log.info("Shutting down bot…")
 await bot.close()
-log.info(“Bot shutdown complete”)
+log.info("Bot shutdown complete")
 
 def main():
 loop = asyncio.get_event_loop()
