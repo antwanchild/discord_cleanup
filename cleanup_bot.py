@@ -165,11 +165,6 @@ def build_channel_map(guild):
                     "is_override": False
                 }
 
-    # Temporary debug
-    for ch_id, ch_data in channel_map.items():
-        log.info(f"Channel map entry: {ch_id} — category: {ch_data['category_name']} — cat_default: {ch_data['category_default']}")
-
-
     # Process individually listed channels
     for ch_config in raw_channels:
         ch_type = ch_config.get("type", "channel")
