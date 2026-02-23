@@ -412,9 +412,10 @@ async def run_cleanup(guild, single_channel_id=None):
     summary = (
         f"🏠 Server: **{guild.name}**\n"
         f"📅 Default retention: **{DEFAULT_RETENTION} days**\n"
+        f"🔍 Channels checked: **{len(channel_map)}**\n"
         f"🗑️ Total deleted: **{grand_total}**\n"
-        f"📆 Oldest message deleted: **{oldest_str}**\n"
-        f"⚡ Rate limits hit: **{grand_rate_limits}**\n"
+        + (f"📆 Oldest message deleted: **{oldest_str}**\n" if grand_total > 0 else "")
+        + f"⚡ Rate limits hit: **{grand_rate_limits}**\n"
         f"⏱️ Duration: **{duration_str}**\n"
         f"⏭️ Next run: **{next_run_str}**"
     )
