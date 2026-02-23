@@ -9,12 +9,41 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+
+      - name: Bump version
+        id: bump
+        run: |
+          VERSION=$(cat VERSION)
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+
+          if echo "$COMMIT_MSG" | grep -q "#major"; then
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+          elif echo "$COMMIT_MSG" | grep -q "#minor"; then
+            NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+          else
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          fi
+
+          echo $NEW_VERSION > VERSION
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Commit bumped version
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add VERSION
+          git commit -m "Auto bump version to ${{ steps.bump.outputs.version }}"
+          git push
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -24,8 +53,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/discord_cleanup:latest
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/discord_cleanup:latest
+            ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.bump.outputs.version }}

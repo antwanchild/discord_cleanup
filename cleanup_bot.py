@@ -11,7 +11,10 @@ from dotenv import load_dotenv
 
 load_dotenv(".env.discord_cleanup")
 
-BOT_VERSION = "2.0.2"
+# Read version from VERSION file
+with open("VERSION", "r") as f:
+    BOT_VERSION = f.read().strip()
+
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
