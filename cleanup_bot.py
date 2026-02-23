@@ -224,7 +224,7 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
         log.warning(f"Skipping #{channel.name} — missing Manage Messages permission")
         return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old}
 
-    log.info(f"Starting purge on #{channel.name} | Days: {days_old} | Cutoff: {cutoff.strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    log.info(f"Starting purge on #{channel.name} | Days: {days_old}")
 
     while True:
         try:
@@ -278,6 +278,7 @@ async def run_cleanup(guild, single_channel_id=None):
     # Calculate cutoffs once for the entire run
     run_time = datetime.now(timezone.utc)
     bulk_cutoff = run_time - timedelta(days=13)
+    log.info(f"Run cutoff: {run_time.strftime('%Y-%m-%d %H:%M:%S')} UTC | Bulk cutoff: {bulk_cutoff.strftime('%Y-%m-%d %H:%M:%S')} UTC")
 
     channel_map = build_channel_map(guild)
 
