@@ -25,7 +25,7 @@ CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if
 LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
 DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
 LOG_DIR = "/app/logs"
-LAST_VERSION_FILE = "/app/logs/last_version"
+LAST_VERSION_FILE = "/app/data/last_version"
 
 # Load channels from channels.yml
 with open("channels.yml", "r") as f:
@@ -238,7 +238,7 @@ def validate_channels(guild):
 
 async def post_deploy_notification(guild):
     """Posts a deploy notification to the log channel if this is a new version."""
-    os.makedirs(LOG_DIR, exist_ok=True)
+    os.makedirs("/app/data", exist_ok=True)
 
     last_version = None
     if os.path.exists(LAST_VERSION_FILE):
@@ -582,28 +582,41 @@ async def cleanup_status(interaction: discord.Interaction):
 
     next_run_str = next_run.strftime('%Y-%m-%d %I:%M %p')
 
-    # Build display directly from raw_channels — no Discord API calls needed
-    channel_lines = []
-    excluded = []
+    # Count total configured channels
     configured_count = 0
+    excluded = []
+    for ch in raw_channels:
+        ch_type = ch.get("type", "channel")
+        if ch.get("exclude", False):
+            excluded.append(ch)
+            continue
+        if ch_type == "category":
+            category = interaction.guild.get_channel(ch["id"])
+            if category:
+                configured_count += len(category.text_channels)
+        else:
+            configured_count += 1
+
+    # Build display directly from raw_channels
+    channel_lines = []
+    last_category_days = DEFAULT_RETENTION
 
     for ch in raw_channels:
         ch_type = ch.get("type", "channel")
         ch_name = ch.get("name", str(ch["id"]))
 
         if ch.get("exclude", False):
-            excluded.append(ch)
             continue
 
         if ch_type == "category":
             days = ch.get("days", DEFAULT_RETENTION)
+            last_category_days = days
             channel_lines.append(f"📁 **{ch_name}** ({days}d default)")
         else:
             days = ch.get("days", DEFAULT_RETENTION)
-            is_override = days != DEFAULT_RETENTION
+            is_override = days != last_category_days
             retention = f"{days}d ⚡override" if is_override else f"{days}d"
             channel_lines.append(f"\u3000`#{ch_name}` — {retention}")
-            configured_count += 1
 
     summary = (
         f"🏠 Server: **{interaction.guild.name}**\n"
@@ -632,6 +645,7 @@ async def cleanup_status(interaction: discord.Interaction):
 
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await interaction.followup.send(embed=embed, ephemeral=True)
+
 
 
 @cleanup_group.error
