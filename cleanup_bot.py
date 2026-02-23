@@ -669,7 +669,8 @@ async def on_ready():
         validate_channels(guild)
         await post_deploy_notification(guild)
 
-    # Register slash commands once
+    # Clear and re-sync slash commands
+    bot.tree.clear_commands(guild=None)
     bot.tree.add_command(cleanup_group)
     await bot.tree.sync()
     log.info("Slash commands registered and synced")
