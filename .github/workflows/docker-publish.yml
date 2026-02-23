@@ -24,7 +24,8 @@ jobs:
           MINOR=$(echo $VERSION | cut -d. -f2)
           PATCH=$(echo $VERSION | cut -d. -f3)
 
-          COMMIT_MSG=$(git log -1 --pretty=%B)
+          # Get the commit message that triggered this workflow
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
 
           if echo "$COMMIT_MSG" | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
