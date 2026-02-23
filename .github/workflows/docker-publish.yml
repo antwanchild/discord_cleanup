@@ -88,9 +88,11 @@ jobs:
           delete-untagged-versions: true
 
       - name: Delete old GitHub Releases
-        uses: dev-drprasad/delete-older-releases@v0.3.3
-        with:
-          keep_latest: 12
-          delete_tags: true
+        run: |
+          gh release list --limit 100 --json tagName --jq '.[10:][].tagName' | while read tag; do
+            echo "Deleting release and tag: $tag"
+            gh release delete "$tag" --yes --cleanup-tag
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
