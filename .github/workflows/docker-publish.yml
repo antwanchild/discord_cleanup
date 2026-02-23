@@ -18,6 +18,13 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Lint check
+        continue-on-error: true
+        run: |
+          pip install ruff --quiet
+          echo "Running ruff lint check..."
+          ruff check cleanup_bot.py || echo "⚠️ Lint warnings found — build continues"
+
       - name: Bump version
         id: bump
         run: |
@@ -27,7 +34,7 @@ jobs:
           PATCH=$(echo $VERSION | cut -d. -f3)
 
           COMMIT_MSG=$(git log --format=%B --no-merges -n 1)
-          
+
           if echo "$COMMIT_MSG" | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
           elif echo "$COMMIT_MSG" | grep -q "#minor"; then
@@ -38,7 +45,6 @@ jobs:
 
           echo $NEW_VERSION > VERSION
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          # Save original commit message for release notes
           echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
 
       - name: Commit bumped version
