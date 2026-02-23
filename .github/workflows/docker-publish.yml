@@ -24,7 +24,6 @@ jobs:
           MINOR=$(echo $VERSION | cut -d. -f2)
           PATCH=$(echo $VERSION | cut -d. -f3)
 
-          # Get the commit message that triggered this workflow
           COMMIT_MSG="${{ github.event.head_commit.message }}"
 
           if echo "$COMMIT_MSG" | grep -q "#major"; then
@@ -61,3 +60,11 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/discord_cleanup:latest
             ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.bump.outputs.version }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.bump.outputs.version }}
+          name: v${{ steps.bump.outputs.version }}
+          body: ${{ github.event.head_commit.message }}
+          generate_release_notes: true
