@@ -669,7 +669,7 @@ async def run_cleanup(guild, single_channel_id=None, dry_run: bool = False):
         timestamp=run_end
     )
     embed.add_field(name="📋 Per-Channel Breakdown", value="\n".join(breakdown_lines), inline=False)
-    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION})
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
 
     await log_channel.send(embed=embed)
 
