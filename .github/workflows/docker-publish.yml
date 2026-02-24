@@ -7,6 +7,8 @@ on:
     paths-ignore:
       - 'README.md'
       - '.github/dependabot.yml'
+      - '.gitignore'
+      - '.dockerignore'
 
 jobs:
   build-and-push:
