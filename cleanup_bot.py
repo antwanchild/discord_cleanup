@@ -26,7 +26,6 @@ REPORT_CHANNEL_ID = int(os.getenv("REPORT_CHANNEL_ID"))
 CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if t.strip()]
 LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
 DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
-STATUS_REPORT_DAY = os.getenv("STATUS_REPORT_DAY", "sunday").lower()
 STATUS_REPORT_TIME = os.getenv("STATUS_REPORT_TIME", "09:00")
 LOG_DIR = "/app/logs"
 DATA_DIR = "/app/data"
@@ -77,7 +76,7 @@ def load_stats() -> dict:
     if not os.path.exists(STATS_FILE):
         return {
             "all_time": {"runs": 0, "deleted": 0, "channels": {}},
-            "weekly": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")},
+            "rolling_30": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")},
             "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")}
         }
     try:
@@ -87,7 +86,7 @@ def load_stats() -> dict:
         log.warning(f"Could not load stats file — {e}")
         return {
             "all_time": {"runs": 0, "deleted": 0, "channels": {}},
-            "weekly": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")},
+            "rolling_30": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")},
             "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")}
         }
 
@@ -107,11 +106,11 @@ def update_stats(channel_results: dict):
     stats = load_stats()
     now = datetime.now()
 
-    # Check weekly reset
-    weekly_reset = datetime.strptime(stats["weekly"]["reset"], "%Y-%m-%d")
-    if (now - weekly_reset).days >= 7:
-        log.info("Resetting weekly stats")
-        stats["weekly"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}
+    # Check rolling 30 day reset
+    rolling_reset = datetime.strptime(stats["rolling_30"]["reset"], "%Y-%m-%d")
+    if (now - rolling_reset).days >= 30:
+        log.info("Resetting rolling 30-day stats")
+        stats["rolling_30"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}
 
     # Check monthly reset — reset on 1st of each month
     monthly_reset = datetime.strptime(stats["monthly"]["reset"], "%Y-%m-%d")
@@ -128,12 +127,12 @@ def update_stats(channel_results: dict):
         if count > 0:
             stats["all_time"]["channels"][ch_name] = stats["all_time"]["channels"].get(ch_name, 0) + count
 
-    # Update weekly
-    stats["weekly"]["runs"] += 1
-    stats["weekly"]["deleted"] += total_deleted
+    # Update rolling_30
+    stats["rolling_30"]["runs"] += 1
+    stats["rolling_30"]["deleted"] += total_deleted
     for ch_name, count in channel_results.items():
         if count > 0:
-            stats["weekly"]["channels"][ch_name] = stats["weekly"]["channels"].get(ch_name, 0) + count
+            stats["rolling_30"]["channels"][ch_name] = stats["rolling_30"]["channels"].get(ch_name, 0) + count
 
     # Update monthly
     stats["monthly"]["runs"] += 1
@@ -364,28 +363,21 @@ async def post_deploy_notification(guild):
     await log_channel.send(embed=embed)
 
 
-async def post_status_report(guild, period: str):
-    """Posts a weekly or monthly stats report to the report channel."""
+async def post_status_report(guild):
+    """Posts a monthly stats report to the report channel."""
     report_channel = bot.get_channel(REPORT_CHANNEL_ID)
     if not report_channel:
         log.warning("Could not post status report — report channel not found")
         return
 
     stats = load_stats()
-    data = stats.get(period, {})
+    monthly = stats.get("monthly", {})
     now = datetime.now()
 
-    if period == "weekly":
-        title = "📊 Weekly Cleanup Report"
-        color = 0x9B59B6
-    else:
-        title = "📊 Monthly Cleanup Report"
-        color = 0xE67E22
-
-    reset_date = data.get("reset", "N/A")
-    runs = data.get("runs", 0)
-    deleted = data.get("deleted", 0)
-    channels = data.get("channels", {})
+    reset_date = monthly.get("reset", "N/A")
+    runs = monthly.get("runs", 0)
+    deleted = monthly.get("deleted", 0)
+    channels = monthly.get("channels", {})
 
     top_channels = sorted(channels.items(), key=lambda x: x[1], reverse=True)[:10]
 
@@ -398,9 +390,9 @@ async def post_status_report(guild, period: str):
     )
 
     embed = discord.Embed(
-        title=title,
+        title="📊 Monthly Cleanup Report",
         description=summary,
-        color=color,
+        color=0xE67E22,
         timestamp=now
     )
 
@@ -412,7 +404,7 @@ async def post_status_report(guild, period: str):
 
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await report_channel.send(embed=embed)
-    log.info(f"{period.capitalize()} status report posted")
+    log.info("Monthly status report posted")
 
 
 # --- Bot Setup ---
@@ -725,16 +717,16 @@ async def cleanup_stats(interaction: discord.Interaction):
     now = datetime.now()
 
     all_time = stats.get("all_time", {})
-    weekly = stats.get("weekly", {})
+    rolling_30 = stats.get("rolling_30", {})
     monthly = stats.get("monthly", {})
 
     top_channels = sorted(all_time.get("channels", {}).items(), key=lambda x: x[1], reverse=True)[:5]
 
     summary = (
         f"🏠 Server: **{interaction.guild.name}**\n\n"
-        f"**📅 This Week** (since {weekly.get('reset', 'N/A')})\n"
-        f"\u3000🔁 Runs: **{weekly.get('runs', 0)}**\n"
-        f"\u3000🗑️ Deleted: **{weekly.get('deleted', 0)}**\n\n"
+        f"**📅 Last 30 Days** (since {rolling_30.get('reset', 'N/A')})\n"
+        f"\u3000🔁 Runs: **{rolling_30.get('runs', 0)}**\n"
+        f"\u3000🗑️ Deleted: **{rolling_30.get('deleted', 0)}**\n\n"
         f"**🗓️ This Month** (since {monthly.get('reset', 'N/A')})\n"
         f"\u3000🔁 Runs: **{monthly.get('runs', 0)}**\n"
         f"\u3000🗑️ Deleted: **{monthly.get('deleted', 0)}**\n\n"
@@ -868,31 +860,14 @@ def schedule_runner():
         for guild in bot.guilds:
             asyncio.run_coroutine_threadsafe(run_cleanup(guild), bot.loop)
 
-    def weekly_report_job():
-        for guild in bot.guilds:
-            asyncio.run_coroutine_threadsafe(post_status_report(guild, "weekly"), bot.loop)
-
     def monthly_check():
         if datetime.now().day == 1:
             for guild in bot.guilds:
-                asyncio.run_coroutine_threadsafe(post_status_report(guild, "monthly"), bot.loop)
+                asyncio.run_coroutine_threadsafe(post_status_report(guild), bot.loop)
 
     for t in CLEAN_TIMES:
         schedule.every().day.at(t).do(cleanup_job)
         log.info(f"Scheduled daily cleanup at {t}")
-
-    day_map = {
-        "monday": schedule.every().monday,
-        "tuesday": schedule.every().tuesday,
-        "wednesday": schedule.every().wednesday,
-        "thursday": schedule.every().thursday,
-        "friday": schedule.every().friday,
-        "saturday": schedule.every().saturday,
-        "sunday": schedule.every().sunday,
-    }
-    weekly_scheduler = day_map.get(STATUS_REPORT_DAY, schedule.every().sunday)
-    weekly_scheduler.at(STATUS_REPORT_TIME).do(weekly_report_job)
-    log.info(f"Scheduled weekly report on {STATUS_REPORT_DAY} at {STATUS_REPORT_TIME}")
 
     schedule.every().day.at(STATUS_REPORT_TIME).do(monthly_check)
     log.info(f"Scheduled monthly report check daily at {STATUS_REPORT_TIME} (fires on 1st)")
