@@ -19,16 +19,29 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: Lint check
-        continue-on-error: true
-        run: |
-          pip install ruff --quiet
-          echo "Running ruff lint check..."
-          ruff check cleanup_bot.py || echo "⚠️ Lint warnings found — build continues"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install code analysis tools
+        run: pip install ruff pyflakes bandit
+
+      - name: Syntax check
+        run: python -m py_compile cleanup_bot.py
+
+      - name: Lint with ruff
+        run: ruff check cleanup_bot.py
+
+      - name: Check with pyflakes
+        run: pyflakes cleanup_bot.py
+
+      - name: Security check with bandit
+        run: bandit -r cleanup_bot.py
 
       - name: Bump version
         id: bump
@@ -38,7 +51,7 @@ jobs:
           MINOR=$(echo $VERSION | cut -d. -f2)
           PATCH=$(echo $VERSION | cut -d. -f3)
 
-          COMMIT_MSG=$(git log --format=%B --no-merges -n 1)
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
 
           if echo "$COMMIT_MSG" | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
@@ -68,7 +81,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
