@@ -601,6 +601,16 @@ async def cleanup_status(interaction: discord.Interaction):
                     if sub.permissions_for(interaction.guild.me).manage_messages:
                         configured_count += 1
         else:
+            # Skip if this channel is inside a configured category (already counted above)
+            discord_channel = interaction.guild.get_channel(ch["id"])
+            if discord_channel and discord_channel.category:
+                already_counted = any(
+                    c["id"] == discord_channel.category.id
+                    for c in raw_channels
+                    if c.get("type") == "category"
+                )
+                if already_counted:
+                    continue
             configured_count += 1
 
     # Build display directly from raw_channels
