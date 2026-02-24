@@ -35,7 +35,7 @@ jobs:
         run: python -m py_compile cleanup_bot.py
 
       - name: Lint with ruff
-        run: ruff check cleanup_bot.py
+        run: ruff check cleanup_bot.py --fix
 
       - name: Check with pyflakes
         run: pyflakes cleanup_bot.py
