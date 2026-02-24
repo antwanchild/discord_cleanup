@@ -602,7 +602,7 @@ async def cleanup_status(interaction: discord.Interaction):
                         configured_count += 1
         else:
             configured_count += 1
-
+l
     # Build display directly from raw_channels
     channel_lines = []
     last_category_days = DEFAULT_RETENTION
