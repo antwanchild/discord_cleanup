@@ -80,6 +80,10 @@ def setup_run_log():
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
+    # Add separator between runs
+    with open(log_path, "a") as f:
+        f.write(f"\n{'='*60}\n")
+
     log.info(f"=== Discord Cleanup Bot v{BOT_VERSION} ===")
     log.info(f"Log file started: {log_path}")
     log.info(
