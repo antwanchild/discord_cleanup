@@ -734,18 +734,6 @@ async def shutdown():
 
 
 def main():
-    loop = asyncio.get_event_loop()
-
-    try:
-        loop.run_until_complete(bot.start(TOKEN))
-    except KeyboardInterrupt:
-        pass
-    finally:
-        if not loop.is_closed():
-            loop.run_until_complete(shutdown())
-            loop.close()
-        log.info("Goodbye!")
-        sys.exit(0)
-
+    asyncio.run(bot.start(TOKEN))
 
 main()
