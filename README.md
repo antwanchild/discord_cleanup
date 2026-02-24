@@ -8,10 +8,12 @@ An automated Discord bot that cleans up old messages from configured channels on
 - Per-channel retention periods
 - Category support — clean all channels under a Discord category automatically
 - Channel exclusions
-- Slash commands for manual runs, single channel cleanup, and status checks
+- Slash commands for manual runs, single channel cleanup, dry runs, stats, and status
 - Startup validation — warns on boot if any configured channels are missing
 - Graceful shutdown — finishes current channel before stopping on SIGTERM
 - Deploy notifications — posts to log channel when a new version is detected
+- Cleanup statistics — rolling 30-day, current month, and all-time tracking
+- Monthly automated report — posts to report channel on the 1st of each month
 - Color-coded Discord embed notifications
 - Date-stamped rotating log files with run separators
 - Rate limit handling with automatic retry
@@ -67,23 +69,27 @@ An automated Discord bot that cleans up old messages from configured channels on
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DISCORD_TOKEN` | ✅ | — | Bot token from Discord Developer Portal |
-| `LOG_CHANNEL_ID` | ✅ | — | Channel ID where reports are posted |
+| `LOG_CHANNEL_ID` | ✅ | — | Channel ID where cleanup reports are posted |
+| `REPORT_CHANNEL_ID` | ✅ | — | Channel ID where monthly reports are posted |
 | `CLEAN_TIME` | ✅ | `03:00` | Comma-separated run times in 24hr format e.g. `03:00` or `03:00,12:00` |
 | `TZ` | ✅ | `UTC` | Timezone e.g. `America/New_York` |
 | `DEFAULT_RETENTION` | ❌ | `7` | Default message retention in days |
 | `LOG_MAX_FILES` | ❌ | `7` | Number of daily log files to retain |
 | `LOG_LEVEL` | ❌ | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post monthly report on the 1st (24hr format) |
 
 ### Example `.env.discord_cleanup`
 
 ```env
 DISCORD_TOKEN=your_bot_token_here
 LOG_CHANNEL_ID=987654321098765432
-CLEAN_TIME=03:00
-TZ=America/New_York
+REPORT_CHANNEL_ID=123456789098765432
+CLEAN_TIME=05:48
+TZ=America/Chicago
 DEFAULT_RETENTION=7
 LOG_MAX_FILES=7
 LOG_LEVEL=INFO
+STATUS_REPORT_TIME=09:00
 ```
 
 ---
@@ -135,6 +141,8 @@ All commands require Administrator permissions. Responses are ephemeral (only vi
 |---------|-------------|
 | `/cleanup run` | Trigger a full cleanup run on all configured channels |
 | `/cleanup channel` | Trigger cleanup on a specific configured channel |
+| `/cleanup dryrun` | Preview what would be deleted without actually deleting anything |
+| `/cleanup stats` | Show rolling 30-day, current month, and all-time cleanup statistics |
 | `/cleanup status` | Show current config, channel list, and next scheduled run time |
 
 ---
@@ -202,6 +210,18 @@ When Docker stops the container (SIGTERM) the bot finishes processing the curren
 
 ---
 
+## Statistics Tracking
+
+After each cleanup run the bot updates a `stats.json` file in `/app/data` tracking:
+
+- **Rolling 30 days** — resets every 30 days, always shows the last month of activity
+- **Current month** — resets on the 1st of each month
+- **All time** — never resets, cumulative totals since first run
+
+Stats are available on demand via `/cleanup stats` and as an automated monthly report posted to the report channel on the 1st of each month.
+
+---
+
 ## Notification Colors
 
 | Color | Status | Meaning |
@@ -210,7 +230,9 @@ When Docker stops the container (SIGTERM) the bot finishes processing the curren
 | 🔵 Blue | ℹ️ Nothing to Clean | No messages met the retention threshold |
 | 🟠 Orange | ⚠️ Completed with Warnings | Some channels had issues |
 | 🔴 Red | ⛔ Completed with Errors | Errors with no deletions |
+| ⚫ Gray | 🔍 Dry Run Complete | Preview of what would be deleted |
 | 🟣 Purple | 🚀 New Version Deployed | New version detected on startup |
+| 🟠 Orange | 📊 Monthly Report | Monthly stats posted on the 1st |
 
 ---
 
@@ -239,6 +261,8 @@ Every push to `main` triggers the GitHub Actions workflow which:
 3. Builds and pushes Docker image to GHCR with `:latest` and `:version` tags
 4. Creates a GitHub Release
 5. Cleans up old GHCR images keeping the last 10
+
+Pushes that only modify `README.md`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped entirely — no build, no version bump, no release.
 
 ---
 
