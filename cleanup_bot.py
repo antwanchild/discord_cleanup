@@ -585,6 +585,8 @@ async def cleanup_status(interaction: discord.Interaction):
     # Count total configured channels
     configured_count = 0
     excluded = []
+    exclude_ids = {ch["id"] for ch in raw_channels if ch.get("exclude", False)}
+
     for ch in raw_channels:
         ch_type = ch.get("type", "channel")
         if ch.get("exclude", False):
@@ -594,11 +596,12 @@ async def cleanup_status(interaction: discord.Interaction):
             category = interaction.guild.get_channel(ch["id"])
             if category:
                 for sub in category.text_channels:
+                    if sub.id in exclude_ids:
+                        continue
                     if sub.permissions_for(interaction.guild.me).manage_messages:
                         configured_count += 1
         else:
             configured_count += 1
-
 
     # Build display directly from raw_channels
     channel_lines = []
