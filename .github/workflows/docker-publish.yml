@@ -63,7 +63,10 @@ jobs:
 
           echo $NEW_VERSION > VERSION
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+
+          # Sanitize commit message for GITHUB_OUTPUT
+          SAFE_MSG=$(echo "$COMMIT_MSG" | tr -d '\n\r' | sed 's/#//g')
+          echo "commit_msg=$SAFE_MSG" >> $GITHUB_OUTPUT
 
       - name: Commit bumped version
         run: |
