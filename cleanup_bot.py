@@ -1,3 +1,4 @@
+Content is user-generated and unverified.
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -8,6 +9,7 @@ import time
 import asyncio
 import threading
 import os
+import json
 import logging
 import yaml
 from datetime import datetime, timezone, timedelta
@@ -21,11 +23,16 @@ with open("VERSION", "r") as f:
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
+REPORT_CHANNEL_ID = int(os.getenv("REPORT_CHANNEL_ID"))
 CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if t.strip()]
 LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
 DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
+STATUS_REPORT_DAY = os.getenv("STATUS_REPORT_DAY", "sunday").lower()
+STATUS_REPORT_TIME = os.getenv("STATUS_REPORT_TIME", "09:00")
 LOG_DIR = "/app/logs"
-LAST_VERSION_FILE = "/app/data/last_version"
+DATA_DIR = "/app/data"
+LAST_VERSION_FILE = f"{DATA_DIR}/last_version"
+STATS_FILE = f"{DATA_DIR}/stats.json"
 
 # Load channels from channels.yml
 with open("channels.yml", "r") as f:
@@ -63,6 +70,83 @@ discord.utils.setup_logging = lambda *args, **kwargs: None
 log = logging.getLogger("discord-cleanup")
 
 
+# --- Stats Helpers ---
+
+def load_stats() -> dict:
+    """Loads stats from the stats file, returns empty structure if not found."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    if not os.path.exists(STATS_FILE):
+        return {
+            "all_time": {"runs": 0, "deleted": 0, "channels": {}},
+            "weekly": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")},
+            "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")}
+        }
+    try:
+        with open(STATS_FILE, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        log.warning(f"Could not load stats file — {e}")
+        return {
+            "all_time": {"runs": 0, "deleted": 0, "channels": {}},
+            "weekly": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")},
+            "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": datetime.now().strftime("%Y-%m-%d")}
+        }
+
+
+def save_stats(stats: dict):
+    """Saves stats to the stats file."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    try:
+        with open(STATS_FILE, "w") as f:
+            json.dump(stats, f, indent=2)
+    except Exception as e:
+        log.warning(f"Could not save stats file — {e}")
+
+
+def update_stats(channel_results: dict):
+    """Updates stats after a cleanup run. channel_results is {channel_name: count}."""
+    stats = load_stats()
+    now = datetime.now()
+
+    # Check weekly reset
+    weekly_reset = datetime.strptime(stats["weekly"]["reset"], "%Y-%m-%d")
+    if (now - weekly_reset).days >= 7:
+        log.info("Resetting weekly stats")
+        stats["weekly"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}
+
+    # Check monthly reset — reset on 1st of each month
+    monthly_reset = datetime.strptime(stats["monthly"]["reset"], "%Y-%m-%d")
+    if now.month != monthly_reset.month or now.year != monthly_reset.year:
+        log.info("Resetting monthly stats")
+        stats["monthly"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}
+
+    total_deleted = sum(v for v in channel_results.values() if v > 0)
+
+    # Update all_time
+    stats["all_time"]["runs"] += 1
+    stats["all_time"]["deleted"] += total_deleted
+    for ch_name, count in channel_results.items():
+        if count > 0:
+            stats["all_time"]["channels"][ch_name] = stats["all_time"]["channels"].get(ch_name, 0) + count
+
+    # Update weekly
+    stats["weekly"]["runs"] += 1
+    stats["weekly"]["deleted"] += total_deleted
+    for ch_name, count in channel_results.items():
+        if count > 0:
+            stats["weekly"]["channels"][ch_name] = stats["weekly"]["channels"].get(ch_name, 0) + count
+
+    # Update monthly
+    stats["monthly"]["runs"] += 1
+    stats["monthly"]["deleted"] += total_deleted
+    for ch_name, count in channel_results.items():
+        if count > 0:
+            stats["monthly"]["channels"][ch_name] = stats["monthly"]["channels"].get(ch_name, 0) + count
+
+    save_stats(stats)
+    log.info(f"Stats updated | Run total: {total_deleted} | All-time: {stats['all_time']['deleted']}")
+
+
 def setup_run_log():
     """Creates a new date stamped log file for this run and cleans up old ones."""
     os.makedirs(LOG_DIR, exist_ok=True)
@@ -80,10 +164,7 @@ def setup_run_log():
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
-    # Add separator between runs
-    with open(log_path, "a") as f:
-        f.write(f"\n{'='*60}\n")
-
+    log.info(f"{'='*60}")
     log.info(f"=== Discord Cleanup Bot v{BOT_VERSION} ===")
     log.info(f"Log file started: {log_path}")
     log.info(
@@ -242,18 +323,16 @@ def validate_channels(guild):
 
 async def post_deploy_notification(guild):
     """Posts a deploy notification to the log channel if this is a new version."""
-    os.makedirs("/app/data", exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
 
     last_version = None
     if os.path.exists(LAST_VERSION_FILE):
         with open(LAST_VERSION_FILE, "r") as f:
             last_version = f.read().strip()
 
-    # Write current version
     with open(LAST_VERSION_FILE, "w") as f:
         f.write(BOT_VERSION)
 
-    # Only notify if version has changed
     if last_version == BOT_VERSION:
         log.info("Version unchanged — skipping deploy notification")
         return
@@ -286,6 +365,57 @@ async def post_deploy_notification(guild):
     await log_channel.send(embed=embed)
 
 
+async def post_status_report(guild, period: str):
+    """Posts a weekly or monthly stats report to the report channel."""
+    report_channel = bot.get_channel(REPORT_CHANNEL_ID)
+    if not report_channel:
+        log.warning("Could not post status report — report channel not found")
+        return
+
+    stats = load_stats()
+    data = stats.get(period, {})
+    now = datetime.now()
+
+    if period == "weekly":
+        title = "📊 Weekly Cleanup Report"
+        color = 0x9B59B6
+    else:
+        title = "📊 Monthly Cleanup Report"
+        color = 0xE67E22
+
+    reset_date = data.get("reset", "N/A")
+    runs = data.get("runs", 0)
+    deleted = data.get("deleted", 0)
+    channels = data.get("channels", {})
+
+    top_channels = sorted(channels.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    summary = (
+        f"🏠 Server: **{guild.name}**\n"
+        f"📅 Period: **Since {reset_date}**\n"
+        f"🔁 Runs completed: **{runs}**\n"
+        f"🗑️ Total deleted: **{deleted}**\n"
+        f"📋 Active channels: **{len(channels)}**"
+    )
+
+    embed = discord.Embed(
+        title=title,
+        description=summary,
+        color=color,
+        timestamp=now
+    )
+
+    if top_channels:
+        breakdown = "\n".join([f"`#{ch}` — **{count}** deleted" for ch, count in top_channels])
+        embed.add_field(name="🏆 Top Channels", value=breakdown, inline=False)
+    else:
+        embed.add_field(name="🏆 Top Channels", value="No messages deleted this period", inline=False)
+
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await report_channel.send(embed=embed)
+    log.info(f"{period.capitalize()} status report posted")
+
+
 # --- Bot Setup ---
 intents = discord.Intents.default()
 intents.message_content = True
@@ -307,7 +437,7 @@ signal.signal(signal.SIGTERM, handle_shutdown)
 signal.signal(signal.SIGINT, handle_shutdown)
 
 
-async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time: datetime) -> dict:
+async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time: datetime, dry_run: bool = False) -> dict:
     """Purges old messages from a single channel. Returns stats dict."""
     cutoff = run_time - timedelta(days=days_old)
     guild = channel.guild
@@ -319,10 +449,9 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
         log.warning(f"Skipping #{channel.name} — missing Manage Messages permission")
         return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old}
 
-    log.info(f"Starting purge on #{channel.name} | Days: {days_old}")
+    log.info(f"{'[DRY RUN] ' if dry_run else ''}Starting purge on #{channel.name} | Days: {days_old}")
 
     while True:
-        # Check for shutdown signal between batches
         if shutdown_event.is_set():
             log.info(f"#{channel.name} — shutdown requested, stopping after current batch")
             break
@@ -340,14 +469,19 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                 log.info(f"#{channel.name} — no more messages to delete")
                 break
 
-            if len(messages_to_delete) == 1:
-                await messages_to_delete[0].delete()
+            if dry_run:
+                total_deleted += len(messages_to_delete)
+                log.info(f"[DRY RUN] #{channel.name} — would delete batch of {len(messages_to_delete)} | Running total: {total_deleted}")
+                break
             else:
-                await channel.delete_messages(messages_to_delete)
+                if len(messages_to_delete) == 1:
+                    await messages_to_delete[0].delete()
+                else:
+                    await channel.delete_messages(messages_to_delete)
 
-            total_deleted += len(messages_to_delete)
-            log.info(f"#{channel.name} — deleted batch of {len(messages_to_delete)} | Running total: {total_deleted}")
-            await asyncio.sleep(1.5)
+                total_deleted += len(messages_to_delete)
+                log.info(f"#{channel.name} — deleted batch of {len(messages_to_delete)} | Running total: {total_deleted}")
+                await asyncio.sleep(1.5)
 
         except discord.errors.HTTPException as e:
             if e.status == 429:
@@ -362,11 +496,11 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
             log.error(f"#{channel.name} — Forbidden. Check bot permissions.")
             return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old}
 
-    log.info(f"#{channel.name} — complete | Total: {total_deleted} | Rate limits: {rate_limit_count}")
+    log.info(f"{'[DRY RUN] ' if dry_run else ''}#{channel.name} — complete | Total: {total_deleted} | Rate limits: {rate_limit_count}")
     return {"count": total_deleted, "rate_limits": rate_limit_count, "oldest": oldest_message_date, "days": days_old}
 
 
-async def run_cleanup(guild, single_channel_id=None):
+async def run_cleanup(guild, single_channel_id=None, dry_run: bool = False):
     """Core cleanup logic used by both scheduler and slash commands."""
     setup_run_log()
 
@@ -375,18 +509,15 @@ async def run_cleanup(guild, single_channel_id=None):
         log.error("Log channel not found. Check LOG_CHANNEL_ID in .env.discord_cleanup")
         return
 
-    # Calculate cutoffs once for the entire run
     run_time = datetime.now(timezone.utc)
     bulk_cutoff = run_time - timedelta(days=13)
 
-    # Display in local time for readability
     local_run_time = datetime.now()
     local_bulk_cutoff = local_run_time - timedelta(days=13)
-    log.info(f"Run cutoff: {local_run_time.strftime('%Y-%m-%d %H:%M:%S')} | Bulk cutoff: {local_bulk_cutoff.strftime('%Y-%m-%d %H:%M:%S')} | TZ: {os.getenv('TZ', 'UTC')}")
+    log.info(f"{'[DRY RUN] ' if dry_run else ''}Run cutoff: {local_run_time.strftime('%Y-%m-%d %H:%M:%S')} | Bulk cutoff: {local_bulk_cutoff.strftime('%Y-%m-%d %H:%M:%S')} | TZ: {os.getenv('TZ', 'UTC')}")
 
     channel_map = build_channel_map(guild)
 
-    # If single channel specified filter down to just that one
     if single_channel_id:
         if single_channel_id in channel_map:
             channel_map = {single_channel_id: channel_map[single_channel_id]}
@@ -394,10 +525,11 @@ async def run_cleanup(guild, single_channel_id=None):
             log.warning(f"Channel ID {single_channel_id} not in configured channels")
             return
 
-    log.info(f"Starting cleanup run on server: {guild.name} across {len(channel_map)} channel(s)...")
+    log.info(f"Starting {'dry run' if dry_run else 'cleanup run'} on server: {guild.name} across {len(channel_map)} channel(s)...")
 
     category_results = {}
     standalone_results = {}
+    channel_results = {}
 
     grand_total = 0
     grand_rate_limits = 0
@@ -416,11 +548,12 @@ async def run_cleanup(guild, single_channel_id=None):
             has_warnings = True
             continue
 
-        stats = await purge_channel(channel, ch_config["days"], bulk_cutoff, run_time)
+        stats = await purge_channel(channel, ch_config["days"], bulk_cutoff, run_time, dry_run=dry_run)
         stats["is_override"] = ch_config["is_override"]
 
         if stats["count"] > 0:
             grand_total += stats["count"]
+            channel_results[channel.name] = stats["count"]
         if stats["count"] == -1:
             has_warnings = True
 
@@ -448,6 +581,10 @@ async def run_cleanup(guild, single_channel_id=None):
     duration_str = f"{minutes}m {seconds}s" if minutes else f"{seconds}s"
     timestamp = run_end.strftime('%Y-%m-%d %I:%M %p')
 
+    # Update stats only for real full runs
+    if not dry_run and not single_channel_id:
+        update_stats(channel_results)
+
     # Next scheduled run
     now = datetime.now()
     next_run = None
@@ -463,10 +600,13 @@ async def run_cleanup(guild, single_channel_id=None):
 
     next_run_str = next_run.strftime('%Y-%m-%d %I:%M %p')
 
-    log.info(f"Cleanup run complete | Server: {guild.name} | Total deleted: {grand_total} | Rate limits: {grand_rate_limits} | Duration: {duration_str} | Next run: {next_run_str}")
+    log.info(f"{'[DRY RUN] ' if dry_run else ''}Run complete | Server: {guild.name} | Total: {grand_total} | Rate limits: {grand_rate_limits} | Duration: {duration_str}")
 
     # --- Color Logic ---
-    if has_warnings and grand_total == 0:
+    if dry_run:
+        color = 0x95A5A6
+        status = "🔍 Dry Run Complete"
+    elif has_warnings and grand_total == 0:
         color = 0xFF0000
         status = "⛔ Completed with Errors"
         log.error("Run completed with errors and nothing deleted — check warnings above")
@@ -492,10 +632,11 @@ async def run_cleanup(guild, single_channel_id=None):
             if stats["count"] == -1:
                 active_lines.append(f"\u3000🚫 `#{ch_name}` — skipped (missing permissions)")
             elif stats["count"] > 0:
+                label = "would delete" if dry_run else "deleted"
                 if stats["is_override"]:
-                    active_lines.append(f"\u3000🗑️ `#{ch_name}` — **{stats['count']}** deleted ({stats['days']}d ⚡override)")
+                    active_lines.append(f"\u3000🗑️ `#{ch_name}` — **{stats['count']}** {label} ({stats['days']}d ⚡override)")
                 else:
-                    active_lines.append(f"\u3000🗑️ `#{ch_name}` — **{stats['count']}** deleted")
+                    active_lines.append(f"\u3000🗑️ `#{ch_name}` — **{stats['count']}** {label}")
 
         if active_lines:
             if cat_data["default_days"]:
@@ -508,29 +649,31 @@ async def run_cleanup(guild, single_channel_id=None):
         if stats["count"] == -1:
             breakdown_lines.append(f"🚫 `#{ch_name}` — skipped (missing permissions)")
         elif stats["count"] > 0:
+            label = "would delete" if dry_run else "deleted"
             if stats["is_override"]:
-                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{stats['count']}** deleted ({stats['days']}d ⚡override)")
+                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{stats['count']}** {label} ({stats['days']}d ⚡override)")
             else:
-                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{stats['count']}** deleted")
+                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{stats['count']}** {label}")
 
     if not breakdown_lines:
-        breakdown_lines.append("✅ No messages deleted this run")
+        breakdown_lines.append("✅ No messages to clean")
 
     oldest_str = oldest_overall.strftime('%Y-%m-%d %I:%M %p') if oldest_overall else "N/A"
+    title_prefix = "🔍 Dry Run Report" if dry_run else "🧹 Daily Cleanup Report"
 
     summary = (
         f"🏠 Server: **{guild.name}**\n"
         f"📅 Default retention: **{DEFAULT_RETENTION} days**\n"
         f"🔍 Channels checked: **{len(channel_map)}**\n"
-        f"🗑️ Total deleted: **{grand_total}**\n"
-        + (f"📆 Oldest message deleted: **{oldest_str}**\n" if grand_total > 0 else "")
-        + f"⚡ Rate limits hit: **{grand_rate_limits}**\n"
-        f"⏱️ Duration: **{duration_str}**\n"
-        f"⏭️ Next run: **{next_run_str}**"
+        f"🗑️ {'Would delete' if dry_run else 'Total deleted'}: **{grand_total}**\n"
+        + (f"📆 Oldest message: **{oldest_str}**\n" if grand_total > 0 else "")
+        + (f"⚡ Rate limits hit: **{grand_rate_limits}**\n" if not dry_run else "")
+        + f"⏱️ Duration: **{duration_str}**\n"
+        + (f"⏭️ Next run: **{next_run_str}**" if not dry_run else "")
     )
 
     embed = discord.Embed(
-        title=f"🧹 Daily Cleanup Report — {status}",
+        title=f"{title_prefix} — {status}",
         description=summary,
         color=color,
         timestamp=run_end
@@ -566,12 +709,61 @@ async def cleanup_channel(interaction: discord.Interaction, channel: discord.Tex
     await run_cleanup(interaction.guild, single_channel_id=channel.id)
 
 
+@cleanup_group.command(name="dryrun", description="Preview what would be deleted without actually deleting anything")
+@app_commands.checks.has_permissions(administrator=True)
+async def cleanup_dryrun(interaction: discord.Interaction):
+    await interaction.response.send_message("🔍 Dry run started — preview report will be posted to the log channel when complete.", ephemeral=True)
+    log.info(f"Dry run triggered by {interaction.user} in #{interaction.channel.name}")
+    await run_cleanup(interaction.guild, dry_run=True)
+
+
+@cleanup_group.command(name="stats", description="Show cleanup statistics")
+@app_commands.checks.has_permissions(administrator=True)
+async def cleanup_stats(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
+    stats = load_stats()
+    now = datetime.now()
+
+    all_time = stats.get("all_time", {})
+    weekly = stats.get("weekly", {})
+    monthly = stats.get("monthly", {})
+
+    top_channels = sorted(all_time.get("channels", {}).items(), key=lambda x: x[1], reverse=True)[:5]
+
+    summary = (
+        f"🏠 Server: **{interaction.guild.name}**\n\n"
+        f"**📅 This Week** (since {weekly.get('reset', 'N/A')})\n"
+        f"\u3000🔁 Runs: **{weekly.get('runs', 0)}**\n"
+        f"\u3000🗑️ Deleted: **{weekly.get('deleted', 0)}**\n\n"
+        f"**🗓️ This Month** (since {monthly.get('reset', 'N/A')})\n"
+        f"\u3000🔁 Runs: **{monthly.get('runs', 0)}**\n"
+        f"\u3000🗑️ Deleted: **{monthly.get('deleted', 0)}**\n\n"
+        f"**🏆 All Time**\n"
+        f"\u3000🔁 Runs: **{all_time.get('runs', 0)}**\n"
+        f"\u3000🗑️ Deleted: **{all_time.get('deleted', 0)}**"
+    )
+
+    embed = discord.Embed(
+        title="📊 Cleanup Statistics",
+        description=summary,
+        color=0x9B59B6,
+        timestamp=now
+    )
+
+    if top_channels:
+        top_lines = "\n".join([f"`#{ch}` — **{count}** deleted" for ch, count in top_channels])
+        embed.add_field(name="🏆 Top 5 Channels (All Time)", value=top_lines, inline=False)
+
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
 @cleanup_group.command(name="status", description="Show current bot configuration and next scheduled run")
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_status(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
 
-    # Next scheduled run
     now = datetime.now()
     next_run = None
     for t in sorted(CLEAN_TIMES):
@@ -605,7 +797,6 @@ async def cleanup_status(interaction: discord.Interaction):
                     if sub.permissions_for(interaction.guild.me).manage_messages:
                         configured_count += 1
         else:
-            # Skip if this channel is inside a configured category (already counted above)
             discord_channel = interaction.guild.get_channel(ch["id"])
             if discord_channel and discord_channel.category:
                 already_counted = any(
@@ -667,7 +858,6 @@ async def cleanup_status(interaction: discord.Interaction):
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 
-
 @cleanup_group.error
 async def cleanup_group_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
     if isinstance(error, app_commands.MissingPermissions):
@@ -675,15 +865,40 @@ async def cleanup_group_error(interaction: discord.Interaction, error: app_comma
 
 
 def schedule_runner():
-    def job():
+    def cleanup_job():
         for guild in bot.guilds:
             asyncio.run_coroutine_threadsafe(run_cleanup(guild), bot.loop)
 
-    for t in CLEAN_TIMES:
-        schedule.every().day.at(t).do(job)
-        log.info(f"Scheduled daily run at {t}")
+    def weekly_report_job():
+        for guild in bot.guilds:
+            asyncio.run_coroutine_threadsafe(post_status_report(guild, "weekly"), bot.loop)
 
-    log.info(f"Scheduler started — {len(CLEAN_TIMES)} run(s) per day: {', '.join(CLEAN_TIMES)}")
+    def monthly_check():
+        if datetime.now().day == 1:
+            for guild in bot.guilds:
+                asyncio.run_coroutine_threadsafe(post_status_report(guild, "monthly"), bot.loop)
+
+    for t in CLEAN_TIMES:
+        schedule.every().day.at(t).do(cleanup_job)
+        log.info(f"Scheduled daily cleanup at {t}")
+
+    day_map = {
+        "monday": schedule.every().monday,
+        "tuesday": schedule.every().tuesday,
+        "wednesday": schedule.every().wednesday,
+        "thursday": schedule.every().thursday,
+        "friday": schedule.every().friday,
+        "saturday": schedule.every().saturday,
+        "sunday": schedule.every().sunday,
+    }
+    weekly_scheduler = day_map.get(STATUS_REPORT_DAY, schedule.every().sunday)
+    weekly_scheduler.at(STATUS_REPORT_TIME).do(weekly_report_job)
+    log.info(f"Scheduled weekly report on {STATUS_REPORT_DAY} at {STATUS_REPORT_TIME}")
+
+    schedule.every().day.at(STATUS_REPORT_TIME).do(monthly_check)
+    log.info(f"Scheduled monthly report check daily at {STATUS_REPORT_TIME} (fires on 1st)")
+
+    log.info(f"Scheduler started — {len(CLEAN_TIMES)} cleanup run(s) per day: {', '.join(CLEAN_TIMES)}")
 
     while not shutdown_event.is_set():
         schedule.run_pending()
@@ -708,12 +923,10 @@ async def on_ready():
     log.info(f"Default retention: {DEFAULT_RETENTION} days")
     log.info(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)}")
 
-    # Validate channels and post deploy notification for each guild
     for guild in bot.guilds:
         validate_channels(guild)
         await post_deploy_notification(guild)
 
-    # Clear and re-sync slash commands
     bot.tree.clear_commands(guild=None)
     bot.tree.add_command(cleanup_group)
     await bot.tree.sync()
@@ -735,5 +948,6 @@ async def shutdown():
 
 def main():
     asyncio.run(bot.start(TOKEN))
+
 
 main()
