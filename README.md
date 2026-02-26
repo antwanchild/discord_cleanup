@@ -59,7 +59,7 @@ An automated Discord bot that cleans up old messages from configured channels on
     ├── data/
     └── .env.discord_cleanup
 ```
- 
+
 ---
 
 ## Configuration
