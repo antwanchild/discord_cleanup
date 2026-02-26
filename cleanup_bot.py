@@ -577,7 +577,7 @@ async def run_cleanup(guild, single_channel_id=None, dry_run: bool = False):
     run_end = datetime.now()
     elapsed = run_end - run_start
     minutes, seconds = divmod(int(elapsed.total_seconds()), 60)
-    duration_str = f"{minutes}m {seconds}s" if minutes else f"{seconds}s"
+    duration_str = f"{minutes}m {seconds}s" if minutes else f"{secbonds}s"
 
     # Update stats only for real full runs
     if not dry_run and not single_channel_id:

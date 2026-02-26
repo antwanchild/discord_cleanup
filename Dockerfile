@@ -6,5 +6,5 @@ COPY cleanup_bot.py .
 COPY VERSION .
 
 ARG VERSION
-LABEL org.opencontainers.imge.version=$VERSION
+LABEL org.opencontainers.image.version=$VERSION
 CMD ["python", "cleanup_bot.py"]
