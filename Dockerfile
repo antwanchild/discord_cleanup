@@ -12,5 +12,6 @@ LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.title="Discord Cleanup Bot"
 LABEL org.opencontainers.image.description="Automated Discord message cleanup bot"
 LABEL org.opencontainers.image.source="https://github.com/antwanchild/discord_cleanup"
+LABEL org.opencontainers.image.authors="antwanchild"
 
 CMD ["python", "cleanup_bot.py"]
