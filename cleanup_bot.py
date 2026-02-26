@@ -457,7 +457,10 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                         oldest_message_date = msg.created_at
 
             if not messages_to_delete:
-                log.info(f"#{channel.name} — no more messages to delete")
+                if total_deleted == 0:
+                    log.info(f"#{channel.name} — no messages older than {days_old} days")
+                else:
+                    log.info(f"#{channel.name} — no more messages to delete")
                 break
 
             if dry_run:
@@ -508,6 +511,11 @@ async def run_cleanup(guild, single_channel_id=None, dry_run: bool = False):
     log.info(f"{'[DRY RUN] ' if dry_run else ''}Run cutoff: {local_run_time.strftime('%Y-%m-%d %H:%M:%S')} | Bulk cutoff: {local_bulk_cutoff.strftime('%Y-%m-%d %H:%M:%S')} | TZ: {os.getenv('TZ', 'UTC')}")
 
     channel_map = build_channel_map(guild)
+
+    # Log excluded channels at run time
+    excluded_channels = [ch for ch in raw_channels if ch.get("exclude", False)]
+    for ch in excluded_channels:
+        log.info(f"#{ch.get('name', ch['id'])} — excluded (skipping)")
 
     if single_channel_id:
         if single_channel_id in channel_map:
@@ -570,6 +578,7 @@ async def run_cleanup(guild, single_channel_id=None, dry_run: bool = False):
     elapsed = run_end - run_start
     minutes, seconds = divmod(int(elapsed.total_seconds()), 60)
     duration_str = f"{minutes}m {seconds}s" if minutes else f"{seconds}s"
+    timestamp = run_end.strftime('%Y-%m-%d %I:%M %p')
 
     # Update stats only for real full runs
     if not dry_run and not single_channel_id:
@@ -591,6 +600,7 @@ async def run_cleanup(guild, single_channel_id=None, dry_run: bool = False):
     next_run_str = next_run.strftime('%Y-%m-%d %I:%M %p')
 
     log.info(f"{'[DRY RUN] ' if dry_run else ''}Run complete | Server: {guild.name} | Total: {grand_total} | Rate limits: {grand_rate_limits} | Duration: {duration_str}")
+    log.info(f"{'[DRY RUN] ' if dry_run else ''}=== RUN SUMMARY | Channels: {len(channel_map)} | Deleted: {grand_total} | Rate limits: {grand_rate_limits} | Duration: {duration_str} ===")
 
     # --- Color Logic ---
     if dry_run:
