@@ -90,6 +90,7 @@ jobs:
           push: true
           build-args: |
             VERSION=${{ steps.bump.outputs.version }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/discord_cleanup:latest
             ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.bump.outputs.version }}
