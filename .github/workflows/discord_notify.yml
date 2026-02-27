@@ -19,6 +19,17 @@ jobs:
         id: version
         run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
 
+      - name: Download commit message artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: commit-msg
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Read commit message
+        id: commit
+        run: echo "msg=$(cat commit_msg.txt)" >> $GITHUB_OUTPUT
+
       - name: Notify Discord (Success)
         if: ${{ github.event.workflow_run.conclusion == 'success' }}
         env:
@@ -40,7 +51,7 @@ jobs:
                   {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
                   {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"\`${{ github.event.workflow_run.head_commit.message }}\`\", \"inline\": false},
+                  {\"name\": \"💬 Commit\", \"value\": \"\`${{ steps.commit.outputs.msg }}\`\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
                   {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true}
                 ]
@@ -69,7 +80,7 @@ jobs:
                   {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
                   {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"\`${{ github.event.workflow_run.head_commit.message }}\`\", \"inline\": false},
+                  {\"name\": \"💬 Commit\", \"value\": \"\`${{ steps.commit.outputs.msg }}\`\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
                   {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true}
                 ]
