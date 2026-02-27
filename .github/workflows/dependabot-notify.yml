@@ -1,13 +1,15 @@
 name: Notify Discord on Dependabot PR
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, closed]
 
 jobs:
   notify-opened:
     if: github.actor == 'dependabot[bot]' && github.event.action == 'opened'
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
       - name: Notify Discord
         env:
@@ -29,6 +31,8 @@ jobs:
   notify-merged:
     if: github.actor == 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
     steps:
       - name: Notify Discord
         env:
@@ -46,4 +50,3 @@ jobs:
               }]
             }" \
             $DISCORD_WEBHOOK
-
