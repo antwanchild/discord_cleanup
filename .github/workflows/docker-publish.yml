@@ -6,6 +6,7 @@ on:
       - main
     paths-ignore:
       - 'README.md'
+      - 'SETUP.md'
       - '.github/dependabot.yml'
       - '.gitignore'
       - '.dockerignore'
@@ -20,12 +21,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -69,6 +70,15 @@ jobs:
           SAFE_MSG=$(echo "$COMMIT_MSG" | tr -d '\n\r' | sed 's/#//g')
           echo "commit_msg=$SAFE_MSG" >> $GITHUB_OUTPUT
 
+      - name: Save commit message artifact
+        run: echo "${{ steps.bump.outputs.commit_msg }}" > commit_msg.txt
+
+      - name: Upload commit message artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: commit-msg
+          path: commit_msg.txt
+
       - name: Commit bumped version
         run: |
           git config user.name "github-actions[bot]"
@@ -85,7 +95,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
@@ -111,4 +121,3 @@ jobs:
           package-type: container
           min-versions-to-keep: 10
           delete-untagged-versions: true
-
