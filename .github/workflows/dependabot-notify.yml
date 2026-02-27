@@ -3,6 +3,7 @@ name: Notify Discord on Dependabot PR
 on:
   pull_request_target:
     types: [opened, closed]
+  workflow_dispatch:
 
 jobs:
   notify-opened:
