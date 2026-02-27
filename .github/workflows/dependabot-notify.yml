@@ -30,7 +30,7 @@ jobs:
 
   
   notify-merged:
-    if: github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null
+    if: github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null && contains(github.event.pull_request.labels.*.name, 'dependencies')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
