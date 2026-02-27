@@ -1,6 +1,7 @@
 # Discord Cleanup Bot
 
 An automated Discord bot that cleans up old messages from configured channels on a schedule. Built for homelab setups running services like Plex, Radarr, Sonarr, and similar tools that generate frequent notifications.
+> **Just want to run the bot?** See [SETUP.md](SETUP.md) for a quick start guide.
 
 ## Features
 
