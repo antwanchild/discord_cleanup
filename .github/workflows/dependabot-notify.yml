@@ -2,11 +2,11 @@ name: Notify Discord on Dependabot PR
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, closed]
 
 jobs:
-  notify:
-    if: github.actor == 'dependabot[bot]'
+  notify-opened:
+    if: github.actor == 'dependabot[bot]' && github.event.action == 'opened'
     runs-on: ubuntu-latest
     steps:
       - name: Notify Discord
@@ -17,8 +17,33 @@ jobs:
             -d "{
               \"embeds\": [{
                 \"title\": \"🔔 Dependabot PR Opened\",
-                \"description\": \"**${{ github.event.pull_request.title }}**\n**[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\"\,
-                \"color\": 16753920
+                \"color\": 16753920,
+                \"fields\": [
+                  {\"name\": \"📦 Update\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                ]
               }]
             }" \
             $DISCORD_WEBHOOK
+
+  notify-merged:
+    if: github.actor == 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"✅ Dependabot PR Merged\",
+                \"color\": 3066993,
+                \"fields\": [
+                  {\"name\": \"📦 Update\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                ]
+              }]
+            }" \
+            $DISCORD_WEBHOOK
+
