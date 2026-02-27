@@ -3,6 +3,8 @@ name: Notify Discord on PR
 on:
   pull_request:
     types: [opened, reopened, closed]
+  workflow_dispatch:
+
 
 jobs:
   notify-opened:
