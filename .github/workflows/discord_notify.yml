@@ -14,12 +14,27 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
+          DURATION=$(( (${{ github.event.workflow_run.updated_at != '' && 1 || 0 }} )) )
+          START="${{ github.event.workflow_run.run_started_at }}"
+          END="${{ github.event.workflow_run.updated_at }}"
+          DURATION=$(( $(date -d "$END" +%s) - $(date -d "$START" +%s) ))
+          MINUTES=$(( DURATION / 60 ))
+          SECONDS=$(( DURATION % 60 ))
+          DURATION_STR="${MINUTES}m ${SECONDS}s"
+
           curl -H "Content-Type: application/json" \
             -d "{
               \"embeds\": [{
                 \"title\": \"✅ Discord Cleanup Bot — Build Succeeded\",
-                \"description\": \"**[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\",
-                \"color\": 3066993
+                \"color\": 3066993,
+                \"fields\": [
+                  {\"name\": \"🏷️ Version\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
+                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"\`${{ github.event.workflow_run.head_commit.message }}\`\", \"inline\": false},
+                  {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true}
+                ]
               }]
             }" \
             $DISCORD_WEBHOOK
@@ -29,12 +44,26 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
+          START="${{ github.event.workflow_run.run_started_at }}"
+          END="${{ github.event.workflow_run.updated_at }}"
+          DURATION=$(( $(date -d "$END" +%s) - $(date -d "$START" +%s) ))
+          MINUTES=$(( DURATION / 60 ))
+          SECONDS=$(( DURATION % 60 ))
+          DURATION_STR="${MINUTES}m ${SECONDS}s"
+
           curl -H "Content-Type: application/json" \
             -d "{
               \"embeds\": [{
                 \"title\": \"❌ Discord Cleanup Bot — Build Failed\",
-                \"description\": \"**[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\",
-                \"color\": 15158332
+                \"color\": 15158332,
+                \"fields\": [
+                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"\`${{ github.event.workflow_run.head_commit.message }}\`\", \"inline\": false},
+                  {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true}
+                ]
               }]
             }" \
             $DISCORD_WEBHOOK
+
