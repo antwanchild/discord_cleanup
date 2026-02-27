@@ -17,6 +17,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 - Color-coded Discord embed notifications
 - Date-stamped rotating log files with run separators
 - Rate limit handling with automatic retry
+- Auto-generates default config files on first run if they don't exist
 
 ---
 
@@ -174,6 +175,8 @@ mkdir -p /your-docker-root/discord_cleanup/logs
 mkdir -p /your-docker-root/discord_cleanup/data
 ```
 
+On first run the bot will automatically create `.env.discord_cleanup` and `channels.yml` with default values if they don't exist, then exit. Fill in your bot token and channel IDs then restart the container.
+
 ### Starting the bot
 
 ```bash
@@ -253,14 +256,18 @@ Each run is separated by a `====` divider line so multiple runs on the same day 
 
 Every push to `main` triggers the GitHub Actions workflow which:
 
-1. Runs a `ruff` lint check (warn only, does not block build)
-2. Auto-bumps the version based on commit message tags:
+1. Runs `py_compile` syntax check — blocks build on syntax errors
+2. Runs `ruff` lint check — blocks build on style issues
+3. Runs `pyflakes` — blocks build on logic and undefined variable issues
+4. Runs `bandit` security check — blocks build on security issues
+5. Auto-bumps the version based on commit message tags:
    - Default — patch bump (e.g. `3.1.1` → `3.1.2`)
    - `#minor` in commit message — minor bump (e.g. `3.1.1` → `3.2.0`)
    - `#major` in commit message — major bump (e.g. `3.1.1` → `4.0.0`)
-3. Builds and pushes Docker image to GHCR with `:latest` and `:version` tags
-4. Creates a GitHub Release
-5. Cleans up old GHCR images keeping the last 10
+6. Builds and pushes Docker image to GHCR with `:latest` and `:version` tags
+7. Creates a GitHub Release
+8. Cleans up old GHCR images keeping the last 10
+9. Posts a success or failure notification to Discord
 
 Pushes that only modify `README.md`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped entirely — no build, no version bump, no release.
 
