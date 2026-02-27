@@ -1,4 +1,4 @@
-channels:
+channels: 
   # --- CATEGORIES ---
   # Bot will automatically clean all text channels under this category
   # using the default retention from DEFAULT_RETENTION in .env
