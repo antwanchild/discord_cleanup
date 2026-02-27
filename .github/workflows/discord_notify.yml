@@ -9,12 +9,20 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Get version
+        id: version
+        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+
       - name: Notify Discord (Success)
         if: ${{ github.event.workflow_run.conclusion == 'success' }}
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          DURATION=$(( (${{ github.event.workflow_run.updated_at != '' && 1 || 0 }} )) )
           START="${{ github.event.workflow_run.run_started_at }}"
           END="${{ github.event.workflow_run.updated_at }}"
           DURATION=$(( $(date -d "$END" +%s) - $(date -d "$START" +%s) ))
@@ -28,7 +36,7 @@ jobs:
                 \"title\": \"✅ Discord Cleanup Bot — Build Succeeded\",
                 \"color\": 3066993,
                 \"fields\": [
-                  {\"name\": \"🏷️ Version\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
+                  {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
                   {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
                   {\"name\": \"💬 Commit\", \"value\": \"\`${{ github.event.workflow_run.head_commit.message }}\`\", \"inline\": false},
@@ -57,6 +65,7 @@ jobs:
                 \"title\": \"❌ Discord Cleanup Bot — Build Failed\",
                 \"color\": 15158332,
                 \"fields\": [
+                  {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
                   {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
                   {\"name\": \"💬 Commit\", \"value\": \"\`${{ github.event.workflow_run.head_commit.message }}\`\", \"inline\": false},
@@ -66,4 +75,3 @@ jobs:
               }]
             }" \
             $DISCORD_WEBHOOK
-
