@@ -30,7 +30,7 @@ jobs:
 
   
   notify-merged:
-    if: github.actor == 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null
+    if: github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
