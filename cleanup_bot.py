@@ -14,6 +14,90 @@ import yaml
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
+def create_default_files():
+    """Creates default config files if they don't exist. Exits if any were created."""
+    created = False
+
+    if not os.path.exists(".env.discord_cleanup"):
+        with open(".env.discord_cleanup", "w") as f:
+            f.write("""# Discord bot token from Discord Developer Portal
+DISCORD_TOKEN=your_bot_token_here
+
+# Channel ID where cleanup reports are posted
+LOG_CHANNEL_ID=your_log_channel_id_here
+
+# Channel ID where monthly reports are posted
+REPORT_CHANNEL_ID=your_report_channel_id_here
+
+# Comma-separated run times in 24hr format e.g. 03:00 or 03:00,12:00
+CLEAN_TIME=03:00
+
+# Timezone e.g. America/New_York, America/Chicago, UTC
+TZ=America/New_York
+
+# Default message retention in days
+DEFAULT_RETENTION=7
+
+# Number of daily log files to retain
+LOG_MAX_FILES=7
+
+# Log level: DEBUG, INFO, WARNING, ERROR
+LOG_LEVEL=INFO
+
+# Time to post monthly report on the 1st (24hr format)
+STATUS_REPORT_TIME=09:00
+""")
+        print(".env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
+        created = True
+
+    if not os.path.exists("channels.yml"):
+        with open("channels.yml", "w") as f:
+            f.write("""channels:
+  # --- CATEGORIES ---
+  # Cleans all text channels under this Discord category
+  # Uses DEFAULT_RETENTION from .env unless days is specified
+  - id: 123456789012345678
+    name: My Category
+    type: category
+
+  # Category with retention override — overrides DEFAULT_RETENTION for all channels inside
+  - id: 234567890123456789
+    name: My Category With Override
+    type: category
+    days: 4
+
+  # --- CHANNEL OVERRIDES ---
+  # Override retention for a specific channel inside a category
+  - id: 345678901234567890
+    name: my-channel-override
+    days: 3
+
+  # --- EXCLUSIONS ---
+  # Exclude a specific channel from cleanup entirely
+  # Will be silently skipped in the notification but logged in the log file
+  - id: 456789012345678901
+    name: my-excluded-channel
+    exclude: true
+
+  # --- STANDALONE CHANNELS ---
+  # Individual channel not part of a configured category
+  # Uses DEFAULT_RETENTION from .env
+  - id: 567890123456789012
+    name: my-standalone-channel
+
+  # Standalone channel with retention override
+  - id: 678901234567890123
+    name: my-standalone-override
+    days: 14
+""")
+        print("channels.yml not found — created with sample config. Please update with your real channel IDs then restart.")
+        created = True
+
+    if created:
+        sys.exit(0)
+
+create_default_files()
+
 load_dotenv(".env.discord_cleanup")
 
 # Read version from VERSION file
