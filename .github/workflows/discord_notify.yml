@@ -1,0 +1,40 @@
+name: Notify Discord
+
+on:
+  workflow_run:
+    workflows: ["Build and Push to GHCR"]
+    types: [completed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord (Success)
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"✅ Discord Cleanup Bot — Build Succeeded\",
+                \"description\": \"**[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\",
+                \"color\": 3066993
+              }]
+            }" \
+            $DISCORD_WEBHOOK
+
+      - name: Notify Discord (Failure)
+        if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"❌ Discord Cleanup Bot — Build Failed\",
+                \"description\": \"**[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\",
+                \"color\": 15158332
+              }]
+            }" \
+            $DISCORD_WEBHOOK
