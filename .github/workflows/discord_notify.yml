@@ -23,7 +23,7 @@ jobs:
         run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
 
       - name: Download commit message artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: commit-msg
           github-token: ${{ secrets.GITHUB_TOKEN }}
