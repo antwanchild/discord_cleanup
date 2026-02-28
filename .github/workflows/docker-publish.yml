@@ -107,6 +107,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.bump.outputs.version }}
 
       - name: Create GitHub Release
+        if: contains(github.event.head_commit.message, '#minor') || contains(github.event.head_commit.message, '#major')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.bump.outputs.version }}
