@@ -14,13 +14,18 @@ import yaml
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
+CONFIG_DIR = "/config"
+
+
 def create_default_files():
     """Creates default config files if they don't exist. Exits if any were created."""
+    os.makedirs(CONFIG_DIR, exist_ok=True)
     created = False
 
-    if not os.path.exists(".env.discord_cleanup"):
-        with open(".env.discord_cleanup", "w") as f:
-            f.write("""# Discord bot token from Discord Developer Portal
+    if not os.path.exists(f"{CONFIG_DIR}/.env.discord_cleanup"):
+        try:
+            with open(f"{CONFIG_DIR}/.env.discord_cleanup", "w") as f:
+                f.write("""# Discord bot token from Discord Developer Portal
 DISCORD_TOKEN=your_bot_token_here
 
 # Channel ID where cleanup reports are posted
@@ -47,12 +52,16 @@ LOG_LEVEL=INFO
 # Time to post monthly report on the 1st (24hr format)
 STATUS_REPORT_TIME=09:00
 """)
-        print(".env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
-        created = True
+            print(f"{CONFIG_DIR}/.env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
+            created = True
+        except PermissionError:
+            print(f"ERROR: Could not create {CONFIG_DIR}/.env.discord_cleanup — check directory permissions.")
+            sys.exit(1)
 
-    if not os.path.exists("channels.yml"):
-        with open("channels.yml", "w") as f:
-            f.write("""channels:
+    if not os.path.exists(f"{CONFIG_DIR}/channels.yml"):
+        try:
+            with open(f"{CONFIG_DIR}/channels.yml", "w") as f:
+                f.write("""channels:
   # --- CATEGORIES ---
   # Cleans all text channels under this Discord category
   # Uses DEFAULT_RETENTION from .env unless days is specified
@@ -90,15 +99,19 @@ STATUS_REPORT_TIME=09:00
     name: my-standalone-override
     days: 14
 """)
-        print("channels.yml not found — created with sample config. Please update with your real channel IDs then restart.")
-        created = True
+            print(f"{CONFIG_DIR}/channels.yml not found — created with sample config. Please update with your real channel IDs then restart.")
+            created = True
+        except PermissionError:
+            print(f"ERROR: Could not create {CONFIG_DIR}/channels.yml — check directory permissions.")
+            sys.exit(1)
 
     if created:
         sys.exit(0)
 
+
 create_default_files()
 
-load_dotenv(".env.discord_cleanup")
+load_dotenv(f"{CONFIG_DIR}/.env.discord_cleanup")
 
 # Read version from VERSION file
 with open("VERSION", "r") as f:
@@ -111,13 +124,13 @@ CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if
 LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
 DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
 STATUS_REPORT_TIME = os.getenv("STATUS_REPORT_TIME", "09:00")
-LOG_DIR = "/app/logs"
-DATA_DIR = "/app/data"
+LOG_DIR = f"{CONFIG_DIR}/logs"
+DATA_DIR = f"{CONFIG_DIR}/data"
 LAST_VERSION_FILE = f"{DATA_DIR}/last_version"
 STATS_FILE = f"{DATA_DIR}/stats.json"
 
 # Load channels from channels.yml
-with open("channels.yml", "r") as f:
+with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
     config = yaml.safe_load(f)
     raw_channels = config.get("channels", [])
 

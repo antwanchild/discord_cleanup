@@ -11,11 +11,9 @@ An automated Discord bot that cleans up old messages from configured channels on
 ```
 /
 ├── cleanup_bot.py                  # Main bot code
-├── channels.yml                    # Channel configuration
 ├── requirements.txt                # Python dependencies
 ├── Dockerfile                      # Docker image definition
 ├── VERSION                         # Current version number
-├── .env.discord_cleanup            # Environment variables (not committed)
 ├── docker-compose.discord_cleanup.yml
 └── .github/
     ├── dependabot.yml
@@ -23,7 +21,8 @@ An automated Discord bot that cleans up old messages from configured channels on
         ├── docker-publish.yml      # Build, test, and push workflow
         ├── discord-notify.yml      # Build success/failure notifications
         ├── dependabot-notify.yml   # Dependabot PR notifications
-        └── pr-notify.yml          # PR opened/merged/closed notifications
+        ├── pr-notify.yml          # PR opened/merged/closed notifications
+        └── github-notify.yml       # Stars, forks, and issue notifications
 ```
 
 ---
@@ -58,6 +57,7 @@ Pushes that only modify `README.md`, `dependabot.yml`, `.gitignore`, or `.docker
 | Contains `#major` | Major (e.g. `3.1.1` → `4.0.0`) |
 
 **When to use each:**
+
 - **Patch** — bug fixes, log improvements, formatting tweaks
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
@@ -71,6 +71,7 @@ Three separate workflows post to a Discord webhook (`DISCORD_WEBHOOK_URL` secret
 - **`discord-notify.yml`** — fires after `docker-publish.yml` completes, posts build success or failure with version, commit, duration, and run link
 - **`dependabot-notify.yml`** — fires when Dependabot opens or merges a PR
 - **`pr-notify.yml`** — fires when any non-Dependabot PR is opened, reopened, merged, or closed without merging
+- **`github-notify.yml`** — fires on stars, forks, and new issues
 
 ### Required Secret
 

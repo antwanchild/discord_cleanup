@@ -80,6 +80,8 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `LOG_MAX_FILES` | ❌ | `7` | Number of daily log files to retain |
 | `LOG_LEVEL` | ❌ | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post monthly report on the 1st (24hr format) |
+| `PUID` | ❌ | `1000` | User ID for file ownership |
+| `PGID` | ❌ | `1000` | Group ID for file ownership |
 
 ### Example `.env.discord_cleanup`
 
@@ -164,19 +166,16 @@ services:
       - ./discord_cleanup/.env.discord_cleanup
     environment:
       - TZ=${TZ}
-      - PUID=1000  # User ID for file ownership
-      - PGID=1000  # Group ID for file ownership
+      - PUID=1000
+      - PGID=1000
     volumes:
-      - ./discord_cleanup/logs:/app/logs
-      - ./discord_cleanup/channels.yml:/app/channels.yml
-      - ./discord_cleanup/data:/app/data
+      - ./discord_cleanup:/config
 ```
 
 ### First time setup
 
 ```bash
-mkdir -p /your-docker-root/discord_cleanup/logs
-mkdir -p /your-docker-root/discord_cleanup/data
+mkdir -p /your-docker-root/discord_cleanup
 ```
 
 On first run the bot will automatically create `.env.discord_cleanup` and `channels.yml` with default values if they don't exist, then exit. Fill in your bot token and channel IDs then restart the container.
@@ -217,7 +216,7 @@ When Docker stops the container (SIGTERM) the bot finishes processing the curren
 
 ## Statistics Tracking
 
-After each cleanup run the bot updates a `stats.json` file in `/app/data` tracking:
+After each cleanup run the bot updates a `stats.json` file in `/config/data` tracking:
 
 - **Rolling 30 days** — resets every 30 days, always shows the last month of activity
 - **Current month** — resets on the 1st of each month
@@ -243,7 +242,7 @@ Stats are available on demand via `/cleanup stats` and as an automated monthly r
 
 ## Log Files
 
-Logs are stored in `/app/logs` (mounted to `./discord_cleanup/logs/`) as date-stamped files:
+Logs are stored in `/config/logs` (mounted to `./discord_cleanup/logs/`) as date-stamped files:
 
 ```
 cleanup-2026-02-22.log
