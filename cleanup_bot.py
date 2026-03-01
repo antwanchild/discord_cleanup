@@ -47,10 +47,7 @@ def create_default_files():
                         "# Log level: DEBUG, INFO, WARNING, ERROR\n"
                         "LOG_LEVEL=INFO\n\n"
                         "# Time to post monthly report on the 1st (24hr format)\n"
-                        "STATUS_REPORT_TIME=09:00\n\n"
-                        "# User and group ID for file ownership (match your host user)\n"
-                        "PUID=1000\n"
-                        "PGID=1000\n")
+                        "STATUS_REPORT_TIME=09:00\n")
             print(f"{CONFIG_DIR}/.env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
             created = True
         except PermissionError:
