@@ -52,11 +52,12 @@ jobs:
           PATCH=$(echo $VERSION | cut -d. -f3)
 
           git log --format=%B --no-merges -n 1 > /tmp/raw_msg.txt
-          SAFE_MSG=$(python3 -c "
-          msg = open('/tmp/raw_msg.txt').read()
-          msg = msg.replace('\x60', '\"').replace('#', '').replace('\n', ' ').strip()
-          print(msg)
-          ")
+          SAFE_MSG=$(python3 - << 'PYEOF'
+msg = open('/tmp/raw_msg.txt').read()
+msg = msg.replace('\x60', '"').replace('#', '').replace('\n', ' ').strip()
+print(msg)
+PYEOF
+)
 
           if cat /tmp/raw_msg.txt | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
@@ -73,6 +74,7 @@ jobs:
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "commit_msg=$SAFE_MSG" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+
 
       - name: Write commit message to file
         run: echo "${{ steps.bump.outputs.commit_msg }}" > commit_msg.txt
