@@ -7,7 +7,7 @@ on:
 
 jobs:
   notify-opened:
-    if: github.actor != 'dependabot[bot]' && github.event.action == 'opened'
+    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'opened'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -34,7 +34,7 @@ jobs:
             $DISCORD_WEBHOOK
 
   notify-reopened:
-    if: github.actor != 'dependabot[bot]' && github.event.action == 'reopened'
+    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'reopened'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -61,7 +61,7 @@ jobs:
             $DISCORD_WEBHOOK
 
   notify-merged:
-    if: github.actor != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null
+    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -88,7 +88,7 @@ jobs:
             $DISCORD_WEBHOOK
 
   notify-closed:
-    if: github.actor != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha == null
+    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha == null
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
