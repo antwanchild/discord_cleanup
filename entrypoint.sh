@@ -8,4 +8,4 @@ usermod -o -u "$PUID" botuser
 
 chown -R botuser:botgroup /app
 
-exec su-exec botuser "$@"
+exec gosu botuser "$@"
