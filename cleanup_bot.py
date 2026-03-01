@@ -1211,7 +1211,6 @@ def start_scheduler():
     thread.start()
 
 
-
 @bot.event
 async def on_ready():
     log.info(f"Logged in as {bot.user} | v{BOT_VERSION}")
