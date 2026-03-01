@@ -33,8 +33,7 @@ jobs:
         id: commit
         run: echo "msg=$(cat commit_msg.txt)" >> $GITHUB_OUTPUT
 
-      - name: Notify Discord (Success)
-        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+      - name: Notify Discord — Success
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
@@ -46,6 +45,7 @@ jobs:
           DURATION_STR="${MINUTES}m ${SECONDS}s"
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}"
+          SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
 
           curl -H "Content-Type: application/json" \
             -d "{
@@ -60,15 +60,15 @@ jobs:
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
                   {\"name\": \"💬 Commit\", \"value\": \"\`${{ steps.commit.outputs.msg }}\`\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true}
-                  {\"name\": \"#️⃣ SHA\", \"value\": \"[${SHORT_SHA}](${COMMIT_URL})\", \"inline\": true}
+                  {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true},
+                  {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
                 ]
               }]
             }" \
             $DISCORD_WEBHOOK
 
-      - name: Notify Discord (Failure)
-        if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+
+      - name: Notify Discord — Failure
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
@@ -80,6 +80,7 @@ jobs:
           DURATION_STR="${MINUTES}m ${SECONDS}s"
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}"
+          SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
 
           curl -H "Content-Type: application/json" \
             -d "{
@@ -94,8 +95,8 @@ jobs:
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
                   {\"name\": \"💬 Commit\", \"value\": \"\`${{ steps.commit.outputs.msg }}\`\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true}
-                  {\"name\": \"#️⃣ SHA\", \"value\": \"[${SHORT_SHA}](${COMMIT_URL})\", \"inline\": true}
+                  {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true},
+                  {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
                 ]
               }]
             }" \
