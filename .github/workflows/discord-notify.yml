@@ -44,6 +44,8 @@ jobs:
           MINUTES=$(( DURATION / 60 ))
           SECONDS=$(( DURATION % 60 ))
           DURATION_STR="${MINUTES}m ${SECONDS}s"
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}"
 
           curl -H "Content-Type: application/json" \
             -d "{
@@ -59,6 +61,7 @@ jobs:
                   {\"name\": \"💬 Commit\", \"value\": \"\`${{ steps.commit.outputs.msg }}\`\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
                   {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true}
+                  {\"name\": \"#️⃣ SHA\", \"value\": \"[${SHORT_SHA}](${COMMIT_URL})\", \"inline\": true}
                 ]
               }]
             }" \
@@ -75,6 +78,8 @@ jobs:
           MINUTES=$(( DURATION / 60 ))
           SECONDS=$(( DURATION % 60 ))
           DURATION_STR="${MINUTES}m ${SECONDS}s"
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}"
 
           curl -H "Content-Type: application/json" \
             -d "{
@@ -90,6 +95,7 @@ jobs:
                   {\"name\": \"💬 Commit\", \"value\": \"\`${{ steps.commit.outputs.msg }}\`\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
                   {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true}
+                  {\"name\": \"#️⃣ SHA\", \"value\": \"[${SHORT_SHA}](${COMMIT_URL})\", \"inline\": true}
                 ]
               }]
             }" \
