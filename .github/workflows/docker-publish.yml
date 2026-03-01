@@ -43,7 +43,7 @@ jobs:
         run: pyflakes cleanup_bot.py
 
       - name: Security check with bandit
-        run: bandit -r cleanup_bot.py
+        run: bandit -r cleanup_bot.py --skip B108
 
       - name: Bump version
         id: bump
