@@ -52,7 +52,9 @@ jobs:
           PATCH=$(echo $VERSION | cut -d. -f3)
 
           COMMIT_MSG=$(git log --format=%B --no-merges -n 1)
-          SAFE_MSG=$(echo "$COMMIT_MSG" | tr '\n' ' ' | sed 's/#//g' | tr '`' "'" | xargs)
+          echo "$COMMIT_MSG" > /tmp/raw_msg.txt
+          SAFE_MSG=$(sed 's/`/'"'"'/g' /tmp/raw_msg.txt | tr '\n' ' ' | sed 's/#//g' | xargs)
+
 
 
           if echo "$COMMIT_MSG" | grep -q "#major"; then
