@@ -8,6 +8,7 @@ on:
     types: [opened, commented]
   workflow_dispatch:
 
+
 jobs:
   notify-star:
     if: github.event_name == 'watch'
