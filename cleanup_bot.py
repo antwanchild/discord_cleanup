@@ -15,7 +15,7 @@ import config as cfg
 from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
 from notifications import post_deploy_notification, post_startup_notification, post_missed_run_alert, post_status_report
-from utils import update_health
+from utils import update_health, register_task
 
 MISSED_RUN_THRESHOLD_MINUTES = 15
 
@@ -120,6 +120,10 @@ async def before_report():
 @health_task.before_loop
 async def before_health():
     await bot.wait_until_ready()
+
+
+# Register task references with utils so get_next_run_str works without circular imports
+register_task(cleanup_task, TASK_TZ)
 
 
 # --- Events ---

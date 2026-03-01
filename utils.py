@@ -1,6 +1,7 @@
 import os
 import logging
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import yaml
 
@@ -9,6 +10,17 @@ from config import (
     DEFAULT_RETENTION, HEALTH_FILE, LOG_DIR, LOG_MAX_FILES,
     LOG_LEVEL, numeric_level, formatter, logger, log
 )
+
+# Set by cleanup_bot.py after tasks are created
+_cleanup_task = None
+_task_tz = None
+
+
+def register_task(cleanup_task, task_tz):
+    """Called from cleanup_bot.py after tasks are initialized."""
+    global _cleanup_task, _task_tz
+    _cleanup_task = cleanup_task
+    _task_tz = task_tz
 
 
 def update_health():
@@ -20,14 +32,14 @@ def update_health():
         log.warning(f"Could not update health file — {e}")
 
 
-def get_next_run_str():
+def get_next_run_str(cleanup_task=None, task_tz=None):
     """Returns the next scheduled run time as a formatted string."""
-    # Import here to avoid circular dependency — cleanup_task is defined in cleanup_bot
-    from cleanup_bot import cleanup_task, TASK_TZ
-    if cleanup_task.is_running() and cleanup_task.next_iteration:
-        return cleanup_task.next_iteration.astimezone(TASK_TZ).strftime('%Y-%m-%d %I:%M %p')
+    task = cleanup_task or _cleanup_task
+    tz = task_tz or _task_tz or ZoneInfo("UTC")
+    if task and task.is_running() and task.next_iteration:
+        return task.next_iteration.astimezone(tz).strftime('%Y-%m-%d %I:%M %p')
     # Fallback before task starts
-    now = datetime.now(TASK_TZ)
+    now = datetime.now(tz)
     for t in sorted(CLEAN_TIMES):
         hour, minute = map(int, t.split(":"))
         candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
