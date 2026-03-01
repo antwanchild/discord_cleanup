@@ -1157,7 +1157,10 @@ async def cleanup_group_error(interaction: discord.Interaction, error: app_comma
 
 def build_task_times():
     """Builds timezone-aware datetime.time objects for discord.ext.tasks from CLEAN_TIMES."""
-    tz_name = os.getenv("TZ", "UTC")
+    tz_name = os.getenv("TZ")
+    if not tz_name:
+        log.warning("TZ not set in environment — defaulting to UTC. Set TZ in your compose file to use local time.")
+        tz_name = "UTC"
     try:
         tz = ZoneInfo(tz_name)
     except ZoneInfoNotFoundError:
