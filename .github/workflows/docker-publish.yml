@@ -55,12 +55,13 @@ jobs:
 
           cat > /tmp/sanitize.py << 'EOF'
           msg = open('/tmp/raw_msg.txt').read()
-          msg = msg.replace('\x60', '\\"').replace('#', '').replace('\n', ' ').strip()
+          msg = msg.replace('#', '').replace('\n', ' ').strip()
           print(msg)
           EOF
 
-          SAFE_MSG=$(python3 /tmp/sanitize.py)
-
+          python3 /tmp/sanitize.py > commit_msg.txt
+          SAFE_MSG=$(cat commit_msg.txt)
+          
           if cat /tmp/raw_msg.txt | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
             BUMP_TYPE="major"
