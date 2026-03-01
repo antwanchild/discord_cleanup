@@ -31,7 +31,10 @@ jobs:
 
       - name: Read commit message
         id: commit
-        run: echo "msg=$(cat commit_msg.txt)" >> $GITHUB_OUTPUT
+        run: |
+          MSG=$(cat commit_msg.txt)
+          SAFE_MSG=$(echo "$MSG" | tr '`' "'" | tr '\n' ' ' | xargs)
+          echo "msg=$SAFE_MSG" >> $GITHUB_OUTPUT
 
       - name: Notify Discord — Success
         if: github.event.workflow_run.conclusion == 'success'
