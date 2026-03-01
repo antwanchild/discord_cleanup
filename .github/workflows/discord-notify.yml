@@ -34,6 +34,7 @@ jobs:
         run: echo "msg=$(cat commit_msg.txt)" >> $GITHUB_OUTPUT
 
       - name: Notify Discord — Success
+        if: github.event.workflow_run.conclusion == 'success'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
@@ -69,6 +70,7 @@ jobs:
 
 
       - name: Notify Discord — Failure
+        if: github.event.workflow_run.conclusion == 'failure'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
