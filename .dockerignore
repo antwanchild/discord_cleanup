@@ -1,9 +1,0 @@
-.env.discord_cleanup
-logs/
-.git/
-.github/
-__pycache__/
-*.pyc
-*.md
-.gitignore
-.dockerignore
