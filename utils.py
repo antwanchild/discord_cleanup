@@ -1,0 +1,120 @@
+import os
+import logging
+from datetime import datetime, timedelta
+
+import yaml
+
+from config import (
+    BOT_START_TIME, BOT_VERSION, CLEAN_TIMES, CONFIG_DIR,
+    DEFAULT_RETENTION, HEALTH_FILE, LOG_DIR, LOG_MAX_FILES,
+    LOG_LEVEL, numeric_level, formatter, logger, log
+)
+
+
+def update_health():
+    """Updates the health file timestamp. Used by Docker HEALTHCHECK."""
+    try:
+        with open(HEALTH_FILE, "w") as f:
+            f.write(datetime.now().isoformat())
+    except Exception as e:
+        log.warning(f"Could not update health file — {e}")
+
+
+def get_next_run_str():
+    """Returns the next scheduled run time as a formatted string."""
+    # Import here to avoid circular dependency — cleanup_task is defined in cleanup_bot
+    from cleanup_bot import cleanup_task, TASK_TZ
+    if cleanup_task.is_running() and cleanup_task.next_iteration:
+        return cleanup_task.next_iteration.astimezone(TASK_TZ).strftime('%Y-%m-%d %I:%M %p')
+    # Fallback before task starts
+    now = datetime.now(TASK_TZ)
+    for t in sorted(CLEAN_TIMES):
+        hour, minute = map(int, t.split(":"))
+        candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if candidate > now:
+            return candidate.strftime('%Y-%m-%d %I:%M %p')
+    hour, minute = map(int, sorted(CLEAN_TIMES)[0].split(":"))
+    return (now + timedelta(days=1)).replace(hour=hour, minute=minute, second=0, microsecond=0).strftime('%Y-%m-%d %I:%M %p')
+
+
+def get_uptime_str():
+    """Returns the bot uptime as a formatted string."""
+    uptime = datetime.now() - BOT_START_TIME
+    days = uptime.days
+    hours, remainder = divmod(uptime.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if days > 0:
+        return f"{days}d {hours}h {minutes}m"
+    elif hours > 0:
+        return f"{hours}h {minutes}m"
+    else:
+        return f"{minutes}m {seconds}s"
+
+
+def setup_run_log():
+    """Creates a date-stamped log file for this run and cleans up old ones."""
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+    except PermissionError:
+        log.error(f"Could not create {LOG_DIR} — check directory permissions.")
+        return
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    log_path = os.path.join(LOG_DIR, f"cleanup-{today}.log")
+
+    for h in logger.handlers[:]:
+        if isinstance(h, logging.FileHandler):
+            logger.removeHandler(h)
+            h.close()
+
+    try:
+        file_handler = logging.FileHandler(log_path, mode="a")
+        file_handler.setLevel(numeric_level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    except PermissionError:
+        log.error(f"Could not create log file {log_path} — check directory permissions.")
+        return
+
+    log.info("╔══════════════════════════════════════════════════════════╗")
+    log.info(f"║  Discord Cleanup Bot  v{BOT_VERSION:<10}                       ║")
+    log.info(f"║  Next run: {get_next_run_str():<20}                    ║")
+    log.info("╚══════════════════════════════════════════════════════════╝")
+    log.info(f"Log file: {log_path}")
+    log.info(
+        f"Config snapshot | CLEAN_TIMES={CLEAN_TIMES} | TZ={os.getenv('TZ', 'UTC')} | "
+        f"LOG_LEVEL={LOG_LEVEL} | LOG_MAX_FILES={LOG_MAX_FILES} | DEFAULT_RETENTION={DEFAULT_RETENTION}"
+    )
+
+    cutoff = datetime.now() - timedelta(days=LOG_MAX_FILES)
+    for filename in os.listdir(LOG_DIR):
+        if filename.startswith("cleanup-") and filename.endswith(".log"):
+            try:
+                file_date = datetime.strptime(filename.replace("cleanup-", "").replace(".log", ""), "%Y-%m-%d")
+                if file_date < cutoff:
+                    os.remove(os.path.join(LOG_DIR, filename))
+                    log.info(f"Deleted old log file: {filename}")
+            except ValueError:
+                pass
+            except PermissionError:
+                log.warning(f"Could not delete old log file {filename} — check directory permissions.")
+
+
+def reload_channels():
+    """Reloads channels.yml and updates raw_channels. Returns (success, message)."""
+    import config
+    try:
+        with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
+            cfg = yaml.safe_load(f)
+            config.raw_channels = cfg.get("channels", [])
+        log.info("channels.yml reloaded successfully")
+        return True, f"Loaded {len(config.raw_channels)} channel entries"
+    except FileNotFoundError:
+        log.error("channels.yml not found during reload")
+        return False, "channels.yml not found"
+    except PermissionError:
+        log.error("Permission denied reading channels.yml during reload")
+        return False, "Permission denied reading channels.yml"
+    except yaml.YAMLError as e:
+        log.error(f"channels.yml is malformed during reload — {e}")
+        return False, f"channels.yml is malformed — {e}"

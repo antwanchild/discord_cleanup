@@ -1,0 +1,115 @@
+name: Notify Discord on PR
+
+on:
+  pull_request:
+    types: [opened, reopened, closed]
+  workflow_dispatch:
+
+jobs:
+  notify-opened:
+    if: github.actor != 'dependabot[bot]' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🔔 PR Opened\",
+                \"color\": 3447003,
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"📋 Title\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
+                  {\"name\": \"👤 Author\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.pull_request.head.ref }}\`\", \"inline\": true},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                ]
+              }]
+            }" \
+            $DISCORD_WEBHOOK
+
+  notify-reopened:
+    if: github.actor != 'dependabot[bot]' && github.event.action == 'reopened'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🔄 PR Reopened\",
+                \"color\": 16753920,
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"📋 Title\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
+                  {\"name\": \"👤 Author\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.pull_request.head.ref }}\`\", \"inline\": true},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                ]
+              }]
+            }" \
+            $DISCORD_WEBHOOK
+
+  notify-merged:
+    if: github.actor != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"✅ PR Merged\",
+                \"color\": 3066993,
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"📋 Title\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
+                  {\"name\": \"👤 Author\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.pull_request.head.ref }}\`\", \"inline\": true},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                ]
+              }]
+            }" \
+            $DISCORD_WEBHOOK
+
+  notify-closed:
+    if: github.actor != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha == null
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🚫 PR Closed Without Merging\",
+                \"color\": 15158332,
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"📋 Title\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
+                  {\"name\": \"👤 Author\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.pull_request.head.ref }}\`\", \"inline\": true},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                ]
+              }]
+            }" \
+            $DISCORD_WEBHOOK

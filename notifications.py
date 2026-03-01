@@ -1,0 +1,160 @@
+import os
+import discord
+from datetime import datetime
+
+from config import (
+    BOT_VERSION, DATA_DIR, LAST_VERSION_FILE, LOG_CHANNEL_ID,
+    MISSED_RUN_THRESHOLD_MINUTES, REPORT_CHANNEL_ID, WARN_UNCONFIGURED,
+    log, raw_channels
+)
+from stats import load_stats
+from utils import get_next_run_str
+
+
+async def post_startup_notification(bot, guild):
+    """Posts a startup notification to the log channel on every boot."""
+    log_channel = bot.get_channel(LOG_CHANNEL_ID)
+    if not log_channel:
+        log.warning("Could not post startup notification — log channel not found")
+        return
+
+    # Check for unconfigured channels if enabled
+    unaccounted = []
+    if WARN_UNCONFIGURED:
+        import config
+        accounted_ids = {ch["id"] for ch in config.raw_channels}
+        for discord_channel in guild.text_channels:
+            if discord_channel.id not in accounted_ids:
+                if discord_channel.category and discord_channel.category.id in accounted_ids:
+                    continue
+                unaccounted.append(discord_channel)
+
+    description = f"🏠 Server: **{guild.name}**\n⏭️ Next run: **{get_next_run_str()}**"
+
+    if unaccounted:
+        names = ", ".join([f"`#{ch.name}`" for ch in unaccounted[:10]])
+        if len(unaccounted) > 10:
+            names += f" and {len(unaccounted) - 10} more"
+        description += f"\n\n⚠️ **{len(unaccounted)} unconfigured channel(s):**\n{names}\nAdd to `channels.yml` or set `exclude: true` to silence this warning."
+
+    embed = discord.Embed(
+        title=f"🟢 Bot Online — v{BOT_VERSION}",
+        description=description,
+        color=0x2ECC71 if not unaccounted else 0xFFA500,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await log_channel.send(embed=embed)
+    log.info("Startup notification posted")
+
+
+async def post_deploy_notification(bot, guild):
+    """Posts a deploy notification if the version has changed."""
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except PermissionError:
+        log.error(f"Could not create {DATA_DIR} — check directory permissions.")
+        return
+
+    last_version = None
+    if os.path.exists(LAST_VERSION_FILE):
+        try:
+            with open(LAST_VERSION_FILE, "r") as f:
+                last_version = f.read().strip()
+        except PermissionError:
+            log.error(f"Could not read {LAST_VERSION_FILE} — check directory permissions.")
+            return
+
+    try:
+        with open(LAST_VERSION_FILE, "w") as f:
+            f.write(BOT_VERSION)
+    except PermissionError:
+        log.error(f"Could not write {LAST_VERSION_FILE} — check directory permissions.")
+        return
+
+    if last_version == BOT_VERSION:
+        log.info("Version unchanged — skipping deploy notification")
+        return
+
+    log_channel = bot.get_channel(LOG_CHANNEL_ID)
+    if not log_channel:
+        log.warning("Could not post deploy notification — log channel not found")
+        return
+
+    if last_version:
+        log.info(f"New version detected — {last_version} -> {BOT_VERSION}, posting deploy notification")
+        description = f"Updated from **v{last_version}** to **v{BOT_VERSION}**"
+    else:
+        log.info(f"First run detected — posting deploy notification for v{BOT_VERSION}")
+        description = f"First deployment of **v{BOT_VERSION}**"
+
+    embed = discord.Embed(
+        title=f"🚀 New Version Deployed — v{BOT_VERSION}",
+        description=description,
+        color=0x5865F2,
+        timestamp=datetime.now()
+    )
+    embed.add_field(name="🐳 Image", value=f"`ghcr.io/antwanchild/discord_cleanup:{BOT_VERSION}`", inline=False)
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await log_channel.send(embed=embed)
+
+
+async def post_status_report(bot, guild):
+    """Posts a monthly stats report to the report channel."""
+    report_channel = bot.get_channel(REPORT_CHANNEL_ID)
+    if not report_channel:
+        log.warning("Could not post status report — report channel not found")
+        return
+
+    stats = load_stats()
+    monthly = stats.get("monthly", {})
+    channels = monthly.get("channels", {})
+    top_channels = sorted(channels.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    embed = discord.Embed(
+        title="📊 Monthly Cleanup Report",
+        description=(
+            f"🏠 Server: **{guild.name}**\n"
+            f"📅 Period: **Since {monthly.get('reset', 'N/A')}**\n"
+            f"🔁 Runs completed: **{monthly.get('runs', 0)}**\n"
+            f"🗑️ Total deleted: **{monthly.get('deleted', 0)}**\n"
+            f"📋 Active channels: **{len(channels)}**"
+        ),
+        color=0xE67E22,
+        timestamp=datetime.now()
+    )
+    if top_channels:
+        embed.add_field(
+            name="🏆 Top Channels",
+            value="\n".join([f"`#{ch}` — **{count}** deleted" for ch, count in top_channels]),
+            inline=False
+        )
+    else:
+        embed.add_field(name="🏆 Top Channels", value="No messages deleted this period", inline=False)
+
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await report_channel.send(embed=embed)
+    log.info("Monthly status report posted")
+
+
+async def post_missed_run_alert(bot, guild, scheduled_time: str):
+    """Posts an alert when a scheduled run is delayed beyond the threshold."""
+    log_channel = bot.get_channel(LOG_CHANNEL_ID)
+    if not log_channel:
+        log.warning("Could not post missed run alert — log channel not found")
+        return
+    embed = discord.Embed(
+        title="⚠️ Scheduled Run Delayed",
+        description=(
+            f"🏠 Server: **{guild.name}**\n"
+            f"🕐 Scheduled time: **{scheduled_time}**\n"
+            f"⏱️ Threshold: **{MISSED_RUN_THRESHOLD_MINUTES} minutes**\n\n"
+            f"The cleanup run has not started within the expected window. "
+            f"Check the container logs for issues."
+        ),
+        color=0xFFA500,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await log_channel.send(embed=embed)
+    log.warning(f"Missed run alert posted for scheduled time {scheduled_time}")
