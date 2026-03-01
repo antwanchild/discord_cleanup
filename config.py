@@ -9,6 +9,7 @@ CONFIG_DIR = "/config"
 BOT_START_TIME = datetime.now()
 
 
+
 def create_default_files():
     """Creates default config files if they don't exist. Exits if any were created."""
     try:
