@@ -1,17 +1,15 @@
 import discord
 from discord import app_commands
-from discord.ext import commands
-import schedule
+from discord.ext import commands, tasks
 import signal
 import sys
-import time
 import asyncio
-import threading
 import os
 import json
 import logging
 import yaml
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from dotenv import load_dotenv
 
 CONFIG_DIR = "/config"
@@ -452,7 +450,10 @@ def validate_channels(guild):
 
 def get_next_run_str():
     """Returns the next scheduled run time as a formatted string."""
-    now = datetime.now()
+    if cleanup_task.is_running() and cleanup_task.next_iteration:
+        return cleanup_task.next_iteration.astimezone(TASK_TZ).strftime('%Y-%m-%d %I:%M %p')
+    # Fallback before task starts
+    now = datetime.now(TASK_TZ)
     for t in sorted(CLEAN_TIMES):
         hour, minute = map(int, t.split(":"))
         candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
@@ -484,13 +485,11 @@ intents.messages = True
 
 bot = commands.Bot(command_prefix=None, intents=intents)
 
-shutdown_event = asyncio.Event()
-
-
 def handle_shutdown(signum, frame):
     log.info("Shutdown signal received — finishing current operation before stopping...")
-    asyncio.get_event_loop().call_soon_threadsafe(shutdown_event.set)
-
+    for task in [cleanup_task, monthly_report_task, health_task]:
+        task.cancel()
+    asyncio.get_event_loop().call_soon_threadsafe(asyncio.get_event_loop().stop)
 
 signal.signal(signal.SIGTERM, handle_shutdown)
 signal.signal(signal.SIGINT, handle_shutdown)
@@ -645,9 +644,6 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
 
     # Bulk delete — messages between retention cutoff and 14 days old
     while True:
-        if shutdown_event.is_set():
-            log.info(f"#{channel.name} — shutdown requested, stopping")
-            break
         try:
             messages_to_delete = []
             async for msg in channel.history(limit=100, before=cutoff):
@@ -673,6 +669,9 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                 log.info(f"#{channel.name} — bulk deleted {len(messages_to_delete)} | Running total: {total_deleted}")
                 await asyncio.sleep(1.5)
 
+        except asyncio.CancelledError:
+            log.info(f"#{channel.name} — task cancelled, stopping")
+            break
         except discord.errors.HTTPException as e:
             if e.status == 429:
                 rate_limit_count += 1
@@ -687,14 +686,11 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
             return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old, "deep_clean": deep_clean}
 
     # Deep clean — individual deletion for messages older than 14 days
-    if deep_clean and not shutdown_event.is_set():
+    if deep_clean:
         log.info(f"{'[DRY RUN] ' if dry_run else ''}#{channel.name} — starting deep clean")
         deep_deleted = 0
 
         while True:
-            if shutdown_event.is_set():
-                log.info(f"#{channel.name} — shutdown requested, stopping deep clean")
-                break
             try:
                 old_messages = []
                 async for msg in channel.history(limit=50, before=bulk_cutoff):
@@ -713,12 +709,13 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                     break
                 else:
                     for msg in old_messages:
-                        if shutdown_event.is_set():
-                            break
                         try:
                             await msg.delete()
                             deep_deleted += 1
                             await asyncio.sleep(1.0)
+                        except asyncio.CancelledError:
+                            log.info(f"#{channel.name} — task cancelled during deep clean")
+                            break
                         except discord.errors.HTTPException as e:
                             if e.status == 429:
                                 rate_limit_count += 1
@@ -733,6 +730,9 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                     log.info(f"#{channel.name} — deep clean batch | Deleted: {deep_deleted}")
                     await asyncio.sleep(2)
 
+            except asyncio.CancelledError:
+                log.info(f"#{channel.name} — task cancelled, stopping deep clean")
+                break
             except discord.errors.HTTPException as e:
                 if e.status == 429:
                     rate_limit_count += 1
@@ -793,10 +793,6 @@ async def run_cleanup(guild, single_channel_id=None, dry_run: bool = False):
     run_start = datetime.now()
 
     for channel_id, ch_config in channel_map.items():
-        if shutdown_event.is_set():
-            log.info("Shutdown requested — stopping cleanup run early")
-            break
-
         channel = guild.get_channel(channel_id)
         if not channel:
             log.warning(f"Channel ID {channel_id} not found — skipping")
@@ -1159,58 +1155,95 @@ async def cleanup_group_error(interaction: discord.Interaction, error: app_comma
 
 # --- Scheduler ---
 
-def schedule_runner():
-    def cleanup_job(scheduled_time: str):
-        now = datetime.now()
-        hour, minute = map(int, scheduled_time.split(":"))
-        expected = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        delay_minutes = (now - expected).total_seconds() / 60
+def build_task_times():
+    """Builds timezone-aware datetime.time objects for discord.ext.tasks from CLEAN_TIMES."""
+    tz_name = os.getenv("TZ", "UTC")
+    try:
+        tz = ZoneInfo(tz_name)
+    except ZoneInfoNotFoundError:
+        log.warning(f"Unknown timezone '{tz_name}' — falling back to UTC")
+        tz = ZoneInfo("UTC")
 
-        if delay_minutes > MISSED_RUN_THRESHOLD_MINUTES:
-            log.warning(f"Cleanup run for {scheduled_time} is {delay_minutes:.1f} minutes late — posting alert")
-            for guild in bot.guilds:
-                asyncio.run_coroutine_threadsafe(post_missed_run_alert(guild, scheduled_time), bot.loop)
-
-        log.info(f"Scheduled cleanup run starting for time slot {scheduled_time}")
-        for guild in bot.guilds:
-            asyncio.run_coroutine_threadsafe(run_cleanup(guild), bot.loop)
-
-    def monthly_check():
-        if datetime.now().day == 1:
-            for guild in bot.guilds:
-                asyncio.run_coroutine_threadsafe(post_status_report(guild), bot.loop)
-
+    times = []
     for t in CLEAN_TIMES:
-        t_captured = t
-        schedule.every().day.at(t).do(lambda st=t_captured: cleanup_job(st))
-        log.info(f"Scheduled daily cleanup at {t}")
+        hour, minute = map(int, t.split(":"))
+        times.append(discord.utils.time(hour=hour, minute=minute, tzinfo=tz))
 
-    schedule.every().day.at(STATUS_REPORT_TIME).do(monthly_check)
-    log.info(f"Scheduled monthly report check at {STATUS_REPORT_TIME} (fires on 1st)")
-    log.info(f"Scheduler started — {len(CLEAN_TIMES)} cleanup run(s) per day: {', '.join(CLEAN_TIMES)}")
-
-    while not shutdown_event.is_set():
-        schedule.run_pending()
-        update_health()
-        time.sleep(30)
-
-    log.info("Scheduler stopped")
+    return times, tz
 
 
-def start_scheduler():
-    if any(t.name == "scheduler" for t in threading.enumerate()):
-        log.info("Scheduler already running — skipping")
-        return
-    log.info("Starting scheduler thread...")
-    thread = threading.Thread(target=schedule_runner, daemon=True, name="scheduler")
-    thread.start()
+def build_report_time(tz):
+    """Builds timezone-aware datetime.time for the monthly report check."""
+    hour, minute = map(int, STATUS_REPORT_TIME.split(":"))
+    return discord.utils.time(hour=hour, minute=minute, tzinfo=tz)
+
+
+# Tasks are defined after bot is created but times are built at startup
+task_times, TASK_TZ = build_task_times()
+report_time = build_report_time(TASK_TZ)
+
+
+@tasks.loop(time=task_times)
+async def cleanup_task():
+    """Runs scheduled cleanup for all guilds."""
+    now = datetime.now(TASK_TZ)
+
+    # Missed run detection — check how late we are vs expected time
+    next_iter = cleanup_task.next_iteration
+    if next_iter:
+        # Compare against the previous scheduled time
+        for t in CLEAN_TIMES:
+            hour, minute = map(int, t.split(":"))
+            expected = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            delay = (now - expected).total_seconds() / 60
+            if 0 < delay < 60:  # within the current hour window
+                if delay > MISSED_RUN_THRESHOLD_MINUTES:
+                    log.warning(f"Cleanup run for {t} is {delay:.1f} minutes late — posting alert")
+                    for guild in bot.guilds:
+                        await post_missed_run_alert(guild, t)
+                break
+
+    log.info(f"Scheduled cleanup run starting | Time: {now.strftime('%H:%M')} {TASK_TZ}")
+    for guild in bot.guilds:
+        await run_cleanup(guild)
+    update_health()
+
+
+@tasks.loop(time=report_time)
+async def monthly_report_task():
+    """Checks if it's the 1st of the month and posts the monthly report."""
+    if datetime.now(TASK_TZ).day == 1:
+        log.info("1st of month — posting monthly report")
+        for guild in bot.guilds:
+            await post_status_report(guild)
+
+
+@tasks.loop(minutes=1)
+async def health_task():
+    """Updates the health file every minute."""
+    update_health()
+
+
+@cleanup_task.before_loop
+async def before_cleanup():
+    await bot.wait_until_ready()
+
+
+@monthly_report_task.before_loop
+async def before_report():
+    await bot.wait_until_ready()
+
+
+@health_task.before_loop
+async def before_health():
+    await bot.wait_until_ready()
 
 
 @bot.event
 async def on_ready():
     log.info(f"Logged in as {bot.user} | v{BOT_VERSION}")
     log.info(f"Default retention: {DEFAULT_RETENTION} days")
-    log.info(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)}")
+    log.info(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)} ({TASK_TZ})")
 
     for guild in bot.guilds:
         validate_channels(guild)
@@ -1222,13 +1255,24 @@ async def on_ready():
     await bot.tree.sync()
     log.info("Slash commands registered and synced")
 
+    if not cleanup_task.is_running():
+        cleanup_task.start()
+        log.info("Cleanup task started")
+
+    if not monthly_report_task.is_running():
+        monthly_report_task.start()
+        log.info("Monthly report task started")
+
+    if not health_task.is_running():
+        health_task.start()
+        log.info("Health task started")
+
     update_health()
-    start_scheduler()
 
 
 @bot.event
 async def on_resumed():
-    log.info("Bot resumed connection — scheduler already running")
+    log.info("Bot resumed connection")
     update_health()
 
 
