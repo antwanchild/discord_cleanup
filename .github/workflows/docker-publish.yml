@@ -52,7 +52,8 @@ jobs:
           PATCH=$(echo $VERSION | cut -d. -f3)
 
           COMMIT_MSG=$(git log --format=%B --no-merges -n 1)
-          SAFE_MSG=$(echo "$COMMIT_MSG" | tr '\n' ' ' | sed 's/#//g' | xargs)
+          SAFE_MSG=$(echo "$COMMIT_MSG" | tr '\n' ' ' | sed 's/#//g' | tr '`' "'" | xargs)
+
 
           if echo "$COMMIT_MSG" | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
