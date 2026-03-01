@@ -57,10 +57,9 @@ Pushes that only modify `README.md`, `dependabot.yml`, `.gitignore`, or `.docker
 | Contains `#major` | Major (e.g. `3.1.1` → `4.0.0`) |
 
 **When to use each:**
-
 - **Patch** — bug fixes, log improvements, formatting tweaks
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
-- **Major** — breaking changes that require updates to `.env` or `channels.yml`
+- **Major** — breaking changes that require updates to `.env` or `channels.yml` (e.g. adding `deep_clean`)
 
 ---
 
