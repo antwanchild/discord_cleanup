@@ -51,13 +51,12 @@ jobs:
           MINOR=$(echo $VERSION | cut -d. -f2)
           PATCH=$(echo $VERSION | cut -d. -f3)
 
-          COMMIT_MSG=$(git log --format=%B --no-merges -n 1)
+          git log --format=%B --no-merges -n 1 > /tmp/raw_msg.txt
           SAFE_MSG=$(python3 -c "
-          import sys
-          msg = open('/dev/stdin').read()
-          msg = msg.replace('\`', '\"').replace('#', '').replace('\n', ' ').strip()
+          msg = open('/tmp/raw_msg.txt').read()
+          msg = msg.replace('\x60', '\"').replace('#', '').replace('\n', ' ').strip()
           print(msg)
-          " <<< "$COMMIT_MSG")
+          ")
 
 
           if echo "$COMMIT_MSG" | grep -q "#major"; then
