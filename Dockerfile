@@ -11,24 +11,17 @@ RUN pip install -r requirements.txt
 
 COPY cleanup_bot.py .
 COPY VERSION .
+COPY healthcheck.py .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Default PUID/PGID — overridden at runtime via environment variables
 RUN groupadd -g 1000 botgroup && useradd -u 1000 -g botgroup -s /bin/sh botuser
 
 ENV PUID=1000
 ENV PGID=1000
 
 HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
-    CMD test -f /tmp/health && \
-    python3 -c "
-from datetime import datetime
-with open('/tmp/health') as f:
-    ts = datetime.fromisoformat(f.read().strip())
-age = (datetime.now() - ts).total_seconds()
-exit(0 if age < 300 else 1)
-"
+    CMD python3 /app/healthcheck.py
 
 ARG VERSION
 ARG BUILD_DATE

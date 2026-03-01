@@ -11,6 +11,8 @@ An automated Discord bot that cleans up old messages from configured channels on
 ```
 /
 ├── cleanup_bot.py                  # Main bot code
+├── healthcheck.py                  # Docker health check script
+├── entrypoint.sh                   # PUID/PGID entrypoint script
 ├── requirements.txt                # Python dependencies
 ├── Dockerfile                      # Docker image definition
 ├── VERSION                         # Current version number
