@@ -289,13 +289,12 @@ def setup_run_log():
         log.error(f"Could not create log file {log_path} — check directory permissions.")
         return
 
-    log.info("=" * 60)
-    log.info(f"=== Discord Cleanup Bot v{BOT_VERSION} ===")
-    log.info(f"Log file started: {log_path}")
+    log.info("╔══════════════════════════════════════════════════════════╗")
+    log.info(f"║  Discord Cleanup Bot  v{BOT_VERSION:<10}                       ║")
+    log.info(f"║  Next run: {get_next_run_str():<20}                    ║")
+    log.info("╚══════════════════════════════════════════════════════════╝")
+    log.info(f"Log file: {log_path}")
     log.info(
-        f"Config snapshot | CLEAN_TIMES={CLEAN_TIMES} | TZ={os.getenv('TZ', 'UTC')} | "
-        f"LOG_LEVEL={LOG_LEVEL} | LOG_MAX_FILES={LOG_MAX_FILES} | DEFAULT_RETENTION={DEFAULT_RETENTION}"
-    )
 
     cutoff = datetime.now() - timedelta(days=LOG_MAX_FILES)
     for filename in os.listdir(LOG_DIR):
