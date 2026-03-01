@@ -67,7 +67,7 @@ jobs:
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
           # Sanitize commit message for GITHUB_OUTPUT
-          SAFE_MSG=$(echo "$COMMIT_MSG" | grep -v '^$' | sed 's/#//g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
+          SAFE_MSG=$(echo "$COMMIT_MSG" | tr '\n' ' ' | sed 's/#//g' | xargs)
           echo "commit_msg=$SAFE_MSG" >> $GITHUB_OUTPUT
 
       - name: Save commit message artifact
