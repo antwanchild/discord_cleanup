@@ -53,8 +53,7 @@ jobs:
 
           COMMIT_MSG=$(git log --format=%B --no-merges -n 1)
           echo "$COMMIT_MSG" > /tmp/raw_msg.txt
-          SAFE_MSG=$(sed 's/`/'"'"'/g' /tmp/raw_msg.txt | tr '\n' ' ' | sed 's/#//g' | xargs)
-
+          SAFE_MSG=$(tr '`' '"' < /tmp/raw_msg.txt | tr '\n' ' ' | sed 's/#//g' | xargs)
 
 
           if echo "$COMMIT_MSG" | grep -q "#major"; then
