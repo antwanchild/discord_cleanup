@@ -80,7 +80,6 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `LOG_CHANNEL_ID` | ✅ | — | Channel ID where cleanup reports are posted |
 | `REPORT_CHANNEL_ID` | ✅ | — | Channel ID where monthly reports are posted |
 | `CLEAN_TIME` | ✅ | `03:00` | Comma-separated run times in 24hr format e.g. `03:00` or `03:00,12:00` |
-| `TZ` | ✅ | `UTC` | Timezone e.g. `America/New_York` |
 | `DEFAULT_RETENTION` | ❌ | `7` | Default message retention in days |
 | `LOG_MAX_FILES` | ❌ | `7` | Number of daily log files to retain |
 | `LOG_LEVEL` | ❌ | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
@@ -95,7 +94,6 @@ DISCORD_TOKEN=your_bot_token_here
 LOG_CHANNEL_ID=987654321098765432
 REPORT_CHANNEL_ID=123456789098765432
 CLEAN_TIME=03:00
-TZ=America/New_York
 DEFAULT_RETENTION=7
 LOG_MAX_FILES=7
 LOG_LEVEL=INFO

@@ -40,8 +40,6 @@ def create_default_files():
                         "REPORT_CHANNEL_ID=your_report_channel_id_here\n\n"
                         "# Comma-separated run times in 24hr format e.g. 03:00 or 03:00,12:00\n"
                         "CLEAN_TIME=03:00\n\n"
-                        "# Timezone e.g. America/New_York, America/Chicago, UTC\n"
-                        "TZ=America/New_York\n\n"
                         "# Default message retention in days\n"
                         "DEFAULT_RETENTION=7\n\n"
                         "# Number of daily log files to retain\n"
