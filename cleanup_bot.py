@@ -8,7 +8,7 @@ import os
 import json
 import logging
 import yaml
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, time as dtime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from dotenv import load_dotenv
 
@@ -1170,7 +1170,7 @@ def build_task_times():
     times = []
     for t in CLEAN_TIMES:
         hour, minute = map(int, t.split(":"))
-        times.append(discord.utils.time(hour=hour, minute=minute, tzinfo=tz))
+        times.append(dtime(hour=hour, minute=minute, tzinfo=tz))
 
     return times, tz
 
@@ -1178,7 +1178,7 @@ def build_task_times():
 def build_report_time(tz):
     """Builds timezone-aware datetime.time for the monthly report check."""
     hour, minute = map(int, STATUS_REPORT_TIME.split(":"))
-    return discord.utils.time(hour=hour, minute=minute, tzinfo=tz)
+    return dtime(hour=hour, minute=minute, tzinfo=tz)
 
 
 # Tasks are defined after bot is created but times are built at startup
