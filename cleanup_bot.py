@@ -1,11 +1,14 @@
 import asyncio
 import signal
+import warnings
 import discord
 from discord.ext import commands, tasks
 from datetime import datetime, time as dtime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import os
 import logging
+
+warnings.filterwarnings("ignore", message=".*PyNaCl.*")
 
 from config import (
     BOT_VERSION, CLEAN_TIMES, STATUS_REPORT_TIME, TOKEN,

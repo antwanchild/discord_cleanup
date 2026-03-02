@@ -9,15 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY cleanup_bot.py .
-COPY config.py .
-COPY stats.py .
-COPY utils.py .
-COPY notifications.py .
-COPY cleanup.py .
-COPY commands.py .
+COPY *.py ./
 COPY VERSION .
-COPY healthcheck.py .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
