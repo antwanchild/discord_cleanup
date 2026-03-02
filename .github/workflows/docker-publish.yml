@@ -61,6 +61,7 @@ jobs:
 
           python3 /tmp/sanitize.py > commit_msg.txt
           SAFE_MSG=$(sed 's/"/\\"/g' commit_msg.txt | tr '\n' ' ' | xargs)
+          echo "DEBUG RAW: $SAFE_MSG"
           echo "commit_msg=$SAFE_MSG" >> $GITHUB_OUTPUT
           
           if cat /tmp/raw_msg.txt | grep -q "#major"; then
