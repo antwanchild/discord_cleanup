@@ -94,18 +94,29 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/discord_cleanup
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ steps.bump.outputs.version }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.bump.outputs.version }}
+            
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
+          # Use the outputs from the meta step above
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ steps.bump.outputs.version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             SOURCE_URL=https://github.com/${{ github.repository }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/discord_cleanup:latest
-            ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.bump.outputs.version }}
 
       - name: Create GitHub Release
         if: steps.bump.outputs.bump_type != 'patch'
