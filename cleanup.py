@@ -422,21 +422,52 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
         + (f"⏭️ Next run: **{get_next_run_str()}**" if not dry_run else "")
     )
 
-    embed = discord.Embed(
+    # Split breakdown_lines into chunks that fit within Discord's 1024 char field limit
+    chunks = []
+    current_chunk = []
+    current_len = 0
+    for line in breakdown_lines:
+        if current_len + len(line) + 1 > 1000 and current_chunk:
+            chunks.append(current_chunk)
+            current_chunk = [line]
+            current_len = len(line)
+        else:
+            current_chunk.append(line)
+            current_len += len(line) + 1
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    if not chunks:
+        chunks = [["✅ No messages to clean"]]
+
+    total_pages = len(chunks)
+
+    # First embed — includes summary
+    first_embed = discord.Embed(
         title=f"{title_prefix} — {status}",
         description=summary,
         color=color,
         timestamp=run_end
     )
-    embed.add_field(name="📋 Per-Channel Breakdown", value="\n".join(breakdown_lines), inline=False)
-    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    page_label = f"📋 Per-Channel Breakdown" if total_pages == 1 else f"📋 Per-Channel Breakdown (1/{total_pages})"
+    first_embed.add_field(name=page_label, value="\n".join(chunks[0]), inline=False)
+    if total_pages == 1:
+        first_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await log_channel.send(embed=first_embed)
+
+    # Additional embeds if needed
+    for i, chunk in enumerate(chunks[1:], start=2):
+        page_embed = discord.Embed(color=color, timestamp=run_end)
+        page_label = f"📋 Per-Channel Breakdown ({i}/{total_pages})"
+        page_embed.add_field(name=page_label, value="\n".join(chunk), inline=False)
+        if i == total_pages:
+            page_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+        await log_channel.send(embed=page_embed)
 
     _footer = f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
     log.info("╔══════════════════════════════════════════════════════════╗")
     log.info(f"║{_footer:<58}║")
     log.info("╚══════════════════════════════════════════════════════════╝")
-
-    await log_channel.send(embed=embed)
 
     if error_lines:
         error_embed = discord.Embed(
