@@ -123,7 +123,7 @@ async def before_health():
 
 
 # Register task references with utils so get_next_run_str works without circular imports
-register_task(cleanup_task, TASK_TZ)
+register_task(cleanup_task, TASK_TZ, bot)
 
 
 # --- Events ---

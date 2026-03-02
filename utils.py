@@ -14,13 +14,20 @@ from config import (
 # Set by cleanup_bot.py after tasks are created
 _cleanup_task = None
 _task_tz = None
+_bot = None
 
 
-def register_task(cleanup_task, task_tz):
+def register_task(cleanup_task, task_tz, bot):
     """Called from cleanup_bot.py after tasks are initialized."""
-    global _cleanup_task, _task_tz
+    global _cleanup_task, _task_tz, _bot
     _cleanup_task = cleanup_task
     _task_tz = task_tz
+    _bot = bot
+
+
+def get_bot():
+    """Returns the bot instance."""
+    return _bot
 
 
 def update_health():

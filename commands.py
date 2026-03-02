@@ -8,7 +8,7 @@ from config import (
 )
 from cleanup import build_channel_map, run_cleanup
 from stats import load_stats, reset_stats
-from utils import get_next_run_str, get_uptime_str, reload_channels
+from utils import get_next_run_str, get_uptime_str, reload_channels, get_bot
 
 
 cleanup_group = app_commands.Group(name="cleanup", description="Discord Cleanup Bot commands")
@@ -18,7 +18,7 @@ stats_group = app_commands.Group(name="stats", description="Cleanup statistics c
 @cleanup_group.command(name="run", description="Trigger a full cleanup run on all configured channels")
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_run(interaction: discord.Interaction):
-    from cleanup_bot import bot
+    bot = get_bot()
     await interaction.response.send_message("🧹 Full cleanup started — report will be posted to the log channel when complete.", ephemeral=True)
     log.info(f"Manual full cleanup triggered by {interaction.user} in #{interaction.channel.name}")
     await run_cleanup(bot, interaction.guild)
@@ -28,7 +28,7 @@ async def cleanup_run(interaction: discord.Interaction):
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(channel="The channel to clean up")
 async def cleanup_channel(interaction: discord.Interaction, channel: discord.TextChannel):
-    from cleanup_bot import bot
+    bot = get_bot()
     channel_map = build_channel_map(interaction.guild)
     if channel.id not in channel_map:
         await interaction.response.send_message(f"⚠️ `#{channel.name}` is not in your configured channels. Check `channels.yml`.", ephemeral=True)
@@ -41,7 +41,7 @@ async def cleanup_channel(interaction: discord.Interaction, channel: discord.Tex
 @cleanup_group.command(name="dryrun", description="Preview what would be deleted without actually deleting anything")
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_dryrun(interaction: discord.Interaction):
-    from cleanup_bot import bot
+    bot = get_bot()
     await interaction.response.send_message("🔍 Dry run started — preview report will be posted to the log channel when complete.", ephemeral=True)
     log.info(f"Dry run triggered by {interaction.user} in #{interaction.channel.name}")
     await run_cleanup(bot, interaction.guild, dry_run=True)
