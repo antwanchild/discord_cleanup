@@ -9,7 +9,7 @@ else
     echo "PUID already set to $PUID — no changes needed"
 fi
 
-if [ "$(id -g botgroup)" != "$PGID" ]; then
+if [ "$(getent group botgroup | cut -d: -f3)" != "$PGID" ]; then
     groupmod -g "$PGID" botgroup
 else
     echo "PGID already set to $PGID — no changes needed"
