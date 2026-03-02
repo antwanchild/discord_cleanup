@@ -52,8 +52,7 @@ jobs:
           PATCH=$(echo $VERSION | cut -d. -f3)
 
           git log --format=%B --no-merges -n 1 > /tmp/raw_msg.txt
-
-          sed 's/#//g' /tmp/raw_msg.txt | tr '\n' ' ' | xargs > /tmp/sanitize_output.txt
+          SAFE_MSG=$(tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g' | xargs)
 
           if cat /tmp/raw_msg.txt | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
@@ -71,7 +70,7 @@ jobs:
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
 
       - name: Write commit message to file
-        run: cp /tmp/sanitize_output.txt commit_msg.txt
+        run: tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g' | xargs > commit_msg.txt
 
       - name: Upload commit message artifact
         uses: actions/upload-artifact@v4
