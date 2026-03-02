@@ -60,8 +60,8 @@ jobs:
           EOF
 
           python3 /tmp/sanitize.py > commit_msg.txt
-          xxd commit_msg.txt
-          SAFE_MSG=$(cat commit_msg.txt)
+          SAFE_MSG=$(sed 's/"/\\"/g' commit_msg.txt | tr '\n' ' ' | xargs)
+          echo "commit_msg=$SAFE_MSG" >> $GITHUB_OUTPUT
           
           if cat /tmp/raw_msg.txt | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
