@@ -60,7 +60,7 @@ jobs:
           EOF
 
           python3 /tmp/sanitize.py > commit_msg.txt
-          echo "DEBUG: ${xxd commit_msg.txt}"
+          xxd commit_msg.txt
           SAFE_MSG=$(cat commit_msg.txt)
           
           if cat /tmp/raw_msg.txt | grep -q "#major"; then
