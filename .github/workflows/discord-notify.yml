@@ -22,18 +22,17 @@ jobs:
         id: version
         run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
 
-      - name: Download commit message artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: commit-msg
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Read commit message
+      - name: Get commit message
         id: commit
         run: |
-          MSG=$(cat commit_msg.txt 2>/dev/null || echo "No message")
-          echo "msg=$(cat commit_msg.txt)" >> $GITHUB_OUTPUT
+          MSG=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${{ github.event.workflow_run.head_sha }}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['commit']['message'])")
+          echo "msg<<EOF" >> $GITHUB_OUTPUT
+          echo "$MSG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Notify Discord — Success
         if: github.event.workflow_run.conclusion == 'success'
@@ -62,7 +61,7 @@ jobs:
                   {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
                   {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"${COMMIT_MSG}\", \"inline\": false},
+                  {\"name\": \"💬 Commit\", \"value\": \"\`${{ steps.commit.outputs.msg }}\`\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
                   {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true},
                   {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
@@ -98,7 +97,7 @@ jobs:
                   {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
                   {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"\`${cat commit_msg.txt}\`\", \"inline\": false},
+                  {\"name\": \"💬 Commit\", \"value\": \"\`${{ steps.commit.outputs.msg }}\`\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
                   {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true},
                   {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
