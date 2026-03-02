@@ -4,6 +4,7 @@ import logging
 import yaml
 from datetime import datetime
 from dotenv import load_dotenv
+logging.getLogger("discord.client").setLevel(logging.ERROR)
 
 CONFIG_DIR = "/config"
 BOT_START_TIME = datetime.now()
