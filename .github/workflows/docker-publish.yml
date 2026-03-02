@@ -72,7 +72,6 @@ jobs:
 
           echo $NEW_VERSION > VERSION
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "commit_msg=$(cat /tmp/sanitize_output.txt)" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
 
       - name: Write commit message to file
