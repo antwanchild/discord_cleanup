@@ -53,11 +53,7 @@ jobs:
 
           git log --format=%B --no-merges -n 1 > /tmp/raw_msg.txt
 
-          python3 - << 'PYEOF' > /tmp/sanitize_output.txt
-          msg = open('/tmp/raw_msg.txt').read()
-          msg = msg.replace('#', '').replace('\n', ' ').strip()
-          print(msg)
-          PYEOF
+          sed 's/#//g' /tmp/raw_msg.txt | tr '\n' ' ' | xargs > /tmp/sanitize_output.txt
 
           if cat /tmp/raw_msg.txt | grep -q "#major"; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
