@@ -6,6 +6,7 @@ channels:
     name: Radarr
     type: category
 
+
   # Category with a retention override — overrides DEFAULT_RETENTION
   - id: 345678901234567890
     name: Sonarr
