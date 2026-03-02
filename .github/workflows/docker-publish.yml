@@ -55,7 +55,7 @@ jobs:
 
           cat > /tmp/sanitize.py << 'EOF'
           msg = open('/tmp/raw_msg.txt').read()
-          msg = msg.replace('\x60', '"').replace('#', '').replace('\n', ' ').strip()
+          msg = msg.replace(chr(96), '"').replace('#', '').replace('\n', ' ').strip()
           print(msg)
           EOF
 
