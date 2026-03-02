@@ -73,7 +73,7 @@ jobs:
         run: tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g' | xargs > commit_msg.txt
 
       - name: Upload commit message artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: commit-msg
           path: commit_msg.txt
