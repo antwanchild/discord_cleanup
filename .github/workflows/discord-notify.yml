@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "msg<<EOF" >> $GITHUB_OUTPUT
           cat commit_msg.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT          
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Notify Discord — Success
         if: github.event.workflow_run.conclusion == 'success'
@@ -50,7 +50,6 @@ jobs:
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}"
           SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
-          COMMIT_MSG=$(sed 's/`/\\`/g' commit_msg.txt)
 
           curl -H "Content-Type: application/json" \
             -d "{
@@ -63,7 +62,7 @@ jobs:
                   {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
                   {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"${COMMIT_MSG}\", \"inline\": false},
+                  {\"name\": \"💬 Commit\", \"value\": \"${{ steps.commit.outputs.msg }}\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
                   {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true},
                   {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
@@ -86,7 +85,6 @@ jobs:
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}"
           SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
-          COMMIT_MSG=$(sed 's/`/\\`/g' commit_msg.txt)
 
           curl -H "Content-Type: application/json" \
             -d "{
@@ -99,7 +97,7 @@ jobs:
                   {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
                   {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
                   {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"${COMMIT_MSG}\", \"inline\": false},
+                  {\"name\": \"💬 Commit\", \"value\": \"${{ steps.commit.outputs.msg }}\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
                   {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true},
                   {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
