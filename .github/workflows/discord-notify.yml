@@ -35,6 +35,7 @@ jobs:
           echo "msg<<EOF" >> $GITHUB_OUTPUT
           cat commit_msg.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          
 
       - name: Notify Discord — Success
         if: github.event.workflow_run.conclusion == 'success'
