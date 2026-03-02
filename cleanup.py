@@ -106,27 +106,36 @@ def validate_channels(guild):
     """Validates all configured channels exist in the guild on startup."""
     log.info("Validating configured channels...")
     issues = 0
+    total_channels = 0
+    excluded_channels = 0
 
     for ch in cfg.raw_channels:
         if ch.get("exclude", False):
+            excluded_channels += 1
+            log.info(f"  ⛔ #{ch.get('name', ch['id'])} — excluded")
             continue
         ch_id = ch["id"]
         ch_name = ch.get("name", str(ch_id))
         channel = guild.get_channel(ch_id)
         if not channel:
-            log.warning(f"Validation failed — #{ch_name} (ID: {ch_id}) not found in server")
+            log.warning(f"  ❌ #{ch_name} (ID: {ch_id}) — not found in server")
             issues += 1
         elif ch.get("type") == "category":
             deep = " | deep_clean: enabled" if ch.get("deep_clean") else ""
-            log.info(f"Validated category #{ch_name} — {len(channel.text_channels)} text channel(s){deep}")
+            days = ch.get("days", DEFAULT_RETENTION)
+            count = len(channel.text_channels)
+            total_channels += count
+            log.info(f"  📁 #{ch_name} — category | {count} channel(s) | {days}d retention{deep}")
         else:
             deep = " | deep_clean: enabled" if ch.get("deep_clean") else ""
-            log.info(f"Validated channel #{channel.name}{deep}")
+            days = ch.get("days", DEFAULT_RETENTION)
+            total_channels += 1
+            log.info(f"  📄 #{channel.name} — {days}d retention{deep}")
 
     if issues == 0:
-        log.info("All configured channels validated successfully")
+        log.info(f"Validation complete — {total_channels} channel(s) active | {excluded_channels} excluded | 0 issues")
     else:
-        log.warning(f"Validation complete — {issues} issue(s) found, check channels.yml")
+        log.warning(f"Validation complete — {total_channels} channel(s) active | {excluded_channels} excluded | {issues} issue(s) found")
 
     if WARN_UNCONFIGURED:
         accounted_ids = {ch["id"] for ch in cfg.raw_channels}
@@ -334,14 +343,19 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
         if stats["count"] > 0:
             grand_total += stats["count"]
             channel_results[channel.name] = stats["count"]
+            log.info(f"  ✅ #{channel.name} — deleted {stats['count']} message(s)")
+        elif stats["count"] == 0:
+            log.info(f"  ℹ️ #{channel.name} — nothing to delete")
         if stats["count"] == -1:
             has_warnings = True
             if stats.get("error"):
                 error_lines.append(f"🚫 `#{channel.name}` — {stats['error']}")
+                log.warning(f"  ❌ #{channel.name} — {stats['error']}")
 
         grand_rate_limits += stats["rate_limits"]
         if stats["rate_limits"] > 0:
             error_lines.append(f"⚡ `#{channel.name}` — rate limited **{stats['rate_limits']}** time(s)")
+            log.warning(f"  ⚡ #{channel.name} — rate limited {stats['rate_limits']} time(s)")
 
         if stats["oldest"] and (oldest_overall is None or stats["oldest"] < oldest_overall):
             oldest_overall = stats["oldest"]

@@ -17,11 +17,13 @@ An automated Discord bot that cleans up old messages from configured channels on
 - Graceful shutdown — finishes current channel before stopping on SIGTERM
 - Deploy notifications — posts to log channel when a new version is detected
 - Missed run alerts — posts to log channel if a scheduled run is delayed more than 15 minutes
+- Error notifications — separate embed posted when errors occur during a run
+- Multi-message breakdown — automatically splits into multiple embeds if channel count is large
 - Cleanup statistics — rolling 30-day, current month, and all-time tracking
 - Stats reset — reset any stat period via slash command with confirmation
 - Monthly automated report — posts to report channel on the 1st of each month
 - Color-coded Discord embed notifications
-- Date-stamped rotating log files with run separators
+- Date-stamped rotating log files with ASCII art headers and run footers
 - Rate limit handling with automatic retry
 - Docker health check — container marked unhealthy if bot stops responding
 - Auto-generates default config files on first run if they don't exist
@@ -261,9 +263,10 @@ Stats are available on demand via `/cleanup stats` and as an automated monthly r
 | 🟢 Green | ✅ Cleanup Successful | Messages deleted successfully |
 | 🟢 Green | 🟢 Bot Online | Bot started successfully |
 | 🔵 Blue | ℹ️ Nothing to Clean | No messages met the retention threshold |
-| 🟠 Orange | ⚠️ Completed with Warnings | Some channels had issues |
+| 🟠 Orange | ⚠️ Completed with Warnings | Some channels had issues but some deletions succeeded |
 | 🟠 Orange | ⚠️ Scheduled Run Delayed | A cleanup run did not start within 15 minutes of its scheduled time |
-| 🔴 Red | ⛔ Completed with Errors | Errors with no deletions |
+| 🔴 Red | ⛔ Completed with Errors | Errors occurred and nothing was deleted |
+| 🔴 Red | ⚠️ Run Errors | Separate embed listing specific errors — missing permissions, channel not found, rate limits |
 | ⚫ Gray | 🔍 Dry Run Complete | Preview of what would be deleted |
 | 🟣 Purple | 🚀 New Version Deployed | New version detected on startup |
 | 🟣 Purple | ℹ️ Version | Version and uptime info |
@@ -280,4 +283,4 @@ cleanup-2026-02-22.log
 cleanup-2026-02-23.log
 ```
 
-Each run is separated by a `====` divider line so multiple runs on the same day are easy to distinguish. Files older than `LOG_MAX_FILES` days are automatically deleted.
+Each run opens with an ASCII art header showing the version and next scheduled run time, and closes with a footer showing total deleted and duration. Multiple runs on the same day are easy to distinguish. Files older than `LOG_MAX_FILES` days are automatically deleted.
