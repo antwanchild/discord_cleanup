@@ -29,16 +29,12 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Debug artifact
-        run: xxd commit_msg.txt
-
       - name: Read commit message
         id: commit
         run: |
           echo "msg<<EOF" >> $GITHUB_OUTPUT
           cat commit_msg.txt >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-
 
       - name: Notify Discord — Success
         if: github.event.workflow_run.conclusion == 'success'
@@ -75,7 +71,6 @@ jobs:
               }]
             }" \
             $DISCORD_WEBHOOK
-
 
       - name: Notify Discord — Failure
         if: github.event.workflow_run.conclusion == 'failure'
