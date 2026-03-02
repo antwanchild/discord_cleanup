@@ -95,9 +95,10 @@ def setup_run_log():
         log.error(f"Could not create log file {log_path} — check directory permissions.")
         return
 
+    _next = get_next_run_str()
     log.info("╔══════════════════════════════════════════════════════════╗")
-    log.info(f"║  Discord Cleanup Bot  v{BOT_VERSION:<10}                       ║")
-    log.info(f"║  Next run: {get_next_run_str():<20}                    ║")
+    log.info(f"║  Discord Cleanup Bot  v{BOT_VERSION:<34}║")
+    log.info(f"║  Next run: {_next:<46}║")
     log.info("╚══════════════════════════════════════════════════════════╝")
     log.info(f"Log file: {log_path}")
     log.info(
