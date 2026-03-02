@@ -282,7 +282,6 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
 
 async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False):
     """Core cleanup logic used by both scheduler and slash commands."""
-    setup_run_log()
     update_health()
 
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
@@ -294,17 +293,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
     bulk_cutoff = run_time - timedelta(days=14)
     local_run_time = datetime.now()
 
-    log.info(
-        f"{'[DRY RUN] ' if dry_run else ''}Run cutoff: {local_run_time.strftime('%Y-%m-%d %H:%M:%S')} | "
-        f"Bulk cutoff: {(local_run_time - timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')} | "
-        f"TZ: {os.getenv('TZ', 'UTC')}"
-    )
-
     channel_map = build_channel_map(guild)
-
-    for ch in cfg.raw_channels:
-        if ch.get("exclude", False):
-            log.info(f"#{ch.get('name', ch['id'])} — excluded (skipping)")
 
     if single_channel_id:
         if single_channel_id in channel_map:
@@ -312,6 +301,18 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
         else:
             log.warning(f"Channel ID {single_channel_id} not in configured channels")
             return
+
+    setup_run_log(channel_count=len(channel_map))
+
+    log.info(
+        f"{'[DRY RUN] ' if dry_run else ''}Run cutoff: {local_run_time.strftime('%Y-%m-%d %H:%M:%S')} | "
+        f"Bulk cutoff: {(local_run_time - timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')} | "
+        f"TZ: {os.getenv('TZ', 'UTC')}"
+    )
+
+    for ch in cfg.raw_channels:
+        if ch.get("exclude", False):
+            log.info(f"#{ch.get('name', ch['id'])} — excluded (skipping)")
 
     log.info(f"Starting {'dry run' if dry_run else 'cleanup run'} on {guild.name} across {len(channel_map)} channel(s)...")
 
@@ -478,9 +479,11 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
             page_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
         await log_channel.send(embed=page_embed)
 
-    _footer = f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
+    _footer1 = f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
+    _footer2 = f"  Warnings: {len(error_lines)} | Rate limits: {grand_rate_limits}"
     log.info("╔══════════════════════════════════════════════════════════╗")
-    log.info(f"║{_footer:<58}║")
+    log.info(f"║{_footer1:<58}║")
+    log.info(f"║{_footer2:<58}║")
     log.info("╚══════════════════════════════════════════════════════════╝")
 
     if error_lines:

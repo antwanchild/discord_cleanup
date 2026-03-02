@@ -70,7 +70,7 @@ def get_uptime_str():
         return f"{minutes}m {seconds}s"
 
 
-def setup_run_log():
+def setup_run_log(channel_count=None):
     """Creates a date-stamped log file for this run and cleans up old ones."""
     try:
         os.makedirs(LOG_DIR, exist_ok=True)
@@ -96,9 +96,11 @@ def setup_run_log():
         return
 
     _next = get_next_run_str()
+    _ch = f"  |  Channels: {channel_count}" if channel_count is not None else ""
+    _line2 = f"  Next run: {_next}{_ch}"
     log.info("╔══════════════════════════════════════════════════════════╗")
     log.info(f"║  Discord Cleanup Bot  v{BOT_VERSION:<34}║")
-    log.info(f"║  Next run: {_next:<46}║")
+    log.info(f"║{_line2:<58}║")
     log.info("╚══════════════════════════════════════════════════════════╝")
     log.info(f"Log file: {log_path}")
     log.info(
