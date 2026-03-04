@@ -50,17 +50,16 @@ jobs:
         id: bump
         run: |
           VERSION=$(cat VERSION)
-          MAJOR=$(echo $VERSION | cut -d. -f1)
-          MINOR=$(echo $VERSION | cut -d. -f2)
-          PATCH=$(echo $VERSION | cut -d. -f3)
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
 
           git log --format=%B --no-merges -n 1 > /tmp/raw_msg.txt
-          SAFE_MSG=$(tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g' | xargs)
 
-          if cat /tmp/raw_msg.txt | grep -q "#major"; then
+          if grep -q "#major" /tmp/raw_msg.txt; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
             BUMP_TYPE="major"
-          elif cat /tmp/raw_msg.txt | grep -q "#minor"; then
+          elif grep -q "#minor" /tmp/raw_msg.txt; then
             NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
             BUMP_TYPE="minor"
           else
@@ -68,10 +67,10 @@ jobs:
             BUMP_TYPE="patch"
           fi
 
-          echo $NEW_VERSION > VERSION
-          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
-
+          echo "$NEW_VERSION" > VERSION
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
+          
       - name: Write commit message to file
         run: tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g' | xargs > commit_msg.txt
 

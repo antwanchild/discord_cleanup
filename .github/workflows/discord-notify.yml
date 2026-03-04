@@ -20,7 +20,7 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
       - name: Download commit message artifact
         uses: actions/download-artifact@v8
@@ -32,9 +32,11 @@ jobs:
       - name: Read commit message
         id: commit
         run: |
-          echo "msg<<EOF" >> $GITHUB_OUTPUT
-          cat commit_msg.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "msg<<EOF"
+            cat commit_msg.txt
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Notify Discord — Success
         if: github.event.workflow_run.conclusion == 'success'
