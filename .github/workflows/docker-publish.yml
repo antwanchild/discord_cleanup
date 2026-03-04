@@ -25,6 +25,9 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Lint workflow
+        uses: raven-actions/actionlint@v2
+
       - name: Syntax check
         run: |
           python3 -m py_compile cleanup_bot.py config.py stats.py utils.py notifications.py cleanup.py commands.py
