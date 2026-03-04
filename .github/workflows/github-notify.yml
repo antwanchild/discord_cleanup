@@ -16,6 +16,7 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.actor }}
         run: |
           curl -H "Content-Type: application/json" \
             -d "{
@@ -25,8 +26,8 @@ jobs:
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
                 \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"👤 User\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Profile\", \"value\": \"[View profile](https://github.com/${{ github.actor }})\", \"inline\": true}
+                  {\"name\": \"👤 User\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Profile\", \"value\": \"[View profile](https://github.com/${ACTOR})\", \"inline\": true}
                 ]
               }]
             }" \
@@ -39,6 +40,8 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.actor }}
+          FORK_NAME: ${{ github.event.forkee.full_name }}
         run: |
           curl -H "Content-Type: application/json" \
             -d "{
@@ -48,8 +51,8 @@ jobs:
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
                 \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"👤 User\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Fork\", \"value\": \"[View fork](https://github.com/${{ github.event.forkee.full_name }})\", \"inline\": true}
+                  {\"name\": \"👤 User\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Fork\", \"value\": \"[View fork](https://github.com/${FORK_NAME})\", \"inline\": true}
                 ]
               }]
             }" \
@@ -62,6 +65,10 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.actor }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
         run: |
           curl -H "Content-Type: application/json" \
             -d "{
@@ -71,9 +78,9 @@ jobs:
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
                 \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${{ github.event.issue.title }}\", \"inline\": false},
-                  {\"name\": \"👤 Opened by\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Issue\", \"value\": \"[View issue](https://github.com/${{ github.repository }}/issues/${{ github.event.issue.number }})\", \"inline\": true}
+                  {\"name\": \"📋 Title\", \"value\": \"${ISSUE_TITLE}\", \"inline\": false},
+                  {\"name\": \"👤 Opened by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Issue\", \"value\": \"[View issue](https://github.com/${REPO}/issues/${ISSUE_NUMBER})\", \"inline\": true}
                 ]
               }]
             }" \
@@ -86,6 +93,10 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.actor }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
         run: |
           curl -H "Content-Type: application/json" \
             -d "{
@@ -95,9 +106,9 @@ jobs:
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
                 \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"📋 Issue\", \"value\": \"${{ github.event.issue.title }}\", \"inline\": false},
-                  {\"name\": \"👤 Commented by\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Comment\", \"value\": \"[View comment](https://github.com/${{ github.repository }}/issues/${{ github.event.issue.number }})\", \"inline\": true}
+                  {\"name\": \"📋 Issue\", \"value\": \"${ISSUE_TITLE}\", \"inline\": false},
+                  {\"name\": \"👤 Commented by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Comment\", \"value\": \"[View comment](https://github.com/${REPO}/issues/${ISSUE_NUMBER})\", \"inline\": true}
                 ]
               }]
             }" \

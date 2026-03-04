@@ -40,15 +40,24 @@ jobs:
         if: github.event.workflow_run.conclusion == 'success'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_STARTED: ${{ github.event.workflow_run.run_started_at }}
+          RUN_UPDATED: ${{ github.event.workflow_run.updated_at }}
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT_MSG: ${{ steps.commit.outputs.msg }}
+          REPO: ${{ github.repository }}
         run: |
-          START="${{ github.event.workflow_run.run_started_at }}"
-          END="${{ github.event.workflow_run.updated_at }}"
+          START="${RUN_STARTED}"
+          END="${RUN_UPDATED}"
           DURATION=$(( $(date -d "$END" +%s) - $(date -d "$START" +%s) ))
           MINUTES=$(( DURATION / 60 ))
           SECONDS=$(( DURATION % 60 ))
           DURATION_STR="${MINUTES}m ${SECONDS}s"
-          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
-          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}"
+          SHORT_SHA=$(echo "${HEAD_SHA}" | cut -c1-7)
+          COMMIT_URL="https://github.com/${REPO}/commit/${HEAD_SHA}"
           SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
 
           curl -H "Content-Type: application/json" \
@@ -56,15 +65,15 @@ jobs:
               \"embeds\": [{
                 \"title\": \"✅ Discord Cleanup Bot — Build Succeeded\",
                 \"color\": 3066993,
-                \"timestamp\": \"${{ github.event.workflow_run.updated_at }}\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot v${{ steps.version.outputs.version }} • github.com/antwanchild/discord_cleanup\"},
+                \"timestamp\": \"${RUN_UPDATED}\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot v${VERSION} • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
-                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"${{ steps.commit.outputs.msg }}\", \"inline\": false},
+                  {\"name\": \"🏷️ Version\", \"value\": \"\`${VERSION}\`\", \"inline\": true},
+                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${BRANCH}\`\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"${COMMIT_MSG}\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true},
+                  {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${REPO}/actions/runs/${RUN_ID})\", \"inline\": true},
                   {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
                 ]
               }]
@@ -75,15 +84,24 @@ jobs:
         if: github.event.workflow_run.conclusion == 'failure'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_STARTED: ${{ github.event.workflow_run.run_started_at }}
+          RUN_UPDATED: ${{ github.event.workflow_run.updated_at }}
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT_MSG: ${{ steps.commit.outputs.msg }}
+          REPO: ${{ github.repository }}
         run: |
-          START="${{ github.event.workflow_run.run_started_at }}"
-          END="${{ github.event.workflow_run.updated_at }}"
+          START="${RUN_STARTED}"
+          END="${RUN_UPDATED}"
           DURATION=$(( $(date -d "$END" +%s) - $(date -d "$START" +%s) ))
           MINUTES=$(( DURATION / 60 ))
           SECONDS=$(( DURATION % 60 ))
           DURATION_STR="${MINUTES}m ${SECONDS}s"
-          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
-          COMMIT_URL="https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}"
+          SHORT_SHA=$(echo "${HEAD_SHA}" | cut -c1-7)
+          COMMIT_URL="https://github.com/${REPO}/commit/${HEAD_SHA}"
           SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
 
           curl -H "Content-Type: application/json" \
@@ -91,15 +109,15 @@ jobs:
               \"embeds\": [{
                 \"title\": \"❌ Discord Cleanup Bot — Build Failed\",
                 \"color\": 15158332,
-                \"timestamp\": \"${{ github.event.workflow_run.updated_at }}\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot v${{ steps.version.outputs.version }} • github.com/antwanchild/discord_cleanup\"},
+                \"timestamp\": \"${RUN_UPDATED}\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot v${VERSION} • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"🏷️ Version\", \"value\": \"\`${{ steps.version.outputs.version }}\`\", \"inline\": true},
-                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${{ github.event.workflow_run.triggering_actor.login }}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.workflow_run.head_branch }}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"${{ steps.commit.outputs.msg }}\", \"inline\": false},
+                  {\"name\": \"🏷️ Version\", \"value\": \"\`${VERSION}\`\", \"inline\": true},
+                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${BRANCH}\`\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"${COMMIT_MSG}\", \"inline\": false},
                   {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})\", \"inline\": true},
+                  {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${REPO}/actions/runs/${RUN_ID})\", \"inline\": true},
                   {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
                 ]
               }]

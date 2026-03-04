@@ -15,6 +15,11 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.actor }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           curl -H "Content-Type: application/json" \
             -d "{
@@ -24,10 +29,10 @@ jobs:
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
                 \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
-                  {\"name\": \"👤 Author\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.pull_request.head.ref }}\`\", \"inline\": true},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                  {\"name\": \"📋 Title\", \"value\": \"${PR_TITLE}\", \"inline\": false},
+                  {\"name\": \"👤 Author\", \"value\": \"\`${PR_AUTHOR}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${PR_BRANCH}\`\", \"inline\": true},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
                 ]
               }]
             }" \
@@ -42,6 +47,11 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.actor }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           curl -H "Content-Type: application/json" \
             -d "{
@@ -51,10 +61,10 @@ jobs:
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
                 \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
-                  {\"name\": \"👤 Author\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.pull_request.head.ref }}\`\", \"inline\": true},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                  {\"name\": \"📋 Title\", \"value\": \"${PR_TITLE}\", \"inline\": false},
+                  {\"name\": \"👤 Author\", \"value\": \"\`${PR_AUTHOR}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${PR_BRANCH}\`\", \"inline\": true},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
                 ]
               }]
             }" \
@@ -69,6 +79,11 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.actor }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           curl -H "Content-Type: application/json" \
             -d "{
@@ -78,10 +93,10 @@ jobs:
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
                 \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
-                  {\"name\": \"👤 Author\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.pull_request.head.ref }}\`\", \"inline\": true},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                  {\"name\": \"📋 Title\", \"value\": \"${PR_TITLE}\", \"inline\": false},
+                  {\"name\": \"👤 Author\", \"value\": \"\`${PR_AUTHOR}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${PR_BRANCH}\`\", \"inline\": true},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
                 ]
               }]
             }" \
@@ -96,6 +111,11 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.actor }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           curl -H "Content-Type: application/json" \
             -d "{
@@ -105,10 +125,10 @@ jobs:
                 \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
                 \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
                 \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${{ github.event.pull_request.title }}\", \"inline\": false},
-                  {\"name\": \"👤 Author\", \"value\": \"\`${{ github.actor }}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${{ github.event.pull_request.head.ref }}\`\", \"inline\": true},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }})\", \"inline\": true}
+                  {\"name\": \"📋 Title\", \"value\": \"${PR_TITLE}\", \"inline\": false},
+                  {\"name\": \"👤 Author\", \"value\": \"\`${PR_AUTHOR}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${PR_BRANCH}\`\", \"inline\": true},
+                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
                 ]
               }]
             }" \
