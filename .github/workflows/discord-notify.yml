@@ -69,7 +69,7 @@ jobs:
                 ]
               }]
             }" \
-            $DISCORD_WEBHOOK
+            "$DISCORD_WEBHOOK"
 
       - name: Notify Discord — Failure
         if: github.event.workflow_run.conclusion == 'failure'
@@ -104,4 +104,4 @@ jobs:
                 ]
               }]
             }" \
-            $DISCORD_WEBHOOK
+            "$DISCORD_WEBHOOK"
