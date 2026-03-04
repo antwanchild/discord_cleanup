@@ -29,7 +29,7 @@ jobs:
                 ]
               }]
             }" \
-            $DISCORD_WEBHOOK
+            "$DISCORD_WEBHOOK"
 
   notify-merged:
     if: github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null && contains(github.event.pull_request.labels.*.name, 'dependencies')
@@ -54,4 +54,4 @@ jobs:
                 ]
               }]
             }" \
-            $DISCORD_WEBHOOK
+            "$DISCORD_WEBHOOK"
