@@ -39,19 +39,22 @@ An automated Discord bot that cleans up old messages from configured channels on
 
 Every push to `main` triggers `docker-publish.yml` which:
 
-1. Runs `py_compile` syntax check — blocks build on syntax errors
-2. Runs `ruff` lint check — warns on style issues, build continues
-3. Runs `bandit` security check — warns on security issues, build continues
-4. Auto-bumps the version based on commit message tags:
+1. Runs `actionlint` — validates all workflow files for syntax and security issues
+2. Runs `py_compile` syntax check — blocks build on syntax errors
+3. Runs `ruff` lint check — warns on style issues, build continues
+4. Runs `bandit` security check — warns on security issues, build continues
+5. Auto-bumps the version based on commit message tags:
    - Default — patch bump (e.g. `3.1.1` → `3.1.2`)
    - `#minor` in commit message — minor bump (e.g. `3.1.1` → `3.2.0`) — also creates a GitHub Release
    - `#major` in commit message — major bump (e.g. `3.1.1` → `4.0.0`) — also creates a GitHub Release
-5. Builds and pushes Docker image to GHCR with `:latest` and `:version` tags
-6. Creates a GitHub Release (minor and major only)
-7. Cleans up old GHCR images keeping the last 10
-8. Posts a success or failure notification to Discord
+6. Builds and pushes Docker image to GHCR with `:latest` and `:version` tags
+7. Creates a GitHub Release (minor and major only)
+8. Cleans up old GHCR images keeping the last 10
+9. Posts a success or failure notification to Discord
 
 Pushes that only modify `README.md`, `SETUP.md`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped entirely — no build, no version bump, no release.
+
+All workflow files are linted on every push using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
 
 ---
 
