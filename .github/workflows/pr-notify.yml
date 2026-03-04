@@ -31,7 +31,7 @@ jobs:
                 ]
               }]
             }" \
-            $DISCORD_WEBHOOK
+            "$DISCORD_WEBHOOK"
 
   notify-reopened:
     if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'reopened'
@@ -58,7 +58,7 @@ jobs:
                 ]
               }]
             }" \
-            $DISCORD_WEBHOOK
+            "$DISCORD_WEBHOOK"
 
   notify-merged:
     if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null
@@ -85,7 +85,7 @@ jobs:
                 ]
               }]
             }" \
-            $DISCORD_WEBHOOK
+            "$DISCORD_WEBHOOK"
 
   notify-closed:
     if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha == null
@@ -112,4 +112,4 @@ jobs:
                 ]
               }]
             }" \
-            $DISCORD_WEBHOOK
+            "$DISCORD_WEBHOOK"
