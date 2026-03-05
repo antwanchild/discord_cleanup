@@ -32,7 +32,7 @@ jobs:
       - name: Read commit message
         id: commit
         run: |
-          MSG=$(cat commit_msg.txt | sed "s/'/\`/g")
+          MSG=$(sed "s/'/\`/g" commit_msg.txt)
           echo "msg=${MSG}" >> "$GITHUB_OUTPUT"
 
       - name: Notify Discord — Success
