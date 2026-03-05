@@ -138,7 +138,6 @@ async def schedule_remove(interaction: discord.Interaction, time: str):
         await interaction.followup.send("⛔ Cannot remove the last scheduled run time — at least one is required.", ephemeral=True)
         return
 
-    log.info(f"Calling update_schedule with: {current}")
     success, message = update_schedule(current)
 
 
