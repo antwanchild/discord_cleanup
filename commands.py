@@ -1,10 +1,11 @@
 import discord
 from discord import app_commands
 from datetime import datetime
+import os
 
 import config as cfg
 from config import (
-    BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_LEVEL, LOG_MAX_FILES, log
+    BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_LEVEL, LOG_MAX_FILES, LOG_DIR, log
 )
 from cleanup import build_channel_map, run_cleanup
 from stats import load_stats, reset_stats
@@ -248,6 +249,30 @@ async def stats_reset(interaction: discord.Interaction, scope: app_commands.Choi
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await interaction.response.send_message(embed=embed, view=StatsResetView(scope=scope.value, user=interaction.user), ephemeral=True)
+
+
+@cleanup_group.command(name="logs", description="Download today's log file")
+@app_commands.checks.has_permissions(administrator=True)
+async def cleanup_logs(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    today = datetime.now().strftime("%Y-%m-%d")
+    log_path = os.path.join(LOG_DIR, f"cleanup-{today}.log")
+
+    if not os.path.exists(log_path):
+        await interaction.followup.send("⚠️ No log file found for today.", ephemeral=True)
+        return
+
+    file_size = os.path.getsize(log_path)
+    if file_size > 8 * 1024 * 1024:
+        await interaction.followup.send("⚠️ Log file exceeds Discord's 8MB limit — please retrieve it directly from `/config/logs`.", ephemeral=True)
+        return
+
+    log.info(f"Log file requested by {interaction.user}")
+    await interaction.followup.send(
+        content=f"📄 `cleanup-{today}.log`",
+        file=discord.File(log_path, filename=f"cleanup-{today}.log"),
+        ephemeral=True
+    )
 
 
 @cleanup_group.error
