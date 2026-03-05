@@ -190,14 +190,18 @@ def update_schedule(new_times: list) -> tuple[bool, str]:
     # Update in-memory config
     config.CLEAN_TIMES = new_times
 
-    # Restart the cleanup task with new times
     if _cleanup_task is not None:
         tz = _task_tz or ZoneInfo("UTC")
         times = [dtime(hour=int(t.split(":")[0]), minute=int(t.split(":")[1]), tzinfo=tz) for t in new_times]
-        if _cleanup_task.is_running():
-            _cleanup_task.cancel()
-        _cleanup_task.change_interval(time=times)
-        _cleanup_task.start()
-        log.info(f"Schedule updated to: {new_value}")
+        try:
+            if _cleanup_task.is_running():
+                _cleanup_task.stop()
+            _cleanup_task.change_interval(time=times)
+            _cleanup_task.restart()
+        except Exception as e:
+            log.error(f"Failed to restart cleanup task after schedule change — {e}")
+            return False, f"Schedule saved but task restart failed — {e}"
 
+    log.info(f"Schedule updated to: {new_value}")
     return True, new_value
+
