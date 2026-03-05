@@ -142,7 +142,74 @@ def reload_channels():
         return False, f"channels.yml is malformed — {e}"
 
 
-def update_schedule(new_times: list) -> tuple[bool, str]:
+def update_env_value(key: str, value: str) -> tuple[bool, str]:
+    """Updates a single key in .env.discord_cleanup. Returns (success, message)."""
+    import config
+    env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
+    try:
+        with open(env_path, "r") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        return False, f".env.discord_cleanup not found at `{env_path}`"
+    except PermissionError:
+        return False, "Permission denied reading .env.discord_cleanup"
+
+    found = False
+    new_lines = []
+    for line in lines:
+        if line.startswith(f"{key}="):
+            new_lines.append(f"{key}={value}\n")
+            found = True
+        else:
+            new_lines.append(line)
+    if not found:
+        new_lines.append(f"{key}={value}\n")
+
+    try:
+        with open(env_path, "w") as f:
+            f.writelines(new_lines)
+    except PermissionError:
+        return False, "Permission denied writing .env.discord_cleanup"
+
+    # Update in-memory config
+    setattr(config, key, value)
+    log.info(f"{key} updated to: {value}")
+    return True, value
+
+
+def update_retention(days: int) -> tuple[bool, str]:
+    """Updates DEFAULT_RETENTION in env and in-memory config."""
+    import config
+    success, message = update_env_value("DEFAULT_RETENTION", str(days))
+    if success:
+        config.DEFAULT_RETENTION = days
+    return success, message
+
+
+def update_log_level(level: str) -> tuple[bool, str]:
+    """Updates LOG_LEVEL in env and in-memory logging config."""
+    import config
+    valid = ["DEBUG", "INFO", "WARNING", "ERROR"]
+    if level.upper() not in valid:
+        return False, f"Invalid log level — must be one of: {', '.join(valid)}"
+    success, message = update_env_value("LOG_LEVEL", level.upper())
+    if success:
+        config.LOG_LEVEL = level.upper()
+        new_level = getattr(logging, level.upper())
+        logger.setLevel(new_level)
+        for h in logger.handlers:
+            h.setLevel(new_level)
+    return success, message
+
+
+def update_warn_unconfigured(enabled: bool) -> tuple[bool, str]:
+    """Updates WARN_UNCONFIGURED in env and in-memory config."""
+    import config
+    value = "true" if enabled else "false"
+    success, message = update_env_value("WARN_UNCONFIGURED", value)
+    if success:
+        config.WARN_UNCONFIGURED = enabled
+    return success, message
     """Updates CLEAN_TIME in .env file and reschedules the cleanup task. Returns (success, message)."""
     import config
     from zoneinfo import ZoneInfo
@@ -190,18 +257,14 @@ def update_schedule(new_times: list) -> tuple[bool, str]:
     # Update in-memory config
     config.CLEAN_TIMES = new_times
 
+    # Restart the cleanup task with new times
     if _cleanup_task is not None:
         tz = _task_tz or ZoneInfo("UTC")
         times = [dtime(hour=int(t.split(":")[0]), minute=int(t.split(":")[1]), tzinfo=tz) for t in new_times]
-        try:
-            if _cleanup_task.is_running():
-                _cleanup_task.stop()
-            _cleanup_task.change_interval(time=times)
-            _cleanup_task.restart()
-        except Exception as e:
-            log.error(f"Failed to restart cleanup task after schedule change — {e}")
-            return False, f"Schedule saved but task restart failed — {e}"
+        if _cleanup_task.is_running():
+            _cleanup_task.cancel()
+        _cleanup_task.change_interval(time=times)
+        _cleanup_task.start()
+        log.info(f"Schedule updated to: {new_value}")
 
-    log.info(f"Schedule updated to: {new_value}")
     return True, new_value
-

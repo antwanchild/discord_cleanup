@@ -5,12 +5,12 @@ import os
 
 import config as cfg
 from config import (
-    BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_LEVEL, LOG_MAX_FILES, LOG_DIR, log
+    BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_LEVEL, LOG_MAX_FILES, LOG_DIR, WARN_UNCONFIGURED, log
 )
 from cleanup import build_channel_map, run_cleanup
 from notifications import post_schedule_notification
 from stats import load_stats, reset_stats
-from utils import get_next_run_str, get_uptime_str, reload_channels, get_bot, update_schedule
+from utils import get_next_run_str, get_uptime_str, reload_channels, get_bot, update_schedule, update_retention, update_log_level, update_warn_unconfigured
 
 
 cleanup_group = app_commands.Group(name="cleanup", description="Discord Cleanup Bot commands")
@@ -129,13 +129,14 @@ async def cleanup_status(interaction: discord.Interaction):
         title="⚙️ Discord Cleanup Bot — Status",
         description=(
             f"🏠 Server: **{interaction.guild.name}**\n"
-            f"📅 Default retention: **{DEFAULT_RETENTION} days**\n"
+            f"📅 Default retention: **{cfg.DEFAULT_RETENTION} days**\n"
             f"🔍 Channels configured: **{configured_count}**\n"
             f"⛔ Channels excluded: **{len(excluded)}**\n"
-            f"🕐 Scheduled runs: **{', '.join(CLEAN_TIMES)}**\n"
+            f"🕐 Scheduled runs: **{', '.join(cfg.CLEAN_TIMES)}**\n"
             f"⏭️ Next run: **{get_next_run_str()}**\n"
-            f"📋 Log level: **{LOG_LEVEL}**\n"
+            f"📋 Log level: **{cfg.LOG_LEVEL}**\n"
             f"🗂️ Log retention: **{LOG_MAX_FILES} days**\n"
+            f"⚠️ Warn unconfigured: **{'enabled' if cfg.WARN_UNCONFIGURED else 'disabled'}**\n"
             f"⏱️ Uptime: **{get_uptime_str()}**"
         ),
         color=0x5865F2,
@@ -277,6 +278,74 @@ async def cleanup_logs(interaction: discord.Interaction):
 
 
 schedule_group = app_commands.Group(name="schedule", description="Manage cleanup schedule", parent=cleanup_group)
+
+
+@cleanup_group.command(name="retention", description="Set the default message retention period in days")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(days="Number of days to retain messages (1-365)")
+async def cleanup_retention(interaction: discord.Interaction, days: int):
+    await interaction.response.defer(ephemeral=True)
+    if not 1 <= days <= 365:
+        await interaction.followup.send("⛔ Retention must be between 1 and 365 days.", ephemeral=True)
+        return
+    old = cfg.DEFAULT_RETENTION
+    success, message = update_retention(days)
+    embed = discord.Embed(
+        title="✅ Retention Updated" if success else "⛔ Retention Update Failed",
+        description=f"Default retention changed from **{old} days** to **{days} days**." if success else f"⛔ {message}",
+        color=0x2ECC71 if success else 0xFF0000,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    log.info(f"Default retention set to {days} days by {interaction.user}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+@cleanup_group.command(name="loglevel", description="Set the log verbosity level")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(level="Log level")
+@app_commands.choices(level=[
+    app_commands.Choice(name="DEBUG", value="DEBUG"),
+    app_commands.Choice(name="INFO", value="INFO"),
+    app_commands.Choice(name="WARNING", value="WARNING"),
+    app_commands.Choice(name="ERROR", value="ERROR"),
+])
+async def cleanup_loglevel(interaction: discord.Interaction, level: app_commands.Choice[str]):
+    await interaction.response.defer(ephemeral=True)
+    old = cfg.LOG_LEVEL
+    success, message = update_log_level(level.value)
+    embed = discord.Embed(
+        title="✅ Log Level Updated" if success else "⛔ Log Level Update Failed",
+        description=f"Log level changed from **{old}** to **{level.value}**." if success else f"⛔ {message}",
+        color=0x2ECC71 if success else 0xFF0000,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    log.info(f"Log level set to {level.value} by {interaction.user}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+@cleanup_group.command(name="warnunconfigured", description="Toggle warnings for unconfigured channels")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(enabled="Enable or disable unconfigured channel warnings")
+@app_commands.choices(enabled=[
+    app_commands.Choice(name="Enable", value="true"),
+    app_commands.Choice(name="Disable", value="false"),
+])
+async def cleanup_warnunconfigured(interaction: discord.Interaction, enabled: app_commands.Choice[str]):
+    await interaction.response.defer(ephemeral=True)
+    value = enabled.value == "true"
+    old = cfg.WARN_UNCONFIGURED
+    success, message = update_warn_unconfigured(value)
+    embed = discord.Embed(
+        title="✅ Setting Updated" if success else "⛔ Update Failed",
+        description=f"Warn unconfigured changed from **{'enabled' if old else 'disabled'}** to **{'enabled' if value else 'disabled'}**." if success else f"⛔ {message}",
+        color=0x2ECC71 if success else 0xFF0000,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    log.info(f"WARN_UNCONFIGURED set to {value} by {interaction.user}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 @schedule_group.command(name="list", description="Show current cleanup schedule")
