@@ -102,8 +102,8 @@ def setup_run_log(channel_count=None):
     log.info(f"║  Discord Cleanup Bot  v{BOT_VERSION:<34}║")
     log.info(f"║{_line2:<58}║")
     log.info("╚══════════════════════════════════════════════════════════╝")
-    log.info(f"Log file: {log_path}")
-    log.info(
+    log.debug(f"Log file: {log_path}")
+    log.debug(
         f"Config snapshot | CLEAN_TIMES={CLEAN_TIMES} | TZ={os.getenv('TZ', 'UTC')} | "
         f"LOG_LEVEL={LOG_LEVEL} | LOG_MAX_FILES={LOG_MAX_FILES} | DEFAULT_RETENTION={DEFAULT_RETENTION}"
     )
@@ -120,6 +120,13 @@ def setup_run_log(channel_count=None):
                 pass
             except PermissionError:
                 log.warning(f"Could not delete old log file {filename} — check directory permissions.")
+
+
+def log_restart_separator():
+    """Logs a separator line to mark a bot restart in the log file."""
+    now = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+    _line = f" Bot Restarted | {now} | v{BOT_VERSION} "
+    log.info(f"{'═' * 4}{_line:{'═'}<54}{'═' * 2}")
 
 
 def reload_channels():

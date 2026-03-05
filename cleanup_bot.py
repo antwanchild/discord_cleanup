@@ -20,7 +20,7 @@ from commands import cleanup_group
 import commands_stats
 import commands_config
 from notifications import post_deploy_notification, post_startup_notification, post_missed_run_alert, post_status_report
-from utils import update_health, register_task
+from utils import update_health, register_task, log_restart_separator
 
 MISSED_RUN_THRESHOLD_MINUTES = 15
 
@@ -135,9 +135,10 @@ register_task(cleanup_task, TASK_TZ, bot)
 
 @bot.event
 async def on_ready():
-    log.info(f"Logged in as {bot.user} | v{BOT_VERSION}")
-    log.info(f"Default retention: {cfg.DEFAULT_RETENTION} days")
-    log.info(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)} ({TASK_TZ})")
+    log_restart_separator()
+    log.debug(f"Logged in as {bot.user} | v{BOT_VERSION}")
+    log.debug(f"Default retention: {cfg.DEFAULT_RETENTION} days")
+    log.debug(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)} ({TASK_TZ})")
 
     for guild in bot.guilds:
         validate_channels(guild)
@@ -147,19 +148,19 @@ async def on_ready():
     bot.tree.clear_commands(guild=None)
     bot.tree.add_command(cleanup_group)
     await bot.tree.sync()
-    log.info("Slash commands registered and synced")
+    log.debug("Slash commands registered and synced")
 
     if not cleanup_task.is_running():
         cleanup_task.start()
-        log.info("Cleanup task started")
+        log.debug("Cleanup task started")
 
     if not monthly_report_task.is_running():
         monthly_report_task.start()
-        log.info("Monthly report task started")
+        log.debug("Monthly report task started")
 
     if not health_task.is_running():
         health_task.start()
-        log.info("Health task started")
+        log.debug("Health task started")
 
     update_health()
 
