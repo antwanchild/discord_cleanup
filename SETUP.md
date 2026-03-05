@@ -11,7 +11,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 - Category support — clean all channels under a Discord category automatically
 - Channel exclusions
 - Deep clean — opt-in per channel/category to also delete messages older than 14 days
-- Slash commands for manual runs, single channel cleanup, dry runs, stats, status, version, and reload
+- Slash commands for manual runs, single channel cleanup, dry runs, stats, status, version, reload, logs, schedule management, and live config editing
 - Startup validation — warns on boot if any configured channels are missing
 - Startup notification — posts to log channel on every boot
 - Graceful shutdown — finishes current channel before stopping on SIGTERM
@@ -101,6 +101,8 @@ LOG_LEVEL=INFO
 STATUS_REPORT_TIME=09:00
 ```
 
+> All variables marked ❌ can also be changed at runtime via slash commands without restarting the container.
+
 ---
 
 ## `channels.yml` Reference
@@ -169,6 +171,8 @@ Deep clean runs after the bulk delete pass and deletes old messages one at a tim
 
 All commands require Administrator permissions. Responses are ephemeral (only visible to you).
 
+### Cleanup
+
 | Command | Description |
 |---------|-------------|
 | `/cleanup run` | Trigger a full cleanup run on all configured channels |
@@ -176,9 +180,31 @@ All commands require Administrator permissions. Responses are ephemeral (only vi
 | `/cleanup dryrun` | Preview what would be deleted without actually deleting anything |
 | `/cleanup reload` | Reload channels.yml without restarting the container |
 | `/cleanup version` | Show current version and uptime |
-| `/cleanup status` | Show current config, channel list, and next scheduled run time |
+| `/cleanup status` | Show current config, channel list, and next scheduled run |
+| `/cleanup logs` | Download today's log file as a file attachment |
+
+### Stats
+
+| Command | Description |
+|---------|-------------|
 | `/cleanup stats view` | Show rolling 30-day, current month, and all-time cleanup statistics |
 | `/cleanup stats reset` | Reset stats for a chosen period (requires confirmation) |
+
+### Config — saved to `.env.discord_cleanup`, take effect immediately
+
+| Command | Description |
+|---------|-------------|
+| `/cleanup retention` | Set the default message retention period in days |
+| `/cleanup loglevel` | Set the log verbosity level (DEBUG, INFO, WARNING, ERROR) |
+| `/cleanup warnunconfigured` | Toggle warnings for unconfigured channels |
+
+### Schedule — saved to `.env.discord_cleanup`, reschedules task immediately
+
+| Command | Description |
+|---------|-------------|
+| `/cleanup schedule list` | Show current scheduled run times and next run |
+| `/cleanup schedule add` | Add a new scheduled run time e.g. `12:00` |
+| `/cleanup schedule remove` | Remove a scheduled run time |
 
 ---
 
@@ -252,7 +278,7 @@ After each cleanup run the bot updates a `stats.json` file in `/config/data` tra
 - **Current month** — resets on the 1st of each month
 - **All time** — never resets, cumulative totals since first run
 
-Stats are available on demand via `/cleanup stats` and as an automated monthly report posted to the report channel on the 1st of each month.
+Stats are available on demand via `/cleanup stats view` and as an automated monthly report posted to the report channel on the 1st of each month.
 
 ---
 
@@ -263,6 +289,7 @@ Stats are available on demand via `/cleanup stats` and as an automated monthly r
 | 🟢 Green | ✅ Cleanup Successful | Messages deleted successfully |
 | 🟢 Green | 🟢 Bot Online | Bot started successfully |
 | 🔵 Blue | ℹ️ Nothing to Clean | No messages met the retention threshold |
+| 🔵 Blue | 🕐 Schedule Updated | Cleanup schedule changed via slash command |
 | 🟠 Orange | ⚠️ Completed with Warnings | Some channels had issues but some deletions succeeded |
 | 🟠 Orange | ⚠️ Scheduled Run Delayed | A cleanup run did not start within 15 minutes of its scheduled time |
 | 🔴 Red | ⛔ Completed with Errors | Errors occurred and nothing was deleted |
@@ -284,3 +311,5 @@ cleanup-2026-02-23.log
 ```
 
 Each run opens with an ASCII art header showing the version and next scheduled run time, and closes with a footer showing total deleted and duration. Multiple runs on the same day are easy to distinguish. Files older than `LOG_MAX_FILES` days are automatically deleted.
+
+Today's log file can be downloaded directly from Discord via `/cleanup logs`.

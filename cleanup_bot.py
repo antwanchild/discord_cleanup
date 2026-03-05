@@ -1,5 +1,6 @@
 import asyncio
 import signal
+import warnings
 import discord
 from discord.ext import commands, tasks
 from datetime import datetime, time as dtime
@@ -7,6 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import os
 import logging
 
+warnings.filterwarnings("ignore", message=".*PyNaCl.*")
 
 from config import (
     BOT_VERSION, CLEAN_TIMES, STATUS_REPORT_TIME, TOKEN,
@@ -15,6 +17,8 @@ from config import (
 import config as cfg
 from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
+import commands_stats
+import commands_config
 from notifications import post_deploy_notification, post_startup_notification, post_missed_run_alert, post_status_report
 from utils import update_health, register_task
 
