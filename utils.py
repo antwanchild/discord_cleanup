@@ -268,11 +268,10 @@ def update_schedule(new_times: list) -> tuple[bool, str]:
         tz = _task_tz or ZoneInfo("UTC")
         times = [dtime(hour=int(t.split(":")[0]), minute=int(t.split(":")[1]), tzinfo=tz) for t in new_times]
         try:
-            if _cleanup_task.is_running():
-                _cleanup_task.cancel()
             _cleanup_task.change_interval(time=times)
-            _cleanup_task.start()
+            log.info(f"Cleanup task rescheduled to: {new_value}")
         except Exception as e:
+            log.warning(f"Could not reschedule task in memory — {e}. Schedule saved to env, will apply on restart.")
             log.error(f"Failed to restart cleanup task after schedule change — {e}")
             return False, f"Schedule saved but task restart failed — {e}"
 
