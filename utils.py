@@ -150,7 +150,6 @@ def reload_channels():
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:
     """Updates a single key in .env.discord_cleanup. Returns (success, message)."""
-    log.info(f"update_env_value called — key={key} value={value}")
     import config
     env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
     try:
