@@ -72,7 +72,7 @@ jobs:
           echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
           
       - name: Write commit message to file
-        run: tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g' | xargs > commit_msg.txt
+        run: tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g' > commit_msg.txt
 
       - name: Upload commit message artifact
         uses: actions/upload-artifact@v7
