@@ -8,8 +8,9 @@ from config import (
     BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_LEVEL, LOG_MAX_FILES, LOG_DIR, log
 )
 from cleanup import build_channel_map, run_cleanup
+from notifications import post_schedule_notification
 from stats import load_stats, reset_stats
-from utils import get_next_run_str, get_uptime_str, reload_channels, get_bot
+from utils import get_next_run_str, get_uptime_str, reload_channels, get_bot, update_schedule
 
 
 cleanup_group = app_commands.Group(name="cleanup", description="Discord Cleanup Bot commands")
@@ -273,6 +274,84 @@ async def cleanup_logs(interaction: discord.Interaction):
         file=discord.File(log_path, filename=f"cleanup-{today}.log"),
         ephemeral=True
     )
+
+
+schedule_group = app_commands.Group(name="schedule", description="Manage cleanup schedule", parent=cleanup_group)
+
+
+@schedule_group.command(name="list", description="Show current cleanup schedule")
+@app_commands.checks.has_permissions(administrator=True)
+async def schedule_list(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    embed = discord.Embed(
+        title="🕐 Cleanup Schedule",
+        description=(
+            f"🕐 Scheduled runs: **{', '.join(cfg.CLEAN_TIMES)}**\n"
+            f"⏭️ Next run: **{get_next_run_str()}**"
+        ),
+        color=0x5865F2,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+@schedule_group.command(name="add", description="Add a new scheduled run time")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(time="Time in 24hr format e.g. 12:00")
+async def schedule_add(interaction: discord.Interaction, time: str):
+    await interaction.response.defer(ephemeral=True)
+    current = list(cfg.CLEAN_TIMES)
+    if time in current:
+        await interaction.followup.send(f"⚠️ `{time}` is already in the schedule.", ephemeral=True)
+        return
+    old_times = list(current)
+    current.append(time)
+    current.sort()
+    success, message = update_schedule(current)
+    embed = discord.Embed(
+        title="✅ Schedule Updated" if success else "⛔ Schedule Update Failed",
+        description=f"Added `{time}` to schedule.\nNew schedule: **{message}**" if success else f"⛔ {message}",
+        color=0x2ECC71 if success else 0xFF0000,
+        timestamp=datetime.now()
+    )
+    if success:
+        embed.add_field(name="⏭️ Next run", value=f"**{get_next_run_str()}**", inline=False)
+        bot = get_bot()
+        await post_schedule_notification(bot, interaction.guild, old_times, current, str(interaction.user))
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    log.info(f"Schedule add '{time}' by {interaction.user} — {'success' if success else 'failed'}: {message}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+@schedule_group.command(name="remove", description="Remove a scheduled run time")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(time="Time to remove e.g. 12:00")
+async def schedule_remove(interaction: discord.Interaction, time: str):
+    await interaction.response.defer(ephemeral=True)
+    current = list(cfg.CLEAN_TIMES)
+    if time not in current:
+        await interaction.followup.send(f"⚠️ `{time}` is not in the current schedule.", ephemeral=True)
+        return
+    if len(current) == 1:
+        await interaction.followup.send("⛔ Cannot remove the last scheduled run time — at least one is required.", ephemeral=True)
+        return
+    old_times = list(current)
+    current.remove(time)
+    success, message = update_schedule(current)
+    embed = discord.Embed(
+        title="✅ Schedule Updated" if success else "⛔ Schedule Update Failed",
+        description=f"Removed `{time}` from schedule.\nNew schedule: **{message}**" if success else f"⛔ {message}",
+        color=0x2ECC71 if success else 0xFF0000,
+        timestamp=datetime.now()
+    )
+    if success:
+        embed.add_field(name="⏭️ Next run", value=f"**{get_next_run_str()}**", inline=False)
+        bot = get_bot()
+        await post_schedule_notification(bot, interaction.guild, old_times, current, str(interaction.user))
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    log.info(f"Schedule remove '{time}' by {interaction.user} — {'success' if success else 'failed'}: {message}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 @cleanup_group.error

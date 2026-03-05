@@ -137,6 +137,28 @@ async def post_status_report(bot, guild):
     log.info("Monthly status report posted")
 
 
+async def post_schedule_notification(bot, guild, old_times: list, new_times: list, changed_by: str):
+    """Posts a notification when the cleanup schedule is changed."""
+    log_channel = bot.get_channel(LOG_CHANNEL_ID)
+    if not log_channel:
+        log.warning("Could not post schedule notification — log channel not found")
+        return
+    embed = discord.Embed(
+        title="🕐 Schedule Updated",
+        description=(
+            f"🏠 Server: **{guild.name}**\n"
+            f"👤 Changed by: **{changed_by}**\n\n"
+            f"**Before:** `{', '.join(old_times)}`\n"
+            f"**After:** `{', '.join(new_times)}`"
+        ),
+        color=0x5865F2,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await log_channel.send(embed=embed)
+    log.info(f"Schedule notification posted — {', '.join(old_times)} -> {', '.join(new_times)}")
+
+
 async def post_missed_run_alert(bot, guild, scheduled_time: str):
     """Posts an alert when a scheduled run is delayed beyond the threshold."""
     log_channel = bot.get_channel(LOG_CHANNEL_ID)

@@ -140,3 +140,64 @@ def reload_channels():
     except yaml.YAMLError as e:
         log.error(f"channels.yml is malformed during reload — {e}")
         return False, f"channels.yml is malformed — {e}"
+
+
+def update_schedule(new_times: list) -> tuple[bool, str]:
+    """Updates CLEAN_TIME in .env file and reschedules the cleanup task. Returns (success, message)."""
+    import config
+    from zoneinfo import ZoneInfo
+    from datetime import time as dtime
+
+    env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
+
+    # Validate time formats
+    for t in new_times:
+        try:
+            hour, minute = map(int, t.split(":"))
+            if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                raise ValueError
+        except (ValueError, AttributeError):
+            return False, f"`{t}` is not a valid time — use 24hr format e.g. `03:00`"
+
+    # Read existing env file
+    try:
+        with open(env_path, "r") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        return False, f".env.discord_cleanup not found at `{env_path}`"
+    except PermissionError:
+        return False, "Permission denied reading .env.discord_cleanup"
+
+    # Update or append CLEAN_TIME
+    new_value = ",".join(new_times)
+    found = False
+    new_lines = []
+    for line in lines:
+        if line.startswith("CLEAN_TIME="):
+            new_lines.append(f"CLEAN_TIME={new_value}\n")
+            found = True
+        else:
+            new_lines.append(line)
+    if not found:
+        new_lines.append(f"CLEAN_TIME={new_value}\n")
+
+    try:
+        with open(env_path, "w") as f:
+            f.writelines(new_lines)
+    except PermissionError:
+        return False, "Permission denied writing .env.discord_cleanup"
+
+    # Update in-memory config
+    config.CLEAN_TIMES = new_times
+
+    # Restart the cleanup task with new times
+    if _cleanup_task is not None:
+        tz = _task_tz or ZoneInfo("UTC")
+        times = [dtime(hour=int(t.split(":")[0]), minute=int(t.split(":")[1]), tzinfo=tz) for t in new_times]
+        if _cleanup_task.is_running():
+            _cleanup_task.cancel()
+        _cleanup_task.change_interval(time=times)
+        _cleanup_task.start()
+        log.info(f"Schedule updated to: {new_value}")
+
+    return True, new_value
