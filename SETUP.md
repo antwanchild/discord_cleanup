@@ -183,6 +183,7 @@ All commands require Administrator permissions. Responses are ephemeral (only vi
 | `/cleanup version` | Show current version and uptime |
 | `/cleanup status` | Show current config, channel list, and next scheduled run |
 | `/cleanup logs` | Download today's log file as a file attachment |
+| `/cleanup test` | Post a test notification to the log channel |
 
 ### Stats
 
@@ -195,9 +196,10 @@ All commands require Administrator permissions. Responses are ephemeral (only vi
 
 | Command | Description |
 |---------|-------------|
-| `/cleanup retention` | Set the default message retention period in days |
-| `/cleanup loglevel` | Set the log verbosity level (DEBUG, INFO, WARNING, ERROR) |
-| `/cleanup warnunconfigured` | Toggle warnings for unconfigured channels |
+| `/cleanup config retention` | Set the default message retention period in days |
+| `/cleanup config loglevel` | Set the log verbosity level (DEBUG, INFO, WARNING, ERROR) |
+| `/cleanup config warnunconfigured` | Toggle warnings for unconfigured channels |
+| `/cleanup config reportfrequency` | Set how often the stats report is posted (monthly, weekly, both) |
 
 ### Schedule — saved to `.env.discord_cleanup`, reschedules task immediately
 
