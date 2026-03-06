@@ -116,7 +116,7 @@ async def monthly_report_task():
         label = "monthly" if is_first_of_month else "weekly"
         log.info(f"{label.capitalize()} report triggered — posting now")
         for guild in bot.guilds:
-            await post_status_report(bot, guild)
+            await post_status_report(bot, guild, label)
 
 
 @tasks.loop(minutes=1)

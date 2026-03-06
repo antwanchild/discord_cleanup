@@ -99,8 +99,8 @@ async def post_deploy_notification(bot, guild):
     await log_channel.send(embed=embed)
 
 
-async def post_status_report(bot, guild):
-    """Posts a monthly stats report to the report channel."""
+async def post_status_report(bot, guild, label: str = "monthly"):
+    """Posts a scheduled stats report to the report channel."""
     report_channel = bot.get_channel(REPORT_CHANNEL_ID)
     if not report_channel:
         log.warning("Could not post status report — report channel not found")
@@ -129,8 +129,10 @@ async def post_status_report(bot, guild):
         else:
             diff_str = f"\n➡️ vs last month: **no change** ({prev})"
 
+    title = f"📊 {'Weekly' if label == 'weekly' else 'Monthly'} Cleanup Report"
+
     embed = discord.Embed(
-        title="📊 Monthly Cleanup Report",
+        title=title,
         description=(
             f"🏠 Server: **{guild.name}**\n"
             f"📅 Period: **Since {monthly.get('reset', 'N/A')}**\n"
@@ -157,7 +159,7 @@ async def post_status_report(bot, guild):
 
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await report_channel.send(embed=embed)
-    log.info("Monthly status report posted")
+    log.info(f"{label.capitalize()} status report posted")
 
 
 async def post_schedule_notification(bot, guild, old_times: list, new_times: list, changed_by: str):
