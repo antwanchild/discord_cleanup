@@ -112,7 +112,6 @@ jobs:
         with:
           context: .
           push: true
-          # Use the outputs from the meta step above
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -128,6 +127,21 @@ jobs:
           name: v${{ steps.bump.outputs.version }}
           body: ${{ steps.bump.outputs.commit_msg }}
           generate_release_notes: true
+
+      - name: Delete old GitHub Releases
+        if: steps.bump.outputs.bump_type != 'patch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          releases=$(gh release list --limit 100 --json tagName --jq '.[].tagName')
+          count=0
+          for tag in $releases; do
+            count=$((count + 1))
+            if [ "$count" -gt 10 ]; then
+              echo "Deleting release $tag"
+              gh release delete "$tag" --yes --cleanup-tag
+            fi
+          done
 
       - name: Delete old GHCR images
         uses: actions/delete-package-versions@v5
