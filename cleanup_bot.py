@@ -18,6 +18,7 @@ import config as cfg
 from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
 import commands_stats
+from stats import migrate_stats
 import commands_config
 from notifications import post_deploy_notification, post_startup_notification, post_missed_run_alert, post_status_report
 from utils import update_health, register_task, log_restart_separator
@@ -154,6 +155,7 @@ async def on_ready():
     log.debug(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)} ({TASK_TZ})")
 
     for guild in bot.guilds:
+        migrate_stats(guild)
         validate_channels(guild)
         await post_deploy_notification(bot, guild)
         await post_startup_notification(bot, guild)
