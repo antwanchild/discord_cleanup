@@ -81,53 +81,6 @@ def update_stats(channel_results: dict):
     log.info(f"Stats updated | Run total: {total_deleted} | All-time: {stats['all_time']['deleted']}")
 
 
-def migrate_stats(guild) -> None:
-    """Migrates stats from name-keyed to ID-keyed format. Runs once, marked with migrated flag."""
-    stats = load_stats()
-
-    if stats.get("migrated"):
-        return
-
-    log.info("Migrating stats to ID-keyed format...")
-
-    # Build name -> id map from guild channels
-    name_to_id = {ch.name: str(ch.id) for ch in guild.text_channels}
-
-    migrated_count = 0
-    for bucket in ["all_time", "rolling_30", "monthly"]:
-        old_channels = stats[bucket].get("channels", {})
-        new_channels = {}
-        orphaned = {}
-
-        # First pass — collect all already-migrated entries
-        for key, value in old_channels.items():
-            if isinstance(value, dict):
-                new_channels[key] = value
-
-        # Second pass — convert old name-keyed entries
-        for key, value in old_channels.items():
-            if isinstance(value, dict):
-                continue
-            ch_id = name_to_id.get(key)
-            if ch_id:
-                if ch_id in new_channels:
-                    # Merge counts
-                    new_channels[ch_id]["count"] += value
-                else:
-                    new_channels[ch_id] = {"name": key, "count": value}
-                migrated_count += 1
-            else:
-                orphaned[key] = value
-
-        # Keep orphaned entries that couldn't be matched
-        new_channels.update(orphaned)
-        stats[bucket]["channels"] = new_channels
-
-    stats["migrated"] = True
-    save_stats(stats)
-    log.info(f"Stats migration complete — {migrated_count} entries converted")
-
-
 def reset_stats(scope: str) -> bool:
     """Resets stats for the given scope: 'rolling', 'monthly', or 'all'."""
     stats = load_stats()
