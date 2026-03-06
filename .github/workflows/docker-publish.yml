@@ -102,31 +102,28 @@ jobs:
             COMMITS=$(git log --format="%H %s" --no-merges -n 50)
           fi
 
-          > CHANGELOG
+          true > CHANGELOG.tmp
 
           # Walk commits oldest to newest, track version bumps
           VERSION="$CURRENT_VERSION"
           while IFS= read -r line; do
-            SHA=$(echo "$line" | cut -d' ' -f1)
             MSG=$(echo "$line" | cut -d' ' -f2-)
             if echo "$MSG" | grep -q "^Auto bump version to "; then
               VERSION=$(echo "$MSG" | sed 's/Auto bump version to //')
             else
-              echo "$VERSION|$MSG" >> CHANGELOG.tmp
+              echo "${VERSION}|${MSG}" >> CHANGELOG.tmp
             fi
           done <<EOF
           $(echo "$COMMITS" | tac)
           EOF
 
           # Reverse back to newest first for display
-          if [ -f CHANGELOG.tmp ]; then
+          if [ -s CHANGELOG.tmp ]; then
             tac CHANGELOG.tmp > CHANGELOG
-            rm CHANGELOG.tmp
-          fi
-
-          if [ ! -s CHANGELOG ]; then
+          else
             echo "${CURRENT_VERSION}|No changes recorded" > CHANGELOG
           fi
+          rm -f CHANGELOG.tmp
 
           echo "Changelog:"
           cat CHANGELOG
