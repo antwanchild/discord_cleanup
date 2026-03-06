@@ -105,17 +105,18 @@ jobs:
           true > CHANGELOG.tmp
 
           # Walk commits oldest to newest, track version bumps
-          VERSION="$CURRENT_VERSION"
+          VERSION=""
           while IFS= read -r line; do
             MSG=$(echo "$line" | cut -d' ' -f2-)
             if echo "$MSG" | grep -q "^Auto bump version to "; then
               VERSION="${MSG#Auto bump version to }"
-            else
+            elif [ -n "$VERSION" ]; then
               echo "${VERSION}|${MSG}" >> CHANGELOG.tmp
             fi
           done <<EOF
           $(echo "$COMMITS" | tac)
           EOF
+
 
           # Reverse back to newest first for display
           if [ -s CHANGELOG.tmp ]; then
