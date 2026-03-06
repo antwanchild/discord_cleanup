@@ -88,12 +88,27 @@ async def post_deploy_notification(bot, guild):
         log.info(f"First run detected — posting deploy notification for v{BOT_VERSION}")
         description = f"First deployment of **v{BOT_VERSION}**"
 
+    # Read changelog if available
+    changelog = None
+    try:
+        with open("CHANGELOG", "r") as f:
+            content = f.read().strip()
+            if content and content != "- No changes recorded":
+                changelog = content
+    except FileNotFoundError:
+        pass
+
     embed = discord.Embed(
         title=f"🚀 New Version Deployed — v{BOT_VERSION}",
         description=description,
         color=0x5865F2,
         timestamp=datetime.now()
     )
+    if changelog:
+        # Truncate if too long for Discord field limit
+        if len(changelog) > 1000:
+            changelog = changelog[:997] + "..."
+        embed.add_field(name="📝 Changes", value=changelog, inline=False)
     embed.add_field(name="🐳 Image", value=f"`ghcr.io/antwanchild/discord_cleanup:{BOT_VERSION}`", inline=False)
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await log_channel.send(embed=embed)

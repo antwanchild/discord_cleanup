@@ -91,6 +91,20 @@ jobs:
           git commit -m "Auto bump version to ${{ steps.bump.outputs.version }}"
           git push
 
+      - name: Generate changelog
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            git log "${LAST_TAG}..HEAD" --format="- %s" --no-merges | grep -v "^- Auto bump version" > CHANGELOG || true
+          else
+            git log --format="- %s" --no-merges -n 20 | grep -v "^- Auto bump version" > CHANGELOG || true
+          fi
+          if [ ! -s CHANGELOG ]; then
+            echo "- No changes recorded" > CHANGELOG
+          fi
+          echo "Changelog:"
+          cat CHANGELOG
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
