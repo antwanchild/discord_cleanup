@@ -108,8 +108,26 @@ async def post_status_report(bot, guild):
 
     stats = load_stats()
     monthly = stats.get("monthly", {})
+    last_month = stats.get("last_month")
     channels = monthly.get("channels", {})
-    top_channels = sorted(channels.items(), key=lambda x: x[1], reverse=True)[:10]
+    top_channels = sorted(
+        channels.items(),
+        key=lambda x: x[1]["count"] if isinstance(x[1], dict) else x[1],
+        reverse=True
+    )[:10]
+
+    # Build diff string if last month data exists
+    diff_str = ""
+    if last_month:
+        prev = last_month.get("deleted", 0)
+        curr = monthly.get("deleted", 0)
+        delta = curr - prev
+        if delta > 0:
+            diff_str = f"\n📈 vs last month: **+{delta}** ({prev} → {curr})"
+        elif delta < 0:
+            diff_str = f"\n📉 vs last month: **{delta}** ({prev} → {curr})"
+        else:
+            diff_str = f"\n➡️ vs last month: **no change** ({prev})"
 
     embed = discord.Embed(
         title="📊 Monthly Cleanup Report",
@@ -117,16 +135,21 @@ async def post_status_report(bot, guild):
             f"🏠 Server: **{guild.name}**\n"
             f"📅 Period: **Since {monthly.get('reset', 'N/A')}**\n"
             f"🔁 Runs completed: **{monthly.get('runs', 0)}**\n"
-            f"🗑️ Total deleted: **{monthly.get('deleted', 0)}**\n"
+            f"🗑️ Total deleted: **{monthly.get('deleted', 0)}**{diff_str}\n"
             f"📋 Active channels: **{len(channels)}**"
         ),
         color=0xE67E22,
         timestamp=datetime.now()
     )
+
     if top_channels:
+        def ch_display(ch_id, ch_data):
+            if isinstance(ch_data, dict):
+                return f"`#{ch_data['name']}` — **{ch_data['count']}** deleted"
+            return f"`#{ch_id}` — **{ch_data}** deleted"
         embed.add_field(
             name="🏆 Top Channels",
-            value="\n".join([f"`#{ch}` — **{count}** deleted" for ch, count in top_channels]),
+            value="\n".join([ch_display(ch_id, ch_data) for ch_id, ch_data in top_channels]),
             inline=False
         )
     else:

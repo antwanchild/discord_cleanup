@@ -13,7 +13,8 @@ def _empty_stats():
     return {
         "all_time": {"runs": 0, "deleted": 0, "channels": {}},
         "rolling_30": {"runs": 0, "deleted": 0, "channels": {}, "reset": now},
-        "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": now}
+        "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": now},
+        "last_month": None
     }
 
 
@@ -61,6 +62,11 @@ def update_stats(channel_results: dict):
     monthly_reset = datetime.strptime(stats["monthly"]["reset"], "%Y-%m-%d")
     if now.month != monthly_reset.month or now.year != monthly_reset.year:
         log.info("Resetting monthly stats")
+        stats["last_month"] = {
+            "runs": stats["monthly"]["runs"],
+            "deleted": stats["monthly"]["deleted"],
+            "reset": stats["monthly"]["reset"]
+        }
         stats["monthly"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}
 
     total_deleted = sum(v["count"] for v in channel_results.values() if v["count"] > 0)
