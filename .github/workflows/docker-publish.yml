@@ -70,6 +70,8 @@ jobs:
           echo "$NEW_VERSION" > VERSION
           echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
+          COMMIT_MSG=$(tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g')
+          echo "commit_msg=$COMMIT_MSG" >> "$GITHUB_OUTPUT"
           
       - name: Write commit message to file
         run: tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g' > commit_msg.txt
