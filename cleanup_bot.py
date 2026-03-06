@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", message=".*PyNaCl.*")
 
 from config import (
     BOT_VERSION, CLEAN_TIMES, STATUS_REPORT_TIME, TOKEN,
-    LOG_LEVEL, log
+    LOG_LEVEL, REPORT_FREQUENCY, log
 )
 import config as cfg
 from cleanup import run_cleanup, validate_channels
@@ -99,9 +99,22 @@ async def cleanup_task():
 
 @tasks.loop(time=report_time)
 async def monthly_report_task():
-    """Checks if it's the 1st of the month and posts the monthly report."""
-    if datetime.now(TASK_TZ).day == 1:
-        log.info("1st of month — posting monthly report")
+    """Posts scheduled reports based on REPORT_FREQUENCY setting."""
+    import config
+    now = datetime.now(TASK_TZ)
+    is_first_of_month = now.day == 1
+    is_monday = now.weekday() == 0  # 0 = Monday
+    freq = config.REPORT_FREQUENCY
+
+    should_post = (
+        (freq == "monthly" and is_first_of_month) or
+        (freq == "weekly" and is_monday) or
+        (freq == "both" and (is_first_of_month or is_monday))
+    )
+
+    if should_post:
+        label = "monthly" if is_first_of_month else "weekly"
+        log.info(f"{label.capitalize()} report triggered — posting now")
         for guild in bot.guilds:
             await post_status_report(bot, guild)
 

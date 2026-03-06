@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <Container version="2">
-  <n>discord_cleanup</n>
+  <Name>discord_cleanup</Name>
   <Repository>ghcr.io/antwanchild/discord_cleanup:latest</Repository>
   <Registry>https://github.com/antwanchild/discord_cleanup/pkgs/container/discord_cleanup</Registry>
   <Network>bridge</Network>
@@ -44,7 +44,9 @@
 
   <Config Name="LOG_LEVEL" Target="LOG_LEVEL" Default="INFO" Mode="" Description="Log verbosity level: DEBUG, INFO, WARNING, ERROR." Type="Variable" Display="advanced" Required="false" Mask="false">INFO</Config>
 
-  <Config Name="STATUS_REPORT_TIME" Target="STATUS_REPORT_TIME" Default="09:00" Mode="" Description="Time to post the monthly stats report on the 1st of each month (24hr format)." Type="Variable" Display="advanced" Required="false" Mask="false">09:00</Config>
+  <Config Name="STATUS_REPORT_TIME" Target="STATUS_REPORT_TIME" Default="09:00" Mode="" Description="Time to post the stats report (24hr format)." Type="Variable" Display="advanced" Required="false" Mask="false">09:00</Config>
+
+  <Config Name="REPORT_FREQUENCY" Target="REPORT_FREQUENCY" Default="monthly" Mode="" Description="How often to post the stats report: monthly (1st of month), weekly (every Monday), or both." Type="Variable" Display="advanced" Required="false" Mask="false">monthly</Config>
 
   <Config Name="WARN_UNCONFIGURED" Target="WARN_UNCONFIGURED" Default="false" Mode="" Description="Log a warning for any Discord channels not listed in channels.yml. Set to true to enable." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
 

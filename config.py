@@ -4,11 +4,9 @@ import logging
 import yaml
 from datetime import datetime
 from dotenv import load_dotenv
-logging.getLogger("discord.client").setLevel(logging.ERROR)
 
 CONFIG_DIR = "/config"
 BOT_START_TIME = datetime.now()
-
 
 
 def create_default_files():
@@ -39,6 +37,8 @@ def create_default_files():
                         "LOG_LEVEL=INFO\n\n"
                         "# Time to post monthly report on the 1st (24hr format)\n"
                         "STATUS_REPORT_TIME=09:00\n\n"
+                        "# Report frequency: monthly, weekly, or both\n"
+                        "REPORT_FREQUENCY=monthly\n\n"
                         "# Warn about Discord channels not in channels.yml (true/false)\n"
                         "WARN_UNCONFIGURED=false\n")
             print(f"{CONFIG_DIR}/.env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
@@ -114,6 +114,7 @@ CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if
 LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
 DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
 STATUS_REPORT_TIME = os.getenv("STATUS_REPORT_TIME", "09:00")
+REPORT_FREQUENCY = os.getenv("REPORT_FREQUENCY", "monthly").lower()
 WARN_UNCONFIGURED = os.getenv("WARN_UNCONFIGURED", "false").lower() == "true"
 
 # --- Paths ---

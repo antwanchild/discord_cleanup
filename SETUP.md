@@ -21,7 +21,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 - Multi-message breakdown — automatically splits into multiple embeds if channel count is large
 - Cleanup statistics — rolling 30-day, current month, and all-time tracking
 - Stats reset — reset any stat period via slash command with confirmation
-- Monthly automated report — posts to report channel on the 1st of each month
+- Monthly automated report — posts to report channel on the 1st of each month, weekly every Monday, or both
 - Color-coded Discord embed notifications
 - Date-stamped rotating log files with ASCII art headers and run footers
 - Rate limit handling with automatic retry
@@ -85,7 +85,8 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `DEFAULT_RETENTION` | ❌ | `7` | Default message retention in days |
 | `LOG_MAX_FILES` | ❌ | `7` | Number of daily log files to retain |
 | `LOG_LEVEL` | ❌ | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post monthly report on the 1st (24hr format) |
+| `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post stats report (24hr format) |
+| `REPORT_FREQUENCY` | ❌ | `monthly` | Report frequency: `monthly`, `weekly`, or `both` |
 | `WARN_UNCONFIGURED` | ❌ | `false` | Log a warning for any Discord channels not in channels.yml |
 
 ### Example `.env.discord_cleanup`
