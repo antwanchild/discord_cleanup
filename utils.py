@@ -150,6 +150,7 @@ def reload_channels():
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:
     """Updates a single key in .env.discord_cleanup. Returns (success, message)."""
+    import time
     env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
     try:
         with open(env_path, "r") as f:
@@ -170,13 +171,19 @@ def update_env_value(key: str, value: str) -> tuple[bool, str]:
     if not found:
         new_lines.append(f"{key}={value}\n")
 
-    try:
-        with open(env_path, "w") as f:
-            f.writelines(new_lines)
-    except PermissionError:
-        return False, "Permission denied writing .env.discord_cleanup"
+    last_error = None
+    for attempt in range(3):
+        try:
+            with open(env_path, "w") as f:
+                f.writelines(new_lines)
+            return True, value
+        except PermissionError as e:
+            last_error = e
+            if attempt < 2:
+                log.warning(f"Could not write .env.discord_cleanup (attempt {attempt + 1}/3) — retrying...")
+                time.sleep(0.5)
 
-    return True, value
+    return False, f"Permission denied writing .env.discord_cleanup after 3 attempts — {last_error}"
 
 
 def update_retention(days: int) -> tuple[bool, str]:
