@@ -201,7 +201,6 @@ All commands require Administrator permissions. Responses are ephemeral (only vi
 
 | Command | Description |
 |---------|-------------|
-| `/cleanup config view` | Show all current configuration values |
 | `/cleanup config retention` | Set the default message retention period in days |
 | `/cleanup config loglevel` | Set the log verbosity level (DEBUG, INFO, WARNING, ERROR) |
 | `/cleanup config warnunconfigured` | Toggle warnings for unconfigured channels |
