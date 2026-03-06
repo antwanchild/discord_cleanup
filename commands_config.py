@@ -5,8 +5,31 @@ from datetime import datetime
 import config as cfg
 from config import BOT_VERSION, log
 from notifications import post_schedule_notification
-from utils import get_next_run_str, get_bot, update_schedule, update_retention, update_log_level, update_warn_unconfigured
+from utils import get_next_run_str, get_bot, update_schedule, update_retention, update_log_level, update_warn_unconfigured, update_report_frequency
 from commands import cleanup_group
+
+
+@cleanup_group.command(name="reportfrequency", description="Set how often the stats report is posted")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(frequency="Report frequency")
+@app_commands.choices(frequency=[
+    app_commands.Choice(name="Monthly (1st of month)", value="monthly"),
+    app_commands.Choice(name="Weekly (every Monday)", value="weekly"),
+    app_commands.Choice(name="Both", value="both"),
+])
+async def cleanup_reportfrequency(interaction: discord.Interaction, frequency: app_commands.Choice[str]):
+    await interaction.response.defer(ephemeral=True)
+    old = cfg.REPORT_FREQUENCY
+    success, message = update_report_frequency(frequency.value)
+    embed = discord.Embed(
+        title="✅ Report Frequency Updated" if success else "⛔ Update Failed",
+        description=f"Report frequency changed from **{old}** to **{frequency.value}**." if success else f"⛔ {message}",
+        color=0x2ECC71 if success else 0xFF0000,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    log.info(f"Report frequency set to {frequency.value} by {interaction.user}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 schedule_group = app_commands.Group(name="schedule", description="Manage cleanup schedule", parent=cleanup_group)
@@ -137,10 +160,6 @@ async def schedule_remove(interaction: discord.Interaction, time: str):
     if len(current) == 1:
         await interaction.followup.send("⛔ Cannot remove the last scheduled run time — at least one is required.", ephemeral=True)
         return
-
-    success, message = update_schedule(current)
-
-
     old_times = list(current)
     current.remove(time)
     success, message = update_schedule(current)

@@ -45,6 +45,7 @@ def get_next_run_str(cleanup_task=None, task_tz=None):
     tz = task_tz or _task_tz or ZoneInfo("UTC")
     if task and task.is_running() and task.next_iteration:
         return task.next_iteration.astimezone(tz).strftime('%Y-%m-%d %I:%M %p')
+    # Fallback before task starts
     now = datetime.now(tz)
     for t in sorted(CLEAN_TIMES):
         hour, minute = map(int, t.split(":"))
@@ -177,6 +178,7 @@ def update_env_value(key: str, value: str) -> tuple[bool, str]:
     except PermissionError:
         return False, "Permission denied writing .env.discord_cleanup"
 
+    # Update in-memory config
     setattr(config, key, value)
     log.info(f"{key} updated to: {value}")
     return True, value
@@ -217,9 +219,19 @@ def update_warn_unconfigured(enabled: bool) -> tuple[bool, str]:
     return success, message
 
 
-def update_schedule(new_times: list) -> tuple[bool, str]:
+def update_report_frequency(frequency: str) -> tuple[bool, str]:
+    """Updates REPORT_FREQUENCY in env and in-memory config."""
+    import config
+    valid = ["monthly", "weekly", "both"]
+    if frequency.lower() not in valid:
+        return False, f"Invalid frequency — must be one of: {', '.join(valid)}"
+    success, message = update_env_value("REPORT_FREQUENCY", frequency.lower())
+    if success:
+        config.REPORT_FREQUENCY = frequency.lower()
+    return success, message
     """Updates CLEAN_TIME in .env file and reschedules the cleanup task. Returns (success, message)."""
     import config
+    from zoneinfo import ZoneInfo
     from datetime import time as dtime
 
     env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
@@ -264,16 +276,14 @@ def update_schedule(new_times: list) -> tuple[bool, str]:
     # Update in-memory config
     config.CLEAN_TIMES = new_times
 
+    # Restart the cleanup task with new times
     if _cleanup_task is not None:
         tz = _task_tz or ZoneInfo("UTC")
         times = [dtime(hour=int(t.split(":")[0]), minute=int(t.split(":")[1]), tzinfo=tz) for t in new_times]
-        try:
-            _cleanup_task.change_interval(time=times)
-            log.info(f"Cleanup task rescheduled to: {new_value}")
-        except Exception as e:
-            log.warning(f"Could not reschedule task in memory — {e}. Schedule saved to env, will apply on restart.")
-            log.error(f"Failed to restart cleanup task after schedule change — {e}")
-            return False, f"Schedule saved but task restart failed — {e}"
+        if _cleanup_task.is_running():
+            _cleanup_task.cancel()
+        _cleanup_task.change_interval(time=times)
+        _cleanup_task.start()
+        log.info(f"Schedule updated to: {new_value}")
 
-    log.info(f"Schedule updated to: {new_value}")
     return True, new_value
