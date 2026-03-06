@@ -63,14 +63,19 @@ def update_stats(channel_results: dict):
         log.info("Resetting monthly stats")
         stats["monthly"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}
 
-    total_deleted = sum(v for v in channel_results.values() if v > 0)
+    total_deleted = sum(v["count"] for v in channel_results.values() if v["count"] > 0)
 
     for bucket in ["all_time", "rolling_30", "monthly"]:
         stats[bucket]["runs"] += 1
         stats[bucket]["deleted"] += total_deleted
-        for ch_name, count in channel_results.items():
-            if count > 0:
-                stats[bucket]["channels"][ch_name] = stats[bucket]["channels"].get(ch_name, 0) + count
+        for ch_id, ch_data in channel_results.items():
+            if ch_data["count"] > 0:
+                if ch_id not in stats[bucket]["channels"]:
+                    stats[bucket]["channels"][ch_id] = {"name": ch_data["name"], "count": 0}
+                else:
+                    # Update name in case it changed
+                    stats[bucket]["channels"][ch_id]["name"] = ch_data["name"]
+                stats[bucket]["channels"][ch_id]["count"] += ch_data["count"]
 
     save_stats(stats)
     log.info(f"Stats updated | Run total: {total_deleted} | All-time: {stats['all_time']['deleted']}")

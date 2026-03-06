@@ -18,7 +18,11 @@ async def stats_view(interaction: discord.Interaction):
     all_time = stats.get("all_time", {})
     rolling_30 = stats.get("rolling_30", {})
     monthly = stats.get("monthly", {})
-    top_channels = sorted(all_time.get("channels", {}).items(), key=lambda x: x[1], reverse=True)[:5]
+    top_channels = sorted(
+        all_time.get("channels", {}).items(),
+        key=lambda x: x[1]["count"] if isinstance(x[1], dict) else x[1],
+        reverse=True
+    )[:5]
 
     embed = discord.Embed(
         title="📊 Cleanup Statistics",
@@ -38,9 +42,13 @@ async def stats_view(interaction: discord.Interaction):
         timestamp=datetime.now()
     )
     if top_channels:
+        def ch_display(ch_id, ch_data):
+            if isinstance(ch_data, dict):
+                return f"`#{ch_data['name']}` — **{ch_data['count']}** deleted"
+            return f"`#{ch_id}` — **{ch_data}** deleted"
         embed.add_field(
             name="🏆 Top 5 Channels (All Time)",
-            value="\n".join([f"`#{ch}` — **{count}** deleted" for ch, count in top_channels]),
+            value="\n".join([ch_display(ch_id, ch_data) for ch_id, ch_data in top_channels]),
             inline=False
         )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
