@@ -96,14 +96,6 @@ jobs:
           CURRENT_VERSION="${{ steps.bump.outputs.version }}"
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-          if [ -n "$LAST_TAG" ]; then
-            COMMITS=$(git log "${LAST_TAG}..HEAD" --format="%H %s" --no-merges)
-          else
-            COMMITS=$(git log --format="%H %s" --no-merges -n 50)
-          fi
-
-          true > CHANGELOG.tmp
-
           # Write commits to file for processing
           if [ -n "$LAST_TAG" ]; then
             git log "${LAST_TAG}..HEAD" --format="%s" --no-merges > /tmp/commits_newest.txt
@@ -142,17 +134,8 @@ jobs:
           fi
           rm -f CHANGELOG.tmp /tmp/commits_newest.txt /tmp/commits_oldest.txt
 
-
-          # Reverse back to newest first for display
-          if [ -s CHANGELOG.tmp ]; then
-            tac CHANGELOG.tmp > CHANGELOG
-          else
-            echo "${CURRENT_VERSION}|No changes recorded" > CHANGELOG
-          fi
-          rm -f CHANGELOG.tmp
-
           echo "Changelog:"
-          cat CHANGELOG
+          cat CHANGELOG  
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
