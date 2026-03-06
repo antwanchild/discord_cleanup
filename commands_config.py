@@ -4,7 +4,7 @@ from datetime import datetime
 
 import config as cfg
 from config import BOT_VERSION, log
-from notifications import post_schedule_notification
+from notifications import post_schedule_notification, post_schedule_error_notification
 from utils import get_next_run_str, get_bot, update_schedule, update_retention, update_log_level, update_warn_unconfigured, update_report_frequency
 from commands import cleanup_group
 
@@ -133,7 +133,7 @@ async def schedule_add(interaction: discord.Interaction, time: str):
     old_times = list(current)
     current.append(time)
     current.sort()
-    success, message = update_schedule(current)
+    success, message, reschedule_error = update_schedule(current)
     embed = discord.Embed(
         title="✅ Schedule Updated" if success else "⛔ Schedule Update Failed",
         description=f"Added `{time}` to schedule.\nNew schedule: **{message}**" if success else f"⛔ {message}",
@@ -144,6 +144,8 @@ async def schedule_add(interaction: discord.Interaction, time: str):
         embed.add_field(name="⏭️ Next run", value=f"**{get_next_run_str()}**", inline=False)
         bot = get_bot()
         await post_schedule_notification(bot, interaction.guild, old_times, current, str(interaction.user))
+        if reschedule_error:
+            await post_schedule_error_notification(bot, interaction.guild, reschedule_error)
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     log.info(f"Schedule add '{time}' by {interaction.user} — {'success' if success else 'failed'}: {message}")
     await interaction.followup.send(embed=embed, ephemeral=True)
@@ -163,7 +165,7 @@ async def schedule_remove(interaction: discord.Interaction, time: str):
         return
     old_times = list(current)
     current.remove(time)
-    success, message = update_schedule(current)
+    success, message, reschedule_error = update_schedule(current)
     embed = discord.Embed(
         title="✅ Schedule Updated" if success else "⛔ Schedule Update Failed",
         description=f"Removed `{time}` from schedule.\nNew schedule: **{message}**" if success else f"⛔ {message}",
@@ -174,6 +176,8 @@ async def schedule_remove(interaction: discord.Interaction, time: str):
         embed.add_field(name="⏭️ Next run", value=f"**{get_next_run_str()}**", inline=False)
         bot = get_bot()
         await post_schedule_notification(bot, interaction.guild, old_times, current, str(interaction.user))
+        if reschedule_error:
+            await post_schedule_error_notification(bot, interaction.guild, reschedule_error)
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     log.info(f"Schedule remove '{time}' by {interaction.user} — {'success' if success else 'failed'}: {message}")
     await interaction.followup.send(embed=embed, ephemeral=True)

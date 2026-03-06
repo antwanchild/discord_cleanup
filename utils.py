@@ -150,7 +150,6 @@ def reload_channels():
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:
     """Updates a single key in .env.discord_cleanup. Returns (success, message)."""
-    import config
     env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
     try:
         with open(env_path, "r") as f:
@@ -177,7 +176,6 @@ def update_env_value(key: str, value: str) -> tuple[bool, str]:
     except PermissionError:
         return False, "Permission denied writing .env.discord_cleanup"
 
-    setattr(config, key, value)
     return True, value
 
 
@@ -271,6 +269,7 @@ def update_schedule(new_times: list) -> tuple[bool, str]:
 
     config.CLEAN_TIMES = new_times
 
+    reschedule_error = None
     if _cleanup_task is not None:
         tz = _task_tz or ZoneInfo("UTC")
         times = [dtime(hour=int(t.split(":")[0]), minute=int(t.split(":")[1]), tzinfo=tz) for t in new_times]
@@ -278,7 +277,8 @@ def update_schedule(new_times: list) -> tuple[bool, str]:
             _cleanup_task.change_interval(time=times)
             log.info(f"Cleanup task rescheduled to: {new_value}")
         except Exception as e:
+            reschedule_error = str(e)
             log.warning(f"Could not reschedule task in memory — {e}. Schedule saved to env, will apply on restart.")
 
     log.info(f"Schedule updated to: {new_value}")
-    return True, new_value
+    return True, new_value, reschedule_error

@@ -180,3 +180,25 @@ async def post_missed_run_alert(bot, guild, scheduled_time: str):
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await log_channel.send(embed=embed)
     log.warning(f"Missed run alert posted for scheduled time {scheduled_time}")
+
+
+async def post_schedule_error_notification(bot, guild, error: str):
+    """Posts a notification when the cleanup task fails to reschedule after a schedule change."""
+    log_channel = bot.get_channel(LOG_CHANNEL_ID)
+    if not log_channel:
+        log.warning("Could not post schedule error notification — log channel not found")
+        return
+    embed = discord.Embed(
+        title="⚠️ Schedule Saved — Task Reschedule Failed",
+        description=(
+            f"🏠 Server: **{guild.name}**\n\n"
+            f"The schedule was saved to the env file but the cleanup task could not be rescheduled in memory.\n\n"
+            f"**Error:** `{error}`\n\n"
+            f"The new schedule will take effect on the next container restart."
+        ),
+        color=0xFFA500,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await log_channel.send(embed=embed)
+    log.warning(f"Schedule error notification posted — {error}")

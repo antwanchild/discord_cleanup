@@ -8,7 +8,7 @@ from config import (
     BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_CHANNEL_ID,
     RETRY_DELAY, WARN_UNCONFIGURED, log
 )
-from stats import update_stats
+from stats import update_stats, load_stats
 from utils import get_next_run_str, setup_run_log, update_health
 
 
@@ -378,6 +378,11 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
 
     if not dry_run and not single_channel_id:
         update_stats(channel_results)
+        stats_data = load_stats()
+        log.info(
+            f"Stats | All-time: {stats_data['all_time']['deleted']} deleted across {stats_data['all_time']['runs']} runs "
+            f"| This month: {stats_data['monthly']['deleted']} deleted"
+        )
 
     # Color logic
     if dry_run:
