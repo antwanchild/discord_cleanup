@@ -98,13 +98,13 @@ jobs:
 
           # Write commits to file for processing
           if [ -n "$LAST_TAG" ]; then
-            git log "${LAST_TAG}..HEAD" --format="%s" --no-merges > /tmp/commits_newest.txt
+            git log "${LAST_TAG}..HEAD" --format="%s" --no-merges > commits_newest.txt
           else
-            git log --format="%s" --no-merges -n 50 > /tmp/commits_newest.txt
+            git log --format="%s" --no-merges -n 50 > commits_newest.txt
           fi
 
           # Reverse to oldest first
-          tac /tmp/commits_newest.txt > /tmp/commits_oldest.txt
+          tac commits_newest.txt > commits_oldest.txt
 
           TRIGGER_MSG=$(tr -d '\n' < /tmp/raw_msg.txt | sed 's/  */ /g' | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
 
@@ -117,7 +117,7 @@ jobs:
             elif [ -n "$VERSION" ] && [ "$MSG" != "$TRIGGER_MSG" ]; then
               echo "${VERSION}|${MSG}" >> CHANGELOG.tmp
             fi
-          done < /tmp/commits_oldest.txt
+          done < commits_oldest.txt
 
           # Add triggering commit with correct current version
           if [ -n "$TRIGGER_MSG" ]; then
@@ -132,7 +132,8 @@ jobs:
           else
             echo "${CURRENT_VERSION}|No changes recorded" > CHANGELOG
           fi
-          rm -f CHANGELOG.tmp /tmp/commits_newest.txt /tmp/commits_oldest.txt
+          rm -f CHANGELOG.tmp commits_newest.txt commits_oldest.txt
+
 
           echo "Changelog:"
           cat CHANGELOG  
