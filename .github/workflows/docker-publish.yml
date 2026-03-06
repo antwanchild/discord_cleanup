@@ -93,15 +93,41 @@ jobs:
 
       - name: Generate changelog
         run: |
+          CURRENT_VERSION="${{ steps.bump.outputs.version }}"
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
           if [ -n "$LAST_TAG" ]; then
-            git log "${LAST_TAG}..HEAD" --format="- %s" --no-merges | grep -v "^- Auto bump version" > CHANGELOG || true
+            COMMITS=$(git log "${LAST_TAG}..HEAD" --format="%H %s" --no-merges)
           else
-            git log --format="- %s" --no-merges -n 20 | grep -v "^- Auto bump version" > CHANGELOG || true
+            COMMITS=$(git log --format="%H %s" --no-merges -n 50)
           fi
+
+          > CHANGELOG
+
+          # Walk commits oldest to newest, track version bumps
+          VERSION="$CURRENT_VERSION"
+          while IFS= read -r line; do
+            SHA=$(echo "$line" | cut -d' ' -f1)
+            MSG=$(echo "$line" | cut -d' ' -f2-)
+            if echo "$MSG" | grep -q "^Auto bump version to "; then
+              VERSION=$(echo "$MSG" | sed 's/Auto bump version to //')
+            else
+              echo "$VERSION|$MSG" >> CHANGELOG.tmp
+            fi
+          done <<EOF
+          $(echo "$COMMITS" | tac)
+          EOF
+
+          # Reverse back to newest first for display
+          if [ -f CHANGELOG.tmp ]; then
+            tac CHANGELOG.tmp > CHANGELOG
+            rm CHANGELOG.tmp
+          fi
+
           if [ ! -s CHANGELOG ]; then
-            echo "- No changes recorded" > CHANGELOG
+            echo "${CURRENT_VERSION}|No changes recorded" > CHANGELOG
           fi
+
           echo "Changelog:"
           cat CHANGELOG
 

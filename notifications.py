@@ -11,6 +11,14 @@ from stats import load_stats
 from utils import get_next_run_str
 
 
+def _version_gt(a: str, b: str) -> bool:
+    """Returns True if version a is greater than version b."""
+    try:
+        return tuple(int(x) for x in a.split(".")) > tuple(int(x) for x in b.split("."))
+    except ValueError:
+        return False
+
+
 async def post_startup_notification(bot, guild):
     """Posts a startup notification to the log channel on every boot."""
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
@@ -88,13 +96,28 @@ async def post_deploy_notification(bot, guild):
         log.info(f"First run detected — posting deploy notification for v{BOT_VERSION}")
         description = f"First deployment of **v{BOT_VERSION}**"
 
-    # Read changelog if available
+    # Read and filter changelog by last_version
     changelog = None
     try:
         with open("CHANGELOG", "r") as f:
-            content = f.read().strip()
-            if content and content != "- No changes recorded":
-                changelog = content
+            lines = f.readlines()
+
+        filtered = []
+        for line in lines:
+            line = line.strip()
+            if "|" not in line:
+                continue
+            version, msg = line.split("|", 1)
+            version = version.strip()
+            msg = msg.strip()
+            # Only show commits newer than last_version
+            if last_version and _version_gt(version, last_version):
+                filtered.append(f"- {msg} `({version})`")
+            elif not last_version:
+                filtered.append(f"- {msg} `({version})`")
+
+        if filtered:
+            changelog = "\n".join(filtered)
     except FileNotFoundError:
         pass
 
