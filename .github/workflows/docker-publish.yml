@@ -104,20 +104,28 @@ jobs:
 
           true > CHANGELOG.tmp
 
+          # Write commits to file for processing
+          if [ -n "$LAST_TAG" ]; then
+            git log "${LAST_TAG}..HEAD" --format="%s" --no-merges > /tmp/commits_newest.txt
+          else
+            git log --format="%s" --no-merges -n 50 > /tmp/commits_newest.txt
+          fi
+
+          # Reverse to oldest first
+          tac /tmp/commits_newest.txt > /tmp/commits_oldest.txt
+
           TRIGGER_MSG=$(tr -d '\n' < /tmp/raw_msg.txt | sed 's/  */ /g' | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
 
-          # Walk commits oldest to newest, tag each commit with the auto-bump version that followed it
+          true > CHANGELOG.tmp
+
           VERSION=""
-          while IFS= read -r line; do
-            MSG=$(echo "$line" | cut -d' ' -f2-)
+          while IFS= read -r MSG; do
             if echo "$MSG" | grep -q "^Auto bump version to "; then
               VERSION="${MSG#Auto bump version to }"
             elif [ -n "$VERSION" ] && [ "$MSG" != "$TRIGGER_MSG" ]; then
               echo "${VERSION}|${MSG}" >> CHANGELOG.tmp
             fi
-          done <<EOF
-          $(echo "$COMMITS" | tac)
-          EOF
+          done < /tmp/commits_oldest.txt
 
           # Add triggering commit with correct current version
           if [ -n "$TRIGGER_MSG" ]; then
@@ -125,6 +133,15 @@ jobs:
             cat CHANGELOG.tmp >> CHANGELOG.current 2>/dev/null || true
             mv CHANGELOG.current CHANGELOG.tmp
           fi
+
+          # Reverse back to newest first
+          if [ -s CHANGELOG.tmp ]; then
+            tac CHANGELOG.tmp > CHANGELOG
+          else
+            echo "${CURRENT_VERSION}|No changes recorded" > CHANGELOG
+          fi
+          rm -f CHANGELOG.tmp /tmp/commits_newest.txt /tmp/commits_oldest.txt
+
 
           # Reverse back to newest first for display
           if [ -s CHANGELOG.tmp ]; then
