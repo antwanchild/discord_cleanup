@@ -45,7 +45,7 @@ bot = commands.Bot(command_prefix=None, intents=intents)
 # --- Scheduler Setup ---
 
 def build_task_times():
-    """Builds timezone-aware date time.time objects for discord.ext.tasks."""
+    """Builds timezone-aware datetime.time objects for discord.ext.tasks."""
     tz_name = os.getenv("TZ")
     if not tz_name:
         log.warning("TZ not set in environment — defaulting to UTC. Set TZ in your compose file to use local time.")
