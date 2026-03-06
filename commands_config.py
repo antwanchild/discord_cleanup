@@ -9,36 +9,14 @@ from utils import get_next_run_str, get_bot, update_schedule, update_retention, 
 from commands import cleanup_group
 
 
-@cleanup_group.command(name="reportfrequency", description="Set how often the stats report is posted")
-@app_commands.checks.has_permissions(administrator=True)
-@app_commands.describe(frequency="Report frequency")
-@app_commands.choices(frequency=[
-    app_commands.Choice(name="Monthly (1st of month)", value="monthly"),
-    app_commands.Choice(name="Weekly (every Monday)", value="weekly"),
-    app_commands.Choice(name="Both", value="both"),
-])
-async def cleanup_reportfrequency(interaction: discord.Interaction, frequency: app_commands.Choice[str]):
-    await interaction.response.defer(ephemeral=True)
-    old = cfg.REPORT_FREQUENCY
-    success, message = update_report_frequency(frequency.value)
-    embed = discord.Embed(
-        title="✅ Report Frequency Updated" if success else "⛔ Update Failed",
-        description=f"Report frequency changed from **{old}** to **{frequency.value}**." if success else f"⛔ {message}",
-        color=0x2ECC71 if success else 0xFF0000,
-        timestamp=datetime.now()
-    )
-    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    log.info(f"Report frequency set to {frequency.value} by {interaction.user}")
-    await interaction.followup.send(embed=embed, ephemeral=True)
-
-
+config_group = app_commands.Group(name="config", description="Manage bot configuration", parent=cleanup_group)
 schedule_group = app_commands.Group(name="schedule", description="Manage cleanup schedule", parent=cleanup_group)
 
 
-@cleanup_group.command(name="retention", description="Set the default message retention period in days")
+@config_group.command(name="retention", description="Set the default message retention period in days")
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(days="Number of days to retain messages (1-365)")
-async def cleanup_retention(interaction: discord.Interaction, days: int):
+async def config_retention(interaction: discord.Interaction, days: int):
     await interaction.response.defer(ephemeral=True)
     if not 1 <= days <= 365:
         await interaction.followup.send("⛔ Retention must be between 1 and 365 days.", ephemeral=True)
@@ -56,7 +34,7 @@ async def cleanup_retention(interaction: discord.Interaction, days: int):
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 
-@cleanup_group.command(name="loglevel", description="Set the log verbosity level")
+@config_group.command(name="loglevel", description="Set the log verbosity level")
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(level="Log level")
 @app_commands.choices(level=[
@@ -65,7 +43,7 @@ async def cleanup_retention(interaction: discord.Interaction, days: int):
     app_commands.Choice(name="WARNING", value="WARNING"),
     app_commands.Choice(name="ERROR", value="ERROR"),
 ])
-async def cleanup_loglevel(interaction: discord.Interaction, level: app_commands.Choice[str]):
+async def config_loglevel(interaction: discord.Interaction, level: app_commands.Choice[str]):
     await interaction.response.defer(ephemeral=True)
     old = cfg.LOG_LEVEL
     success, message = update_log_level(level.value)
@@ -80,14 +58,14 @@ async def cleanup_loglevel(interaction: discord.Interaction, level: app_commands
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 
-@cleanup_group.command(name="warnunconfigured", description="Toggle warnings for unconfigured channels")
+@config_group.command(name="warnunconfigured", description="Toggle warnings for unconfigured channels")
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(enabled="Enable or disable unconfigured channel warnings")
 @app_commands.choices(enabled=[
     app_commands.Choice(name="Enable", value="true"),
     app_commands.Choice(name="Disable", value="false"),
 ])
-async def cleanup_warnunconfigured(interaction: discord.Interaction, enabled: app_commands.Choice[str]):
+async def config_warnunconfigured(interaction: discord.Interaction, enabled: app_commands.Choice[str]):
     await interaction.response.defer(ephemeral=True)
     value = enabled.value == "true"
     old = cfg.WARN_UNCONFIGURED
@@ -100,6 +78,29 @@ async def cleanup_warnunconfigured(interaction: discord.Interaction, enabled: ap
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     log.info(f"WARN_UNCONFIGURED set to {value} by {interaction.user}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+@config_group.command(name="reportfrequency", description="Set how often the stats report is posted")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(frequency="Report frequency")
+@app_commands.choices(frequency=[
+    app_commands.Choice(name="Monthly (1st of month)", value="monthly"),
+    app_commands.Choice(name="Weekly (every Monday)", value="weekly"),
+    app_commands.Choice(name="Both", value="both"),
+])
+async def config_reportfrequency(interaction: discord.Interaction, frequency: app_commands.Choice[str]):
+    await interaction.response.defer(ephemeral=True)
+    old = cfg.REPORT_FREQUENCY
+    success, message = update_report_frequency(frequency.value)
+    embed = discord.Embed(
+        title="✅ Report Frequency Updated" if success else "⛔ Update Failed",
+        description=f"Report frequency changed from **{old}** to **{frequency.value}**." if success else f"⛔ {message}",
+        color=0x2ECC71 if success else 0xFF0000,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    log.info(f"Report frequency set to {frequency.value} by {interaction.user}")
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 
