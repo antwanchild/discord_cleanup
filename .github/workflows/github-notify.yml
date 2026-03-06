@@ -1,0 +1,117 @@
+name: Notify Discord on GitHub Activity
+
+on:
+  watch:
+    types: [started]
+  fork:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  notify-star:
+    if: github.event_name == 'watch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"⭐ New Star\",
+                \"color\": 16766720,
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"👤 User\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Profile\", \"value\": \"[View profile](https://github.com/${ACTOR})\", \"inline\": true}
+                ]
+              }]
+            }" \
+            "$DISCORD_WEBHOOK"
+
+  notify-fork:
+    if: github.event_name == 'fork'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.actor }}
+          FORK_NAME: ${{ github.event.forkee.full_name }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🍴 New Fork\",
+                \"color\": 3447003,
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"👤 User\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Fork\", \"value\": \"[View fork](https://github.com/${FORK_NAME})\", \"inline\": true}
+                ]
+              }]
+            }" \
+            "$DISCORD_WEBHOOK"
+
+  notify-issue-opened:
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.actor }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🐛 New Issue Opened\",
+                \"color\": 15158332,
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"📋 Title\", \"value\": \"${ISSUE_TITLE}\", \"inline\": false},
+                  {\"name\": \"👤 Opened by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Issue\", \"value\": \"[View issue](https://github.com/${REPO}/issues/${ISSUE_NUMBER})\", \"inline\": true}
+                ]
+              }]
+            }" \
+            "$DISCORD_WEBHOOK"
+
+  notify-issue-commented:
+    if: github.event_name == 'issue_comment' && github.event.action == 'created'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.actor }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"💬 New Issue Comment\",
+                \"color\": 9807270,
+                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"📋 Issue\", \"value\": \"${ISSUE_TITLE}\", \"inline\": false},
+                  {\"name\": \"👤 Commented by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Comment\", \"value\": \"[View comment](https://github.com/${REPO}/issues/${ISSUE_NUMBER})\", \"inline\": true}
+                ]
+              }]
+            }" \
+            "$DISCORD_WEBHOOK"

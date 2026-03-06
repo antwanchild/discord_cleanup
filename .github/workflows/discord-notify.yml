@@ -1,0 +1,124 @@
+name: Notify Discord
+
+on:
+  workflow_run:
+    workflows: ["Build and Push to GHCR"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Get version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Download commit message artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: commit-msg
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Read commit message
+        id: commit
+        run: |
+          MSG=$(sed "s/'/\`/g" commit_msg.txt)
+          echo "msg=${MSG}" >> "$GITHUB_OUTPUT"
+
+      - name: Notify Discord — Success
+        if: github.event.workflow_run.conclusion == 'success'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_STARTED: ${{ github.event.workflow_run.run_started_at }}
+          RUN_UPDATED: ${{ github.event.workflow_run.updated_at }}
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT_MSG: ${{ steps.commit.outputs.msg }}
+          REPO: ${{ github.repository }}
+        run: |
+          START="${RUN_STARTED}"
+          END="${RUN_UPDATED}"
+          DURATION=$(( $(date -d "$END" +%s) - $(date -d "$START" +%s) ))
+          MINUTES=$(( DURATION / 60 ))
+          SECONDS=$(( DURATION % 60 ))
+          DURATION_STR="${MINUTES}m ${SECONDS}s"
+          SHORT_SHA=$(echo "${HEAD_SHA}" | cut -c1-7)
+          COMMIT_URL="https://github.com/${REPO}/commit/${HEAD_SHA}"
+          SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
+
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"✅ Discord Cleanup Bot — Build Succeeded\",
+                \"color\": 3066993,
+                \"timestamp\": \"${RUN_UPDATED}\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot v${VERSION} • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"🏷️ Version\", \"value\": \"\`${VERSION}\`\", \"inline\": true},
+                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${BRANCH}\`\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"${COMMIT_MSG}\", \"inline\": false},
+                  {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${REPO}/actions/runs/${RUN_ID})\", \"inline\": true},
+                  {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
+                ]
+              }]
+            }" \
+            "$DISCORD_WEBHOOK"
+
+      - name: Notify Discord — Failure
+        if: github.event.workflow_run.conclusion == 'failure'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ACTOR: ${{ github.event.workflow_run.triggering_actor.login }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_STARTED: ${{ github.event.workflow_run.run_started_at }}
+          RUN_UPDATED: ${{ github.event.workflow_run.updated_at }}
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT_MSG: ${{ steps.commit.outputs.msg }}
+          REPO: ${{ github.repository }}
+        run: |
+          START="${RUN_STARTED}"
+          END="${RUN_UPDATED}"
+          DURATION=$(( $(date -d "$END" +%s) - $(date -d "$START" +%s) ))
+          MINUTES=$(( DURATION / 60 ))
+          SECONDS=$(( DURATION % 60 ))
+          DURATION_STR="${MINUTES}m ${SECONDS}s"
+          SHORT_SHA=$(echo "${HEAD_SHA}" | cut -c1-7)
+          COMMIT_URL="https://github.com/${REPO}/commit/${HEAD_SHA}"
+          SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
+
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"❌ Discord Cleanup Bot — Build Failed\",
+                \"color\": 15158332,
+                \"timestamp\": \"${RUN_UPDATED}\",
+                \"footer\": {\"text\": \"Discord Cleanup Bot v${VERSION} • github.com/antwanchild/discord_cleanup\"},
+                \"fields\": [
+                  {\"name\": \"🏷️ Version\", \"value\": \"\`${VERSION}\`\", \"inline\": true},
+                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
+                  {\"name\": \"🌿 Branch\", \"value\": \"\`${BRANCH}\`\", \"inline\": true},
+                  {\"name\": \"💬 Commit\", \"value\": \"${COMMIT_MSG}\", \"inline\": false},
+                  {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
+                  {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${REPO}/actions/runs/${RUN_ID})\", \"inline\": true},
+                  {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
+                ]
+              }]
+            }" \
+            "$DISCORD_WEBHOOK"

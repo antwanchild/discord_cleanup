@@ -1,0 +1,4 @@
+.env.discord_cleanup
+logs/
+__pycache__/
+*.pyc
