@@ -117,6 +117,14 @@ jobs:
           $(echo "$COMMITS" | tac)
           EOF
 
+          # Tag the triggering commit (HEAD before auto-bump) with CURRENT_VERSION
+          TRIGGER_MSG=$(git log -1 --format="%s" HEAD~1 2>/dev/null || echo "")
+          if [ -n "$TRIGGER_MSG" ] && ! echo "$TRIGGER_MSG" | grep -q "^Auto bump version to "; then
+            echo "${CURRENT_VERSION}|${TRIGGER_MSG}" > CHANGELOG.current
+            cat CHANGELOG.tmp >> CHANGELOG.current 2>/dev/null || true
+            mv CHANGELOG.current CHANGELOG.tmp
+          fi
+
           # Reverse back to newest first for display
           if [ -s CHANGELOG.tmp ]; then
             tac CHANGELOG.tmp > CHANGELOG
