@@ -109,7 +109,7 @@ jobs:
           while IFS= read -r line; do
             MSG=$(echo "$line" | cut -d' ' -f2-)
             if echo "$MSG" | grep -q "^Auto bump version to "; then
-              VERSION=$(echo "$MSG" | sed 's/Auto bump version to //')
+              VERSION="${MSG#Auto bump version to }"
             else
               echo "${VERSION}|${MSG}" >> CHANGELOG.tmp
             fi
