@@ -104,21 +104,22 @@ jobs:
 
           true > CHANGELOG.tmp
 
-          # Walk commits oldest to newest, track version bumps
+          TRIGGER_MSG=$(tr -d '\n' < /tmp/raw_msg.txt | sed 's/  */ /g' | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
+
+          # Walk commits oldest to newest, tag each commit with the auto-bump version that followed it
           VERSION=""
           while IFS= read -r line; do
             MSG=$(echo "$line" | cut -d' ' -f2-)
             if echo "$MSG" | grep -q "^Auto bump version to "; then
               VERSION="${MSG#Auto bump version to }"
-            elif [ -n "$VERSION" ]; then
+            elif [ -n "$VERSION" ] && [ "$MSG" != "$TRIGGER_MSG" ]; then
               echo "${VERSION}|${MSG}" >> CHANGELOG.tmp
             fi
           done <<EOF
           $(echo "$COMMITS" | tac)
           EOF
 
-          # Tag the triggering commit with CURRENT_VERSION using the raw commit message
-          TRIGGER_MSG=$(tr -d '\n' < /tmp/raw_msg.txt | sed 's/  */ /g')
+          # Add triggering commit with correct current version
           if [ -n "$TRIGGER_MSG" ]; then
             echo "${CURRENT_VERSION}|${TRIGGER_MSG}" > CHANGELOG.current
             cat CHANGELOG.tmp >> CHANGELOG.current 2>/dev/null || true
