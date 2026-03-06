@@ -3,7 +3,7 @@ from discord import app_commands
 from datetime import datetime
 
 import config as cfg
-from config import BOT_VERSION, log
+from config import BOT_VERSION, LOG_MAX_FILES, log
 from notifications import post_schedule_notification, post_schedule_error_notification
 from utils import get_next_run_str, get_bot, update_schedule, update_retention, update_log_level, update_warn_unconfigured, update_report_frequency
 from commands import cleanup_group
@@ -11,6 +11,28 @@ from commands import cleanup_group
 
 config_group = app_commands.Group(name="config", description="Manage bot configuration", parent=cleanup_group)
 schedule_group = app_commands.Group(name="schedule", description="Manage cleanup schedule", parent=cleanup_group)
+
+
+@config_group.command(name="view", description="Show all current bot configuration values")
+@app_commands.checks.has_permissions(administrator=True)
+async def config_view(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    embed = discord.Embed(
+        title="⚙️ Current Configuration",
+        description=(
+            f"📅 Default retention: **{cfg.DEFAULT_RETENTION} days**\n"
+            f"🕐 Scheduled runs: **{', '.join(cfg.CLEAN_TIMES)}**\n"
+            f"⏭️ Next run: **{get_next_run_str()}**\n"
+            f"📋 Log level: **{cfg.LOG_LEVEL}**\n"
+            f"🗂️ Log retention: **{cfg.LOG_MAX_FILES} days**\n"
+            f"📊 Report frequency: **{cfg.REPORT_FREQUENCY}**\n"
+            f"⚠️ Warn unconfigured: **{'enabled' if cfg.WARN_UNCONFIGURED else 'disabled'}**"
+        ),
+        color=0x5865F2,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 @config_group.command(name="retention", description="Set the default message retention period in days")

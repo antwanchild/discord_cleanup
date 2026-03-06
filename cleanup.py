@@ -280,6 +280,70 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
     return {"count": total_deleted, "rate_limits": rate_limit_count, "oldest": oldest_message_date, "days": days_old, "deep_clean": deep_clean, "error": None}
 
 
+async def purge_all_channel(channel) -> dict:
+    """Deletes ALL messages in a channel regardless of age. Returns dict with count and error."""
+    guild = channel.guild
+    total_deleted = 0
+    rate_limit_count = 0
+
+    if not channel.permissions_for(guild.me).read_message_history:
+        return {"count": -1, "error": "Missing Read Message History permission"}
+    if not channel.permissions_for(guild.me).manage_messages:
+        return {"count": -1, "error": "Missing Manage Messages permission"}
+
+    log.info(f"Starting full purge on #{channel.name}")
+    bulk_cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+
+    # Bulk delete messages newer than 14 days
+    while True:
+        try:
+            messages = []
+            async for msg in channel.history(limit=100):
+                if msg.created_at > bulk_cutoff:
+                    messages.append(msg)
+            if not messages:
+                break
+            if len(messages) == 1:
+                await messages[0].delete()
+            else:
+                await channel.delete_messages(messages)
+            total_deleted += len(messages)
+            await asyncio.sleep(1)
+        except discord.errors.RateLimited as e:
+            rate_limit_count += 1
+            log.warning(f"Rate limited on #{channel.name} — waiting {e.retry_after:.1f}s")
+            await asyncio.sleep(e.retry_after)
+        except Exception as e:
+            log.error(f"Error during bulk purge on #{channel.name} — {e}")
+            return {"count": total_deleted, "error": str(e)}
+
+    # Individual delete for messages older than 14 days
+    while True:
+        try:
+            messages = []
+            async for msg in channel.history(limit=100):
+                messages.append(msg)
+            if not messages:
+                break
+            for msg in messages:
+                try:
+                    await msg.delete()
+                    total_deleted += 1
+                    await asyncio.sleep(0.5)
+                except discord.errors.RateLimited as e:
+                    rate_limit_count += 1
+                    log.warning(f"Rate limited on #{channel.name} — waiting {e.retry_after:.1f}s")
+                    await asyncio.sleep(e.retry_after)
+                except Exception as e:
+                    log.warning(f"Could not delete message in #{channel.name} — {e}")
+        except Exception as e:
+            log.error(f"Error during individual purge on #{channel.name} — {e}")
+            return {"count": total_deleted, "error": str(e)}
+
+    log.info(f"Full purge complete on #{channel.name} — deleted {total_deleted} messages")
+    return {"count": total_deleted, "error": None}
+
+
 async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False):
     """Core cleanup logic used by both scheduler and slash commands."""
     update_health()

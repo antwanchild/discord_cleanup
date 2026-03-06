@@ -11,7 +11,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 - Category support — clean all channels under a Discord category automatically
 - Channel exclusions
 - Deep clean — opt-in per channel/category to also delete messages older than 14 days
-- Slash commands for manual runs, single channel cleanup, dry runs, stats, status, version, reload, logs, schedule management, and live config editing
+- Slash commands for manual runs, single channel cleanup, dry runs, stats, status, version, reload, logs, schedule management, live config editing, purge, report on demand, and config export/import
 - Startup validation — warns on boot if any configured channels are missing
 - Startup notification — posts to log channel on every boot
 - Graceful shutdown — finishes current channel before stopping on SIGTERM
@@ -19,9 +19,9 @@ An automated Discord bot that cleans up old messages from configured channels on
 - Missed run alerts — posts to log channel if a scheduled run is delayed more than 15 minutes
 - Error notifications — separate embed posted when errors occur during a run
 - Multi-message breakdown — automatically splits into multiple embeds if channel count is large
-- Cleanup statistics — rolling 30-day, current month, and all-time tracking
+- Cleanup statistics — rolling 30-day, current month, and all-time tracking with per-channel breakdown
 - Stats reset — reset any stat period via slash command with confirmation
-- Monthly automated report — posts to report channel on the 1st of each month, weekly every Monday, or both
+- Monthly automated report — posts to report channel on the 1st of each month, weekly every Monday, or both, with month-over-month diff
 - Color-coded Discord embed notifications
 - Date-stamped rotating log files with ASCII art headers and run footers
 - Rate limit handling with automatic retry
@@ -179,23 +179,29 @@ All commands require Administrator permissions. Responses are ephemeral (only vi
 | `/cleanup run` | Trigger a full cleanup run on all configured channels |
 | `/cleanup channel` | Trigger cleanup on a specific configured channel |
 | `/cleanup dryrun` | Preview what would be deleted without actually deleting anything |
+| `/cleanup purge` | Delete ALL messages in a configured channel regardless of retention (requires confirmation) |
 | `/cleanup reload` | Reload channels.yml without restarting the container |
 | `/cleanup version` | Show current version and uptime |
 | `/cleanup status` | Show current config, channel list, and next scheduled run |
+| `/cleanup report` | Post the stats report to the report channel on demand |
 | `/cleanup logs` | Download today's log file as a file attachment |
 | `/cleanup test` | Post a test notification to the log channel |
+| `/cleanup export` | Download your `channels.yml` and `.env.discord_cleanup` as file attachments |
+| `/cleanup import` | Upload a `channels.yml` or `.env.discord_cleanup` to replace current config |
 
 ### Stats
 
 | Command | Description |
 |---------|-------------|
 | `/cleanup stats view` | Show rolling 30-day, current month, and all-time cleanup statistics |
+| `/cleanup stats channel` | Show stats for a specific channel |
 | `/cleanup stats reset` | Reset stats for a chosen period (requires confirmation) |
 
 ### Config — saved to `.env.discord_cleanup`, take effect immediately
 
 | Command | Description |
 |---------|-------------|
+| `/cleanup config view` | Show all current configuration values |
 | `/cleanup config retention` | Set the default message retention period in days |
 | `/cleanup config loglevel` | Set the log verbosity level (DEBUG, INFO, WARNING, ERROR) |
 | `/cleanup config warnunconfigured` | Toggle warnings for unconfigured channels |
@@ -301,6 +307,7 @@ Stats are available on demand via `/cleanup stats view` and as an automated mont
 | 🟣 Purple | 🚀 New Version Deployed | New version detected on startup |
 | 🟣 Purple | ℹ️ Version | Version and uptime info |
 | 🟠 Orange | 📊 Monthly Report | Monthly stats posted on the 1st |
+| 🟢 Green | 🗑️ Purge Complete | All messages deleted from a channel via `/cleanup purge` |
 
 ---
 

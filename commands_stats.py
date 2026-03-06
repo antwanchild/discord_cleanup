@@ -55,6 +55,34 @@ async def stats_view(interaction: discord.Interaction):
     await interaction.followup.send(embed=embed, ephemeral=True)
 
 
+@stats_group.command(name="channel", description="Show cleanup stats for a specific channel")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(channel="The channel to show stats for")
+async def stats_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    await interaction.response.defer(ephemeral=True)
+    stats = load_stats()
+    ch_id = str(channel.id)
+
+    lines = []
+    for bucket_key, bucket_label in [("all_time", "All Time"), ("monthly", "This Month"), ("rolling_30", "Last 30 Days")]:
+        bucket = stats.get(bucket_key, {})
+        ch_data = bucket.get("channels", {}).get(ch_id)
+        if ch_data:
+            count = ch_data["count"] if isinstance(ch_data, dict) else ch_data
+        else:
+            count = 0
+        lines.append(f"**{bucket_label}:** {count} deleted")
+
+    embed = discord.Embed(
+        title=f"📊 Stats — #{channel.name}",
+        description="\n".join(lines),
+        color=0x9B59B6,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await interaction.followup.send(embed=embed, ephemeral=True)
+
+
 class StatsResetView(discord.ui.View):
     def __init__(self, scope: str, user: discord.User):
         super().__init__(timeout=30)
