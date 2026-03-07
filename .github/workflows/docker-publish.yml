@@ -108,7 +108,7 @@ jobs:
           tac commits_newest.txt > commits_oldest.txt
 
           TRIGGER_SHA=$(git log --format=%H --no-merges -n 1)
-          TRIGGER_MSG=$(cat /tmp/raw_subject.txt | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
+          TRIGGER_MSG=$(sed 's/#[^ ]*//g' /tmp/raw_subject.txt | sed 's/^ //;s/ $//')
 
           true > CHANGELOG.tmp
 
