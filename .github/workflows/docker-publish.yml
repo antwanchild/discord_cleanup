@@ -97,50 +97,41 @@ jobs:
           CURRENT_VERSION="${{ steps.bump.outputs.version }}"
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-          # Write commits to file for processing (include SHA for deduplication)
+          # For each auto-bump, find the commit just before it and pair them
           if [ -n "$LAST_TAG" ]; then
-            git log "${LAST_TAG}..HEAD" --format="%H %s" --no-merges > commits_newest.txt
+            git log "${LAST_TAG}..HEAD~1" --format="%H %s" --no-merges > commits.txt
           else
-            git log --format="%H %s" --no-merges -n 50 > commits_newest.txt
+            git log "HEAD~1" --format="%H %s" --no-merges -n 100 > commits.txt
           fi
-
-          # Reverse to oldest first
-          tac commits_newest.txt > commits_oldest.txt
-
-          TRIGGER_SHA=$(git rev-parse HEAD~1)
-          TRIGGER_MSG=$(git log -1 --format="%s" HEAD~1 | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
 
           true > CHANGELOG.tmp
 
-          VERSION=""
           while IFS= read -r line; do
             SHA=$(echo "$line" | cut -d' ' -f1)
             MSG=$(echo "$line" | cut -d' ' -f2-)
             if echo "$MSG" | grep -q "^Auto bump version to "; then
               VERSION="${MSG#Auto bump version to }"
-            elif [ -n "$VERSION" ] && [ "$SHA" != "$TRIGGER_SHA" ]; then
-              echo "${VERSION}|${MSG}" >> CHANGELOG.tmp
+              PREV_MSG=$(git log -1 --format="%s" "${SHA}~1")
+              echo "${VERSION}|${PREV_MSG}" >> CHANGELOG.tmp
             fi
-          done < commits_oldest.txt
+          done < commits.txt
 
-          # Add triggering commit with correct current version
-          if [ -n "$TRIGGER_MSG" ]; then
-            echo "${CURRENT_VERSION}|${TRIGGER_MSG}" > CHANGELOG.current
-            cat CHANGELOG.tmp >> CHANGELOG.current 2>/dev/null || true
-            mv CHANGELOG.current CHANGELOG.tmp
-          fi
+          # Add current triggering commit
+          TRIGGER_MSG=$(git log -1 --format="%s" HEAD~1 | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
+          echo "${CURRENT_VERSION}|${TRIGGER_MSG}" > CHANGELOG.current
+          cat CHANGELOG.tmp >> CHANGELOG.current 2>/dev/null || true
+          mv CHANGELOG.current CHANGELOG.tmp
 
-          # Reverse back to newest first
           if [ -s CHANGELOG.tmp ]; then
             tac CHANGELOG.tmp > CHANGELOG
           else
             echo "${CURRENT_VERSION}|No changes recorded" > CHANGELOG
           fi
-          rm -f CHANGELOG.tmp commits_newest.txt commits_oldest.txt
+          rm -f CHANGELOG.tmp commits.txt
 
-          echo "commits_oldest.txt contents:"
           echo "Changelog:"
           cat CHANGELOG
+
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
