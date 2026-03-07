@@ -54,7 +54,8 @@ jobs:
           MINOR=$(echo "$VERSION" | cut -d. -f2)
           PATCH=$(echo "$VERSION" | cut -d. -f3)
 
-          git log --format=%B --no-merges -n 1 > /tmp/raw_msg.txt
+          git log --format=%s --no-merges -n 1 > /tmp/raw_msg.txt
+
 
           if grep -q "#major" /tmp/raw_msg.txt; then
             NEW_VERSION="$((MAJOR + 1)).0.0"
