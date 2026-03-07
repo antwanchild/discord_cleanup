@@ -106,6 +106,9 @@ jobs:
           # Reverse to oldest first
           tac commits_newest.txt > commits_oldest.txt
 
+          echo "commits_oldest.txt contents:"
+          cat commits_oldest.txt
+
           TRIGGER_MSG=$(tr -d '\n' < /tmp/raw_msg.txt | sed 's/  */ /g' | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
 
           true > CHANGELOG.tmp
@@ -123,6 +126,7 @@ jobs:
           if [ -n "$TRIGGER_MSG" ]; then
             echo "${CURRENT_VERSION}|${TRIGGER_MSG}" > CHANGELOG.current
             cat CHANGELOG.tmp >> CHANGELOG.current 2>/dev/null || true
+
             mv CHANGELOG.current CHANGELOG.tmp
           fi
 
