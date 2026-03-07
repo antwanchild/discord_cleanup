@@ -13,7 +13,7 @@ from utils import get_next_run_str, setup_run_log, update_health
 
 
 def build_channel_map(guild):
-    """Builds a map of channel_id -> config dict."""
+    """Builds a m ap of channel_id -> config dict."""
     override_map = {}
     exclude_set = set()
     category_map = {}
