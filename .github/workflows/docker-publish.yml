@@ -107,8 +107,8 @@ jobs:
           # Reverse to oldest first
           tac commits_newest.txt > commits_oldest.txt
 
-          TRIGGER_SHA=$(git log --format=%H --no-merges -n 1 HEAD~1)
-          TRIGGER_MSG=$(sed 's/#[^ ]*//g' /tmp/raw_subject.txt | sed 's/^ //;s/ $//')
+          TRIGGER_SHA=$(git rev-parse HEAD~1)
+          TRIGGER_MSG=$(git log -1 --format="%s" HEAD~1 | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
 
           true > CHANGELOG.tmp
 
