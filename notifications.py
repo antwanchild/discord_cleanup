@@ -5,7 +5,7 @@ from datetime import datetime
 from config import (
     BOT_VERSION, DATA_DIR, LAST_VERSION_FILE, LOG_CHANNEL_ID,
     MISSED_RUN_THRESHOLD_MINUTES, REPORT_CHANNEL_ID, WARN_UNCONFIGURED,
-    log, raw_channels
+    log
 )
 from stats import load_stats
 from utils import get_next_run_str
