@@ -163,6 +163,15 @@ jobs:
             BUILD_DATE=${{ github.event.repository.updated_at }}
             SOURCE_URL=https://github.com/${{ github.repository }}
 
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.bump.outputs.version }}
+          format: table
+          exit-code: 0
+          severity: CRITICAL,HIGH
+
       - name: Create GitHub Release
         if: steps.bump.outputs.bump_type != 'patch'
         uses: softprops/action-gh-release@v2
