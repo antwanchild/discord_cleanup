@@ -17,8 +17,8 @@ from config import (
 import config as cfg
 from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
-import commands_stats
-import commands_config
+import commands_stats  # noqa: F401
+import commands_config  # noqa: F401
 from notifications import post_deploy_notification, post_startup_notification, post_missed_run_alert, post_status_report
 from utils import update_health, register_task, log_restart_separator
 
