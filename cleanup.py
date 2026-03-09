@@ -533,7 +533,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
         color=color,
         timestamp=run_end
     )
-    page_label = f"📋 Per-Channel Breakdown" if total_pages == 1 else f"📋 Per-Channel Breakdown (1/{total_pages})"
+    page_label = "📋 Per-Channel Breakdown" if total_pages == 1 else f"📋 Per-Channel Breakdown (1/{total_pages})"
     first_embed.add_field(name=page_label, value="\n".join(chunks[0]), inline=False)
     if total_pages == 1:
         first_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
