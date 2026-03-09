@@ -371,7 +371,7 @@ async def cleanup_export(interaction: discord.Interaction):
 async def cleanup_import(interaction: discord.Interaction, file: discord.Attachment):
     await interaction.response.defer(ephemeral=True)
     from config import CONFIG_DIR
-    from utils import reload_channels, update_log_level, update_warn_unconfigured, update_report_frequency
+    from utils import reload_channels, update_log_level, update_report_frequency
     import config as _cfg
 
     filename = file.filename
