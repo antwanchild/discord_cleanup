@@ -9,7 +9,6 @@ from config import (
 )
 from cleanup import build_channel_map, run_cleanup, purge_all_channel
 from notifications import post_status_report
-from stats import load_stats, reset_stats
 from utils import get_next_run_str, get_uptime_str, reload_channels, get_bot
 
 
