@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", message=".*PyNaCl.*")
 
 from config import (
     BOT_VERSION, CLEAN_TIMES, STATUS_REPORT_TIME, TOKEN,
-    LOG_LEVEL, REPORT_FREQUENCY, log
+    LOG_LEVEL, log
 )
 import config as cfg
 from cleanup import run_cleanup, validate_channels
