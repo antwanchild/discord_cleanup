@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 
 import config as cfg
 from config import (
-    BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_CHANNEL_ID,
+    BOT_VERSION, DEFAULT_RETENTION, LOG_CHANNEL_ID,
     RETRY_DELAY, WARN_UNCONFIGURED, log
 )
 from stats import update_stats, load_stats
