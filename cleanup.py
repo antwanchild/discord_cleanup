@@ -11,7 +11,6 @@ from config import (
 from stats import update_stats, load_stats
 from utils import get_next_run_str, setup_run_log, update_health
 
-
 def build_channel_map(guild):
     """Builds a map of channel_id -> config dict."""
     override_map = {}
