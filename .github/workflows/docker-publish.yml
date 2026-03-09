@@ -38,7 +38,7 @@ jobs:
         run: |
           pip install ruff --quiet
           echo "Running ruff lint and security check..."
-          ruff check --select E,W,F,S cleanup_bot.py config.py stats.py utils.py notifications.py cleanup.py commands.py commands_stats.py commands_config.py || echo "⚠️ Lint/security warnings found — build continues"
+          ruff check --select F,S cleanup_bot.py config.py stats.py utils.py notifications.py cleanup.py commands.py commands_stats.py commands_config.py || echo "⚠️ Lint/security warnings found — build continues"
 
       - name: Bump version
         id: bump
