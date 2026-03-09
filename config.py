@@ -124,7 +124,7 @@ LAST_VERSION_FILE = f"{DATA_DIR}/last_version"
 STATS_FILE = f"{DATA_DIR}/stats.json"
 
 # --- Other Constants ---
-HEALTH_FILE = "/tmp/health"
+HEALTH_FILE = "/tmp/health"  # noqa: S108
 MISSED_RUN_THRESHOLD_MINUTES = 15
 RETRY_DELAY = 300
 
