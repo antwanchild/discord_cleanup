@@ -79,6 +79,7 @@ jobs:
 
           # Strip bump type tags from commit message for release notes
           commit_msg=$(tr '\n' ' ' < /tmp/commit_body.txt | sed 's/#//g')
+          echo "$commit_msg" > commit_msg.txt
 
           {
             echo "version=$new_version"
@@ -86,12 +87,12 @@ jobs:
             echo "commit_msg=$commit_msg"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Upload commit message artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: commit-msg
-          path: /tmp/commit_body.txt
-          retention-days: 1
+          - name: Upload commit message artifact
+          uses: actions/upload-artifact@v7
+          with:
+            name: commit-msg
+            path: commit_msg.txt
+            retention-days: 1        
 
       - name: Commit bumped version
         run: |
