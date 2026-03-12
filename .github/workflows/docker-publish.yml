@@ -20,68 +20,75 @@ jobs:
       packages: write
 
     steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Full history needed for changelog generation
 
-      - name: Gitleaks
+      # ── Security scanning ───────────────────────────────────────────────────
+      - name: Scan for secrets
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
+      # ── Code quality ────────────────────────────────────────────────────────
       - name: Lint workflow
         uses: raven-actions/actionlint@v2
 
       - name: Syntax check
         run: |
-          python3 -m py_compile cleanup_bot.py config.py stats.py utils.py notifications.py cleanup.py commands.py commands_stats.py commands_config.py
+          python3 -m py_compile cleanup_bot.py config.py stats.py utils.py \
+            notifications.py cleanup.py commands.py commands_stats.py commands_config.py
           echo "✅ Syntax check passed"
 
-      - name: Lint check
+      - name: Lint and security check
         continue-on-error: true
         run: |
           pip install ruff --quiet
-          echo "Running ruff lint and security check..."
-          ruff check --select F,S cleanup_bot.py config.py stats.py utils.py notifications.py cleanup.py commands.py commands_stats.py commands_config.py || echo "⚠️ Lint/security warnings found — build continues"
+          ruff check --select F,S \
+            cleanup_bot.py config.py stats.py utils.py \
+            notifications.py cleanup.py commands.py commands_stats.py commands_config.py \
+            || echo "⚠️ Warnings found — build continues"
 
+      # ── Version bump ────────────────────────────────────────────────────────
       - name: Bump version
         id: bump
         run: |
-          VERSION=$(cat VERSION)
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f2)
-          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          current_version=$(cat VERSION)
+          major=$(echo "$current_version" | cut -d. -f1)
+          minor=$(echo "$current_version" | cut -d. -f2)
+          patch=$(echo "$current_version" | cut -d. -f3)
 
-          git log --format=%s --no-merges -n 1 > /tmp/raw_msg.txt
+          # Read the full commit message to detect bump type tags
+          git log --format=%B --no-merges -n 1 > /tmp/commit_body.txt
 
-
-          if grep -q "#major" /tmp/raw_msg.txt; then
-            NEW_VERSION="$((MAJOR + 1)).0.0"
-            BUMP_TYPE="major"
-          elif grep -q "#minor" /tmp/raw_msg.txt; then
-            NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
-            BUMP_TYPE="minor"
+          if grep -q "#major" /tmp/commit_body.txt; then
+            new_version="$((major + 1)).0.0"
+            bump_type="major"
+          elif grep -q "#minor" /tmp/commit_body.txt; then
+            new_version="$major.$((minor + 1)).0"
+            bump_type="minor"
           else
-            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
-            BUMP_TYPE="patch"
+            new_version="$major.$minor.$((patch + 1))"
+            bump_type="patch"
           fi
 
-          echo "$NEW_VERSION" > VERSION
-          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
-          COMMIT_MSG=$(tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g')
-          echo "commit_msg=$COMMIT_MSG" >> "$GITHUB_OUTPUT"
-          
-      - name: Write commit message to file
-        run: tr '\n' ' ' < /tmp/raw_msg.txt | sed 's/#//g' > commit_msg.txt
+          echo "$new_version" > VERSION
+
+          # Strip bump type tags from commit message for release notes
+          commit_msg=$(tr '\n' ' ' < /tmp/commit_body.txt | sed 's/#//g')
+
+          echo "version=$new_version"       >> "$GITHUB_OUTPUT"
+          echo "bump_type=$bump_type"       >> "$GITHUB_OUTPUT"
+          echo "commit_msg=$commit_msg"     >> "$GITHUB_OUTPUT"
 
       - name: Upload commit message artifact
         uses: actions/upload-artifact@v7
         with:
           name: commit-msg
-          path: commit_msg.txt
+          path: /tmp/commit_body.txt
           retention-days: 1
 
       - name: Commit bumped version
@@ -92,49 +99,52 @@ jobs:
           git commit -m "Auto bump version to ${{ steps.bump.outputs.version }}"
           git push
 
+      # ── Changelog ───────────────────────────────────────────────────────────
       - name: Generate changelog
         run: |
-          CURRENT_VERSION="${{ steps.bump.outputs.version }}"
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          current_version="${{ steps.bump.outputs.version }}"
+          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-          # For each auto-bump, find the commit just before it and pair them
-          if [ -n "$LAST_TAG" ]; then
-            git log "${LAST_TAG}..HEAD~1" --format="%H %s" --no-merges > commits.txt
+          # Collect commits since the last release tag (or last 100 if no tag)
+          if [ -n "$last_tag" ]; then
+            git log "${last_tag}..HEAD~1" --format="%H %s" --no-merges > commits.txt
           else
             git log "HEAD~1" --format="%H %s" --no-merges -n 100 > commits.txt
           fi
 
-          true > CHANGELOG.tmp
+          true > changelog.tmp
 
+          # Walk each auto-bump commit and pair it with the commit that preceded it
           while IFS= read -r line; do
-            SHA=$(echo "$line" | cut -d' ' -f1)
-            MSG=$(echo "$line" | cut -d' ' -f2-)
-            if echo "$MSG" | grep -q "^Auto bump version to "; then
-              VERSION="${MSG#Auto bump version to }"
-              PREV_MSG=$(git log -1 --format="%s" "${SHA}~1")
-              echo "${VERSION}|${PREV_MSG}" >> CHANGELOG.tmp
+            commit_sha=$(echo "$line" | cut -d' ' -f1)
+            commit_msg=$(echo "$line" | cut -d' ' -f2-)
+            if echo "$commit_msg" | grep -q "^Auto bump version to "; then
+              bumped_version="${commit_msg#Auto bump version to }"
+              prev_msg=$(git log -1 --format="%s" "${commit_sha}~1")
+              echo "${bumped_version}|${prev_msg}" >> changelog.tmp
             fi
           done < commits.txt
 
-          # Add current triggering commit
-          TRIGGER_MSG=$(git log -1 --format="%s" HEAD~1 | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
-          echo "${CURRENT_VERSION}|${TRIGGER_MSG}" > CHANGELOG.current
-          cat CHANGELOG.tmp >> CHANGELOG.current 2>/dev/null || true
-          mv CHANGELOG.current CHANGELOG.tmp
+          # The triggering commit hasn't been auto-bumped yet — add it manually
+          trigger_msg=$(git log -1 --format="%s" HEAD~1 | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
+          echo "${current_version}|${trigger_msg}" > changelog.current
+          cat changelog.tmp >> changelog.current 2>/dev/null || true
+          mv changelog.current changelog.tmp
 
-          if [ -s CHANGELOG.tmp ]; then
-            tac CHANGELOG.tmp > CHANGELOG
+          # Write newest-first for display
+          if [ -s changelog.tmp ]; then
+            tac changelog.tmp > CHANGELOG
           else
-            echo "${CURRENT_VERSION}|No changes recorded" > CHANGELOG
+            echo "${current_version}|No changes recorded" > CHANGELOG
           fi
-          rm -f CHANGELOG.tmp commits.txt
+          rm -f changelog.tmp commits.txt
 
           echo "Changelog:"
           cat CHANGELOG
 
-
+      # ── Docker build ────────────────────────────────────────────────────────
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -142,7 +152,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/discord_cleanup
           tags: |
@@ -150,9 +160,9 @@ jobs:
             type=raw,value=${{ steps.bump.outputs.version }}
           labels: |
             org.opencontainers.image.version=${{ steps.bump.outputs.version }}
-            
-      - name: Build and push
-        uses: docker/build-push-action@v7
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -163,7 +173,7 @@ jobs:
             BUILD_DATE=${{ github.event.repository.updated_at }}
             SOURCE_URL=https://github.com/${{ github.repository }}
 
-      - name: Trivy vulnerability scan
+      - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@master
         continue-on-error: true
         with:
@@ -172,6 +182,7 @@ jobs:
           exit-code: 0
           severity: CRITICAL,HIGH
 
+      # ── GitHub Release ───────────────────────────────────────────────────────
       - name: Create GitHub Release
         if: steps.bump.outputs.bump_type != 'patch'
         uses: softprops/action-gh-release@v2
@@ -186,16 +197,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Keep only the 10 most recent releases
           releases=$(gh release list --limit 100 --json tagName --jq '.[].tagName')
           count=0
           for tag in $releases; do
             count=$((count + 1))
             if [ "$count" -gt 10 ]; then
-              echo "Deleting release $tag"
+              echo "Deleting old release: $tag"
               gh release delete "$tag" --yes --cleanup-tag
             fi
           done
 
+      # ── Cleanup old images ───────────────────────────────────────────────────
       - name: Delete old GHCR images
         uses: actions/delete-package-versions@v5
         with:
