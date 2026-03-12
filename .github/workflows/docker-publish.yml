@@ -104,8 +104,10 @@ jobs:
 
       # ── Changelog ───────────────────────────────────────────────────────────
       - name: Generate changelog
+        env:
+          CURRENT_VERSION: ${{ steps.bump.outputs.version }}
         run: |
-          current_version="${{ steps.bump.outputs.version }}"
+          current_version="${CURRENT_VERSION}"
           last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
           # Collect commits since the last release tag (or last 100 if no tag)
