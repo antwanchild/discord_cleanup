@@ -81,18 +81,16 @@ jobs:
           commit_msg=$(tr '\n' ' ' < /tmp/commit_body.txt | sed 's/#//g')
           echo "$commit_msg" > commit_msg.txt
 
-          {
-            echo "version=$new_version"
-            echo "bump_type=$bump_type"
-            echo "commit_msg=$commit_msg"
-          } >> "$GITHUB_OUTPUT"
+          echo "version=$new_version" >> "$GITHUB_OUTPUT"
+          echo "bump_type=$bump_type" >> "$GITHUB_OUTPUT"
+          echo "commit_msg=$commit_msg" >> "$GITHUB_OUTPUT"
 
-          - name: Upload commit message artifact
-          uses: actions/upload-artifact@v7
-          with:
-            name: commit-msg
-            path: commit_msg.txt
-            retention-days: 1        
+      - name: Upload commit message artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: commit-msg
+          path: commit_msg.txt
+          retention-days: 1        
 
       - name: Commit bumped version
         run: |
