@@ -131,7 +131,7 @@ jobs:
           done < commits.txt
 
           # The triggering commit hasn't been auto-bumped yet — add it manually
-          trigger_msg=$(git log -1 --format="%s" HEAD~1 | sed 's/#[^ ]*//g' | sed 's/^ //;s/ $//')
+          trigger_msg=$(git log -1 --format="%s" HEAD~1 | sed 's/#[^ ]*//g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
           echo "${current_version}|${trigger_msg}" > changelog.current
           cat changelog.tmp >> changelog.current 2>/dev/null || true
           mv changelog.current changelog.tmp
