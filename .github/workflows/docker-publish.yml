@@ -80,9 +80,11 @@ jobs:
           # Strip bump type tags from commit message for release notes
           commit_msg=$(tr '\n' ' ' < /tmp/commit_body.txt | sed 's/#//g')
 
-          echo "version=$new_version"       >> "$GITHUB_OUTPUT"
-          echo "bump_type=$bump_type"       >> "$GITHUB_OUTPUT"
-          echo "commit_msg=$commit_msg"     >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$new_version"
+            echo "bump_type=$bump_type"
+            echo "commit_msg=$commit_msg"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Upload commit message artifact
         uses: actions/upload-artifact@v7
