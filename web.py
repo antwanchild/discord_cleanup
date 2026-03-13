@@ -215,7 +215,17 @@ def view_log(filename):
 def stats_page():
     """Statistics page."""
     context = _get_status_context()
-    context["stats"] = load_stats()
+    stats = load_stats()
+
+    # Pre-sort channels by count descending so the template doesn't need to
+    raw_channels = stats.get("all_time", {}).get("channels", {})
+    sorted_channels = sorted(
+        raw_channels.items(),
+        key=lambda x: x[1]["count"] if isinstance(x[1], dict) else x[1],
+        reverse=True
+    )
+    context["stats"] = stats
+    context["sorted_channels"] = sorted_channels
     return render_template("stats.html", **context)
 
 

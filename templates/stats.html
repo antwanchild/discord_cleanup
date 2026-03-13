@@ -41,7 +41,7 @@
   <div class="card-header">
     <span class="card-title">Top Channels — All Time</span>
   </div>
-  {% set channels = stats.all_time.channels | default({}) %}
+  {% set channels = sorted_channels %}
   {% if channels %}
   <table>
     <thead>
@@ -51,7 +51,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for ch_id, ch_data in channels.items() | sort(attribute='1.count', reverse=True) %}
+      {% for ch_id, ch_data in channels %}
       <tr>
         <td class="mono">#{{ ch_data.name if ch_data is mapping else ch_id }}</td>
         <td class="mono">{{ ch_data.count if ch_data is mapping else ch_data }}</td>
