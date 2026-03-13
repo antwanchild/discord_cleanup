@@ -2,12 +2,10 @@ import os
 import threading
 import logging
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify
 
 from config import (
-    BOT_VERSION, CONFIG_DIR, DEFAULT_RETENTION, LOG_LEVEL,
-    WARN_UNCONFIGURED, REPORT_FREQUENCY, CLEAN_TIMES, LOG_DIR,
-    LOG_MAX_FILES, log
+    BOT_VERSION, CONFIG_DIR, LOG_DIR, LOG_MAX_FILES, log
 )
 from utils import (
     get_uptime_str, get_next_run_str, reload_channels,
