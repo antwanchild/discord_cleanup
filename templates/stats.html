@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Stats{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Statistics</h1>
+  <p>Cleanup run history and per-channel breakdown</p>
+</div>
+
+<!-- Summary buckets -->
+<div class="stat-grid" style="margin-bottom:1.5rem">
+  <div class="stat-box">
+    <div class="stat-value">{{ stats.all_time.deleted | default(0) }}</div>
+    <div class="stat-label">All-Time Deleted</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ stats.all_time.runs | default(0) }}</div>
+    <div class="stat-label">All-Time Runs</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ stats.rolling_30.deleted | default(0) }}</div>
+    <div class="stat-label">Last 30 Days</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ stats.rolling_30.runs | default(0) }}</div>
+    <div class="stat-label">Runs (30 Days)</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ stats.monthly.deleted | default(0) }}</div>
+    <div class="stat-label">This Month</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ stats.monthly.runs | default(0) }}</div>
+    <div class="stat-label">Runs (Month)</div>
+  </div>
+</div>
+
+<!-- Per-channel breakdown -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Top Channels — All Time</span>
+  </div>
+  {% set channels = stats.all_time.channels | default({}) %}
+  {% if channels %}
+  <table>
+    <thead>
+      <tr>
+        <th>Channel</th>
+        <th>Messages Deleted</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ch_id, ch_data in channels.items() | sort(attribute='1.count', reverse=True) %}
+      <tr>
+        <td class="mono">#{{ ch_data.name if ch_data is mapping else ch_id }}</td>
+        <td class="mono">{{ ch_data.count if ch_data is mapping else ch_data }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p style="color:var(--text-muted); font-size:0.875rem">No channel data yet.</p>
+  {% endif %}
+</div>
+
+<!-- Reset periods -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Reset Dates</span>
+  </div>
+  <table>
+    <tbody>
+      <tr>
+        <td>Rolling 30 Days</td>
+        <td class="mono">since {{ stats.rolling_30.reset | default("N/A") }}</td>
+      </tr>
+      <tr>
+        <td>This Month</td>
+        <td class="mono">since {{ stats.monthly.reset | default("N/A") }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

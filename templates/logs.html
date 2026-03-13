@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Logs{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Logs</h1>
+  <p>Last 200 lines from the most recent log file</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Log File</span>
+    <!-- Log file selector -->
+    {% if available_logs %}
+    <select onchange="window.location='/logs/' + this.value" style="margin-left:1rem; max-width:200px; margin-bottom:0">
+      {% for f in available_logs %}
+        <option value="{{ f }}" {% if f == log_file %}selected{% endif %}>{{ f }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <button class="btn btn-ghost" onclick="window.location.reload()" style="margin-left:auto">Refresh</button>
+  </div>
+
+  {% if log_entries %}
+  <div style="
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    max-height: 600px;
+    overflow-y: auto;
+  " id="log-container">
+    {% for line in log_entries %}
+    <div class="log-line mono" style="
+      font-size: 0.75rem;
+      line-height: 1.7;
+      white-space: pre;
+      {% if 'ERROR' in line %}color: var(--danger);
+      {% elif 'WARNING' in line %}color: var(--warning);
+      {% elif 'DEBUG' in line %}color: var(--text-muted);
+      {% else %}color: #c8c8e8;
+      {% endif %}
+    ">{{ line }}</div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p style="color:var(--text-muted); font-size:0.875rem">No log entries found.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Auto-scroll to bottom of log container on load
+  const container = document.getElementById("log-container");
+  if (container) container.scrollTop = container.scrollHeight;
+</script>
+{% endblock %}

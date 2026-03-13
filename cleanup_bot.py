@@ -12,15 +12,15 @@ warnings.filterwarnings("ignore", message=".*PyNaCl.*")
 
 from config import (
     BOT_VERSION, CLEAN_TIMES, STATUS_REPORT_TIME, TOKEN,
-    LOG_LEVEL, log
+    LOG_LEVEL, REPORT_FREQUENCY, log
 )
 import config as cfg
 from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
-import commands_stats  # noqa: F401
-import commands_config  # noqa: F401
+import commands_stats
 from notifications import post_deploy_notification, post_startup_notification, post_missed_run_alert, post_status_report
 from utils import update_health, register_task, log_restart_separator
+from web import start_web_thread
 
 MISSED_RUN_THRESHOLD_MINUTES = 15
 
@@ -175,6 +175,7 @@ async def on_ready():
         health_task.start()
         log.debug("Health task started")
 
+    start_web_thread()
     update_health()
 
 

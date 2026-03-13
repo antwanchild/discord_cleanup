@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <p>Bot status, statistics, and quick overview — {{ now }}</p>
+</div>
+
+<!-- Status row -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Bot Status</span>
+    <span class="pill pill-success">Online</span>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="stat-value">{{ uptime }}</div>
+      <div class="stat-label">Uptime</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value mono">{{ next_run }}</div>
+      <div class="stat-label">Next Run</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">{{ default_retention }}d</div>
+      <div class="stat-label">Default Retention</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value mono">{{ log_level }}</div>
+      <div class="stat-label">Log Level</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">{{ schedule | length }}</div>
+      <div class="stat-label">Scheduled Runs/Day</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">{{ report_frequency | capitalize }}</div>
+      <div class="stat-label">Report Frequency</div>
+    </div>
+  </div>
+</div>
+
+<!-- Schedule quick view -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Schedule</span>
+    <a href="/schedule" class="btn btn-ghost" style="margin-left:auto">Manage</a>
+  </div>
+  <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+    {% for t in schedule %}
+      <span class="pill pill-brand">{{ t }}</span>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Stats summary -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Statistics</span>
+    <a href="/stats" class="btn btn-ghost" style="margin-left:auto">Full Stats</a>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="stat-value">{{ stats.all_time.deleted | default(0) }}</div>
+      <div class="stat-label">All-Time Deleted</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">{{ stats.all_time.runs | default(0) }}</div>
+      <div class="stat-label">All-Time Runs</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">{{ stats.rolling_30.deleted | default(0) }}</div>
+      <div class="stat-label">Last 30 Days</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">{{ stats.monthly.deleted | default(0) }}</div>
+      <div class="stat-label">This Month</div>
+    </div>
+  </div>
+</div>
+
+<!-- Config quick view -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Configuration</span>
+    <a href="/config" class="btn btn-ghost" style="margin-left:auto">Edit Config</a>
+  </div>
+  <table>
+    <tbody>
+      <tr><td>Default Retention</td><td class="mono">{{ default_retention }} days</td></tr>
+      <tr><td>Log Level</td><td class="mono">{{ log_level }}</td></tr>
+      <tr><td>Warn Unconfigured</td><td class="mono">{{ "enabled" if warn_unconfigured else "disabled" }}</td></tr>
+      <tr><td>Report Frequency</td><td class="mono">{{ report_frequency }}</td></tr>
+      <tr><td>Log Files Retained</td><td class="mono">{{ log_max_files }} days</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -9,9 +9,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY *.py ./
+COPY cleanup_bot.py .
+COPY config.py .
+COPY stats.py .
+COPY utils.py .
+COPY notifications.py .
+COPY cleanup.py .
+COPY commands.py .
+COPY commands_stats.py .
+COPY web.py .
+COPY templates/ templates/
 COPY VERSION .
-COPY CHANGELOG .
+COPY healthcheck.py .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
@@ -20,6 +29,9 @@ RUN groupadd -g 1000 botgroup && useradd -u 1000 -g botgroup -s /bin/sh botuser
 ENV PUID=1000
 ENV PGID=1000
 ENV PYTHONPATH=/app
+ENV WEB_PORT=8080
+
+EXPOSE 8080
 
 HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
     CMD python3 /app/healthcheck.py

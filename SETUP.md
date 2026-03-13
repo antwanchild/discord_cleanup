@@ -11,7 +11,8 @@ An automated Discord bot that cleans up old messages from configured channels on
 - Category support — clean all channels under a Discord category automatically
 - Channel exclusions
 - Deep clean — opt-in per channel/category to also delete messages older than 14 days
-- Slash commands for manual runs, single channel cleanup, dry runs, stats, status, version, reload, logs, schedule management, live config editing, purge, report on demand, and config export/import
+- Slash commands for manual runs, single channel cleanup, dry runs, stats, status, version, reload, logs, purge, and report on demand
+- Web UI on port 8080 for config management, schedule editing, stats, and log viewing
 - Startup validation — warns on boot if any configured channels are missing
 - Startup notification — posts to log channel on every boot
 - Graceful shutdown — finishes current channel before stopping on SIGTERM
@@ -88,6 +89,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post stats report (24hr format) |
 | `REPORT_FREQUENCY` | ❌ | `monthly` | Report frequency: `monthly`, `weekly`, or `both` |
 | `WARN_UNCONFIGURED` | ❌ | `false` | Log a warning for any Discord channels not in channels.yml |
+| `WEB_PORT` | ❌ | `8080` | Port the web UI listens on |
 
 ### Example `.env.discord_cleanup`
 
@@ -102,7 +104,7 @@ LOG_LEVEL=INFO
 STATUS_REPORT_TIME=09:00
 ```
 
-> All variables marked ❌ can also be changed at runtime via slash commands without restarting the container.
+> All variables marked ❌ can also be changed at runtime via the web UI without restarting the container.
 
 ---
 
@@ -186,8 +188,6 @@ All commands require Administrator permissions. Responses are ephemeral (only vi
 | `/cleanup report` | Post the stats report to the report channel on demand |
 | `/cleanup logs` | Download today's log file as a file attachment |
 | `/cleanup test` | Post a test notification to the log channel |
-| `/cleanup export` | Download your `channels.yml` and `.env.discord_cleanup` as file attachments |
-| `/cleanup import` | Upload a `channels.yml` or `.env.discord_cleanup` to replace current config |
 
 ### Stats
 
@@ -197,22 +197,28 @@ All commands require Administrator permissions. Responses are ephemeral (only vi
 | `/cleanup stats channel` | Show stats for a specific channel |
 | `/cleanup stats reset` | Reset stats for a chosen period (requires confirmation) |
 
-### Config — saved to `.env.discord_cleanup`, take effect immediately
 
-| Command | Description |
-|---------|-------------|
-| `/cleanup config retention` | Set the default message retention period in days |
-| `/cleanup config loglevel` | Set the log verbosity level (DEBUG, INFO, WARNING, ERROR) |
-| `/cleanup config warnunconfigured` | Toggle warnings for unconfigured channels |
-| `/cleanup config reportfrequency` | Set how often the stats report is posted (monthly, weekly, both) |
 
-### Schedule — saved to `.env.discord_cleanup`, reschedules task immediately
+---
 
-| Command | Description |
-|---------|-------------|
-| `/cleanup schedule list` | Show current scheduled run times and next run |
-| `/cleanup schedule add` | Add a new scheduled run time e.g. `12:00` |
-| `/cleanup schedule remove` | Remove a scheduled run time |
+## Web UI
+
+The bot includes a built-in web interface accessible on port 8080. It provides full config management without needing Discord.
+
+**Pages:**
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Dashboard | `/` | Bot status, uptime, next run, stats summary |
+| Config | `/config` | Edit retention, log level, warn unconfigured, report frequency, and `channels.yml` directly |
+| Schedule | `/schedule` | Add and remove scheduled run times |
+| Stats | `/stats` | Full statistics breakdown with per-channel table |
+| Logs | `/logs` | Log viewer with file selector and color-coded entries |
+
+**API:**
+- `GET /api/status` — JSON status endpoint for health checks or external tools
+
+The web UI runs in a background thread alongside the bot. Config changes made in the web UI take effect immediately and persist to `.env.discord_cleanup`, just like slash commands.
 
 ---
 
@@ -232,6 +238,8 @@ services:
       - TZ=${TZ}
       - PUID=1000
       - PGID=1000
+    ports:
+      - "8080:8080"
     volumes:
       - ./discord_cleanup:/config
 ```

@@ -5,7 +5,7 @@ import os
 
 import config as cfg
 from config import (
-    BOT_VERSION, DEFAULT_RETENTION, LOG_MAX_FILES, LOG_DIR, log
+    BOT_VERSION, DEFAULT_RETENTION, LOG_DIR, log
 )
 from cleanup import build_channel_map, run_cleanup, purge_all_channel
 from notifications import post_status_report
@@ -335,118 +335,6 @@ async def cleanup_logs(interaction: discord.Interaction):
         file=discord.File(log_path, filename=f"cleanup-{today}.log"),
         ephemeral=True
     )
-
-
-@cleanup_group.command(name="export", description="Download your channels.yml and .env config files")
-@app_commands.checks.has_permissions(administrator=True)
-async def cleanup_export(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    from config import CONFIG_DIR
-    env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
-    channels_path = os.path.join(CONFIG_DIR, "channels.yml")
-
-    files = []
-    missing = []
-    for path, name in [(channels_path, "channels.yml"), (env_path, ".env.discord_cleanup")]:
-        if os.path.exists(path):
-            files.append(discord.File(path, filename=name))
-        else:
-            missing.append(name)
-
-    if not files:
-        await interaction.followup.send("⛔ No config files found.", ephemeral=True)
-        return
-
-    msg = "📦 Config files attached."
-    if missing:
-        msg += f"\n⚠️ Not found: {', '.join(missing)}"
-
-    log.info(f"Config export triggered by {interaction.user}")
-    await interaction.followup.send(content=msg, files=files, ephemeral=True)
-
-
-@cleanup_group.command(name="import", description="Upload a channels.yml or .env.discord_cleanup to replace current config")
-@app_commands.checks.has_permissions(administrator=True)
-@app_commands.describe(file="The config file to upload (channels.yml or .env.discord_cleanup)")
-async def cleanup_import(interaction: discord.Interaction, file: discord.Attachment):
-    await interaction.response.defer(ephemeral=True)
-    from config import CONFIG_DIR
-    from utils import reload_channels, update_log_level
-    import config as _cfg
-
-    filename = file.filename
-
-    if filename not in ("channels.yml", ".env.discord_cleanup"):
-        await interaction.followup.send(
-            "⛔ Only `channels.yml` and `.env.discord_cleanup` can be imported.",
-            ephemeral=True
-        )
-        return
-
-    if file.size > 1 * 1024 * 1024:
-        await interaction.followup.send("⛔ File too large — must be under 1MB.", ephemeral=True)
-        return
-
-    try:
-        content = await file.read()
-        dest_path = os.path.join(CONFIG_DIR, filename)
-        with open(dest_path, "wb") as f:
-            f.write(content)
-    except Exception as e:
-        await interaction.followup.send(f"⛔ Could not write file — `{e}`", ephemeral=True)
-        return
-
-    # Apply changes immediately
-    if filename == "channels.yml":
-        success, message = reload_channels()
-        if success:
-            result = f"✅ `channels.yml` imported and reloaded — {message}"
-            log.info(f"channels.yml imported and reloaded by {interaction.user}")
-        else:
-            result = f"⚠️ `channels.yml` written but reload failed — {message}. Try `/cleanup reload`."
-            log.warning(f"channels.yml imported by {interaction.user} but reload failed — {message}")
-
-    elif filename == ".env.discord_cleanup":
-        # Re-parse the env file and update known in-memory values
-        from dotenv import dotenv_values
-        new_vals = dotenv_values(dest_path)
-        applied = []
-        if "DEFAULT_RETENTION" in new_vals:
-            try:
-                _cfg.DEFAULT_RETENTION = int(new_vals["DEFAULT_RETENTION"])
-                applied.append("DEFAULT_RETENTION")
-            except ValueError:
-                pass
-        if "LOG_LEVEL" in new_vals:
-            update_log_level(new_vals["LOG_LEVEL"])
-            applied.append("LOG_LEVEL")
-        if "WARN_UNCONFIGURED" in new_vals:
-            _cfg.WARN_UNCONFIGURED = new_vals["WARN_UNCONFIGURED"].lower() == "true"
-            applied.append("WARN_UNCONFIGURED")
-        if "REPORT_FREQUENCY" in new_vals:
-            _cfg.REPORT_FREQUENCY = new_vals["REPORT_FREQUENCY"].lower()
-            applied.append("REPORT_FREQUENCY")
-        if "CLEAN_TIME" in new_vals:
-            times = [t.strip() for t in new_vals["CLEAN_TIME"].split(",") if t.strip()]
-            if times:
-                from utils import update_schedule
-                update_schedule(times)
-                applied.append("CLEAN_TIME")
-        result = (
-            f"✅ `.env.discord_cleanup` imported.\n"
-            f"Applied in memory: `{', '.join(applied) if applied else 'none'}`\n"
-            f"⚠️ `DISCORD_TOKEN`, `LOG_CHANNEL_ID`, `REPORT_CHANNEL_ID` require a restart to take effect."
-        )
-        log.info(f".env.discord_cleanup imported by {interaction.user} — applied: {', '.join(applied)}")
-
-    embed = discord.Embed(
-        title=f"📥 Import — `{filename}`",
-        description=result,
-        color=0x2ECC71,
-        timestamp=datetime.now()
-    )
-    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 @cleanup_group.error

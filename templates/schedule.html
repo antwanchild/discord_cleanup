@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Schedule</h1>
+  <p>Manage cleanup run times — changes apply immediately without a restart</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Current Schedule</span>
+    <span class="pill pill-brand" style="margin-left:auto">Next: {{ next_run }}</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Run Time</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="schedule-table">
+      {% for t in schedule %}
+      <tr id="row-{{ t | replace(':', '-') }}">
+        <td class="mono">{{ t }}</td>
+        <td>
+          <button class="btn btn-danger" onclick="removeTime('{{ t }}')">Remove</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Add Run Time</span>
+  </div>
+  <div class="form-row">
+    <label>Time (24hr format)</label>
+    <input type="time" id="new-time" style="max-width:140px">
+    <button class="btn btn-primary" onclick="addTime()">Add</button>
+  </div>
+  <p style="color:var(--text-muted); font-size:0.8rem; margin:0">
+    Times are in the timezone configured via the <span class="mono">TZ</span> environment variable.
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function addTime() {
+    const input = document.getElementById("new-time");
+    const time = input.value;
+    if (!time) { showToast("Please enter a time", "error"); return; }
+    const fd = new FormData();
+    fd.append("time", time);
+    const data = await postForm("/schedule/add", fd);
+    if (data.success) {
+      // Add row to table
+      const tbody = document.getElementById("schedule-table");
+      const row = document.createElement("tr");
+      row.id = `row-${time.replace(":", "-")}`;
+      row.innerHTML = `
+        <td class="mono">${time}</td>
+        <td><button class="btn btn-danger" onclick="removeTime('${time}')">Remove</button></td>
+      `;
+      tbody.appendChild(row);
+      input.value = "";
+    }
+  }
+
+  async function removeTime(time) {
+    const fd = new FormData();
+    fd.append("time", time);
+    const data = await postForm("/schedule/remove", fd);
+    if (data.success) {
+      const row = document.getElementById(`row-${time.replace(":", "-")}`);
+      if (row) row.remove();
+    }
+  }
+</script>
+{% endblock %}
