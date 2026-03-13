@@ -125,8 +125,12 @@
     /* ── Stats grid ── */
     .stat-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 1rem;
+    }
+
+    @media (max-width: 700px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
     .stat-box {
@@ -139,11 +143,12 @@
 
     .stat-value {
       font-family: var(--font-mono);
-      font-size: 1.75rem;
+      font-size: 1.4rem;
       font-weight: 700;
       color: var(--brand);
-      line-height: 1;
+      line-height: 1.2;
       margin-bottom: 0.25rem;
+      overflow-wrap: break-word;
     }
 
     .stat-label {
