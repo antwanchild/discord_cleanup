@@ -1,0 +1,148 @@
+name: Dependabot
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+
+  # ---------------------------------------------------------------
+  # Auto-approve and merge minor and patch Dependabot PRs.
+  # Comments on major updates to flag them for manual review.
+  # ---------------------------------------------------------------
+  auto-merge:
+    name: Auto-Merge
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]' && github.event.action != 'closed'
+    steps:
+      - name: Fetch Dependabot PR metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Approve minor and patch updates
+        if: >
+          steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for minor and patch updates
+        if: >
+          steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        run: gh pr merge --squash --auto "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on major updates requiring manual review
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          gh pr comment "$PR_URL" --body "⚠️ This is a **major version update**. Please review the changelog and merge manually when ready."
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------
+  # Notify Discord when Dependabot opens a major version update PR.
+  # Major updates require manual review and are never auto-merged.
+  # Minor and patch updates are notified only on merge (see below).
+  # ---------------------------------------------------------------
+  notify-major-update:
+    name: Notify Major Update
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]' && github.event.action == 'opened'
+    steps:
+      - name: Fetch Dependabot PR metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Discord of major update requiring review
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "⚠️ Dependabot Major Update — Review Required",
+                "color": 16744272,
+                "fields": [
+                  {
+                    "name": "Update",
+                    "value": "'"${PR_TITLE}"'",
+                    "inline": false
+                  },
+                  {
+                    "name": "PR",
+                    "value": "[#'"${PR_NUMBER}"']('"${PR_URL}"')",
+                    "inline": true
+                  }
+                ],
+                "footer": {
+                  "text": "antwanchild/docs • '"$(date +'%B %-d, %Y')"'"
+                }
+              }]
+            }' \
+            "$DISCORD_WEBHOOK_URL"
+
+  # ---------------------------------------------------------------
+  # Notify Discord when a Dependabot PR is merged into main.
+  # Fires on PR close events where the PR was actually merged.
+  # ---------------------------------------------------------------
+  notify-merged:
+    name: Notify Merged
+    runs-on: ubuntu-latest
+    if: >
+      github.actor == 'dependabot[bot]' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true
+    steps:
+      - name: Notify Discord of merged Dependabot PR
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "✅ Dependabot PR Merged",
+                "color": 3066993,
+                "fields": [
+                  {
+                    "name": "Update",
+                    "value": "'"${PR_TITLE}"'",
+                    "inline": false
+                  },
+                  {
+                    "name": "PR",
+                    "value": "[#'"${PR_NUMBER}"']('"${PR_URL}"')",
+                    "inline": true
+                  },
+                  {
+                    "name": "Merged to",
+                    "value": "'"${{ github.base_ref }}"'",
+                    "inline": true
+                  }
+                ],
+                "footer": {
+                  "text": "antwanchild/docs • '"$(date +'%B %-d, %Y')"'"
+                }
+              }]
+            }' \
+            "$DISCORD_WEBHOOK_URL"

@@ -1,30 +1,66 @@
-name: Release to Discord
-
-# Fires when a GitHub Release is published.
-# Only triggers on minor and major releases since patch builds
-# do not create a GitHub Release in the docker-publish workflow.
+name: Release Notification
 
 on:
   release:
-    types:
-      - published
+    types: [published]
 
 jobs:
-  notify:
+
+  # ---------------------------------------------------------------
+  # Notify Discord when a new wiki or blog release is published.
+  # Determines the source (wiki/blog) from the release tag prefix.
+  # Includes the release notes generated during the version job.
+  # ---------------------------------------------------------------
+  notify-release:
+    name: Discord Release Notification
     runs-on: ubuntu-latest
     steps:
-      # ── Checkout ────────────────────────────────────────────────────────────
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Determine release source from tag prefix
+        id: source
+        run: |
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
 
-      # ── Notify ──────────────────────────────────────────────────────────────
-      # Posts the full GitHub Release notes to Discord as a formatted embed.
-      # Complements notify-discord.yml which fires on every push with build info.
-      - name: Post release to Discord
-        uses: SethCohen/github-releases-to-discord@v1
-        with:
-          webhook_url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          color: "7419530"
-          username: "Discord Cleanup Bot"
-          footer_title: "Changelog"
-          reduce_headings: true
+          if [[ "$RELEASE_TAG" == wiki-* ]]; then
+            echo "label=Wiki" >> "$GITHUB_OUTPUT"
+            echo "emoji=📖" >> "$GITHUB_OUTPUT"
+          elif [[ "$RELEASE_TAG" == blog-* ]]; then
+            echo "label=Blog" >> "$GITHUB_OUTPUT"
+            echo "emoji=✏️" >> "$GITHUB_OUTPUT"
+          else
+            echo "label=Docs" >> "$GITHUB_OUTPUT"
+            echo "emoji=📦" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send release notification to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
+          RELEASE_LABEL: ${{ steps.source.outputs.label }}
+          RELEASE_EMOJI: ${{ steps.source.outputs.emoji }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "'"${RELEASE_EMOJI} ${RELEASE_LABEL} Release — ${RELEASE_TAG}"'",
+                "url": "'"${RELEASE_URL}"'",
+                "color": 3066993,
+                "fields": [
+                  {
+                    "name": "Changes",
+                    "value": "'"${RELEASE_NOTES:-No release notes provided.}"'",
+                    "inline": false
+                  },
+                  {
+                    "name": "Release",
+                    "value": "[View on GitHub]('"${RELEASE_URL}"')",
+                    "inline": true
+                  }
+                ],
+                "footer": {
+                  "text": "antwanchild/docs • '"$(date +'%B %-d, %Y')"'"
+                }
+              }]
+            }' \
+            "$DISCORD_WEBHOOK_URL"
