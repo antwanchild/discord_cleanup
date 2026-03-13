@@ -1,12 +1,18 @@
 import os
 import sys
 import logging
+import threading
 import yaml
 from datetime import datetime
 from dotenv import load_dotenv
 
 CONFIG_DIR = "/config"
 BOT_START_TIME = datetime.now()
+
+# Shared lock for all config file reads and writes.
+# Used by both the bot and the web UI to prevent simultaneous access.
+config_lock = threading.Lock()
+
 
 def create_default_files():
     """Creates default config files if they don't exist. Exits if any were created."""
@@ -123,7 +129,7 @@ LAST_VERSION_FILE = f"{DATA_DIR}/last_version"
 STATS_FILE = f"{DATA_DIR}/stats.json"
 
 # --- Other Constants ---
-HEALTH_FILE = "/tmp/health"  # noqa: S108
+HEALTH_FILE = "/tmp/health"
 MISSED_RUN_THRESHOLD_MINUTES = 15
 RETRY_DELAY = 300
 
@@ -159,3 +165,4 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 log = logging.getLogger("discord-cleanup")
+
