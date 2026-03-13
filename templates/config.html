@@ -49,6 +49,13 @@
     </select>
     <button class="btn btn-primary" onclick="saveReportFrequency()">Save</button>
   </div>
+
+  <div class="form-row">
+    <label>Log Files Retained</label>
+    <input type="number" id="logmaxfiles-input" value="{{ log_max_files }}" min="1" max="365" style="max-width:100px">
+    <span style="color:var(--text-muted); font-size:0.8rem">days (1–365)</span>
+    <button class="btn btn-primary" onclick="saveLogMaxFiles()">Save</button>
+  </div>
 </div>
 
 <!-- channels.yml editor -->
@@ -97,6 +104,12 @@
     const fd = new FormData();
     fd.append("frequency", document.getElementById("freq-select").value);
     await postForm("/config/reportfrequency", fd);
+  }
+
+  async function saveLogMaxFiles() {
+    const fd = new FormData();
+    fd.append("days", document.getElementById("logmaxfiles-input").value);
+    await postForm("/config/logmaxfiles", fd);
   }
 
   async function saveChannels() {

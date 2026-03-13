@@ -10,7 +10,7 @@ from config import (
 from utils import (
     get_uptime_str, get_next_run_str, reload_channels,
     update_retention, update_log_level, update_warn_unconfigured,
-    update_report_frequency, update_schedule
+    update_report_frequency, update_log_max_files, update_schedule
 )
 from stats import load_stats
 
@@ -101,6 +101,19 @@ def set_report_frequency():
     frequency = request.form.get("frequency", "monthly").lower()
     success, message = update_report_frequency(frequency)
     return jsonify({"success": success, "message": message})
+
+
+@app.route("/config/logmaxfiles", methods=["POST"])
+def set_log_max_files():
+    """Update number of log files to retain."""
+    try:
+        days = int(request.form.get("days", 0))
+        if not 1 <= days <= 365:
+            return jsonify({"success": False, "message": "Log retention must be between 1 and 365 days"}), 400
+        success, message = update_log_max_files(days)
+        return jsonify({"success": success, "message": message})
+    except ValueError:
+        return jsonify({"success": False, "message": "Invalid value"}), 400
 
 
 @app.route("/config/channels", methods=["POST"])

@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import yaml
 
 from config import (
+    config_lock,
     BOT_START_TIME, BOT_VERSION, CLEAN_TIMES, CONFIG_DIR,
     DEFAULT_RETENTION, HEALTH_FILE, LOG_DIR, LOG_MAX_FILES,
     LOG_LEVEL, numeric_level, formatter, logger, log
@@ -131,59 +132,61 @@ def log_restart_separator():
 def reload_channels():
     """Reloads channels.yml and updates raw_channels. Returns (success, message)."""
     import config
-    try:
-        with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
-            cfg = yaml.safe_load(f)
-            config.raw_channels = cfg.get("channels", [])
-        log.info("channels.yml reloaded successfully")
-        return True, f"Loaded {len(config.raw_channels)} channel entries"
-    except FileNotFoundError:
-        log.error("channels.yml not found during reload")
-        return False, "channels.yml not found"
-    except PermissionError:
-        log.error("Permission denied reading channels.yml during reload")
-        return False, "Permission denied reading channels.yml"
-    except yaml.YAMLError as e:
-        log.error(f"channels.yml is malformed during reload — {e}")
-        return False, f"channels.yml is malformed — {e}"
+    with config_lock:
+        try:
+            with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
+                cfg = yaml.safe_load(f)
+                config.raw_channels = cfg.get("channels", [])
+            log.info("channels.yml reloaded successfully")
+            return True, f"Loaded {len(config.raw_channels)} channel entries"
+        except FileNotFoundError:
+            log.error("channels.yml not found during reload")
+            return False, "channels.yml not found"
+        except PermissionError:
+            log.error("Permission denied reading channels.yml during reload")
+            return False, "Permission denied reading channels.yml"
+        except yaml.YAMLError as e:
+            log.error(f"channels.yml is malformed during reload — {e}")
+            return False, f"channels.yml is malformed — {e}"
 
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:
     """Updates a single key in .env.discord_cleanup. Returns (success, message)."""
     import time
     env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
-    try:
-        with open(env_path, "r") as f:
-            lines = f.readlines()
-    except FileNotFoundError:
-        return False, f".env.discord_cleanup not found at `{env_path}`"
-    except PermissionError:
-        return False, "Permission denied reading .env.discord_cleanup"
-
-    found = False
-    new_lines = []
-    for line in lines:
-        if line.startswith(f"{key}="):
-            new_lines.append(f"{key}={value}\n")
-            found = True
-        else:
-            new_lines.append(line)
-    if not found:
-        new_lines.append(f"{key}={value}\n")
-
-    last_error = None
-    for attempt in range(3):
+    with config_lock:
         try:
-            with open(env_path, "w") as f:
-                f.writelines(new_lines)
-            return True, value
-        except PermissionError as e:
-            last_error = e
-            if attempt < 2:
-                log.warning(f"Could not write .env.discord_cleanup (attempt {attempt + 1}/3) — retrying...")
-                time.sleep(0.5)
+            with open(env_path, "r") as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            return False, f".env.discord_cleanup not found at `{env_path}`"
+        except PermissionError:
+            return False, "Permission denied reading .env.discord_cleanup"
 
-    return False, f"Permission denied writing .env.discord_cleanup after 3 attempts — {last_error}"
+        found = False
+        new_lines = []
+        for line in lines:
+            if line.startswith(f"{key}="):
+                new_lines.append(f"{key}={value}\n")
+                found = True
+            else:
+                new_lines.append(line)
+        if not found:
+            new_lines.append(f"{key}={value}\n")
+
+        last_error = None
+        for attempt in range(3):
+            try:
+                with open(env_path, "w") as f:
+                    f.writelines(new_lines)
+                return True, value
+            except PermissionError as e:
+                last_error = e
+                if attempt < 2:
+                    log.warning(f"Could not write .env.discord_cleanup (attempt {attempt + 1}/3) — retrying...")
+                    time.sleep(0.5)
+
+        return False, f"Permission denied writing .env.discord_cleanup after 3 attempts — {last_error}"
 
 
 def update_retention(days: int) -> tuple[bool, str]:
@@ -233,6 +236,17 @@ def update_report_frequency(frequency: str) -> tuple[bool, str]:
     return success, message
 
 
+def update_log_max_files(days: int) -> tuple[bool, str]:
+    """Updates LOG_MAX_FILES in env and in-memory config."""
+    import config
+    if not 1 <= days <= 365:
+        return False, "Log retention must be between 1 and 365 days"
+    success, message = update_env_value("LOG_MAX_FILES", str(days))
+    if success:
+        config.LOG_MAX_FILES = days
+    return success, message
+
+
 def update_schedule(new_times: list) -> tuple[bool, str]:
     """Updates CLEAN_TIME in .env file and reschedules the cleanup task. Returns (success, message)."""
     import config
@@ -248,33 +262,34 @@ def update_schedule(new_times: list) -> tuple[bool, str]:
         except (ValueError, AttributeError):
             return False, f"`{t}` is not a valid time — use 24hr format e.g. `03:00`"
 
-    try:
-        with open(env_path, "r") as f:
-            lines = f.readlines()
-    except FileNotFoundError:
-        return False, f".env.discord_cleanup not found at `{env_path}`"
-    except PermissionError:
-        return False, "Permission denied reading .env.discord_cleanup"
+    with config_lock:
+        try:
+            with open(env_path, "r") as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            return False, f".env.discord_cleanup not found at `{env_path}`"
+        except PermissionError:
+            return False, "Permission denied reading .env.discord_cleanup"
 
-    new_value = ",".join(new_times)
-    found = False
-    new_lines = []
-    for line in lines:
-        if line.startswith("CLEAN_TIME="):
+        new_value = ",".join(new_times)
+        found = False
+        new_lines = []
+        for line in lines:
+            if line.startswith("CLEAN_TIME="):
+                new_lines.append(f"CLEAN_TIME={new_value}\n")
+                found = True
+            else:
+                new_lines.append(line)
+        if not found:
             new_lines.append(f"CLEAN_TIME={new_value}\n")
-            found = True
-        else:
-            new_lines.append(line)
-    if not found:
-        new_lines.append(f"CLEAN_TIME={new_value}\n")
 
-    try:
-        with open(env_path, "w") as f:
-            f.writelines(new_lines)
-    except PermissionError:
-        return False, "Permission denied writing .env.discord_cleanup"
+        try:
+            with open(env_path, "w") as f:
+                f.writelines(new_lines)
+        except PermissionError:
+            return False, "Permission denied writing .env.discord_cleanup"
 
-    config.CLEAN_TIMES = new_times
+        config.CLEAN_TIMES = new_times
 
     reschedule_error = None
     if _cleanup_task is not None:
