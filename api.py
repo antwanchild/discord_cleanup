@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 
 from config import BOT_VERSION, LOG_DIR, log
 from utils import get_uptime_str, get_next_run_str, get_bot, get_bot_loop
-from stats import load_stats
+from stats import load_stats, reset_stats
 import utils
 
 # All /api/* and /run/* routes live here, registered as a Blueprint in web.py
@@ -183,3 +183,18 @@ def trigger_channel_run():
     asyncio.run_coroutine_threadsafe(_run(), loop)
     log.info(f"Channel cleanup run triggered from web UI for #{channel_name}")
     return jsonify({"success": True, "message": f"Cleanup started for #{channel_name} — check the log channel for results"})
+
+
+@api.route("/api/stats/reset", methods=["POST"])
+def api_stats_reset():
+    """Reset stats for a given scope: rolling, monthly, or all."""
+    scope = request.form.get("scope", "").lower()
+    valid = ["rolling", "monthly", "all"]
+    if scope not in valid:
+        return jsonify({"success": False, "message": f"Invalid scope — must be one of: {', '.join(valid)}"}), 400
+    success = reset_stats(scope)
+    label = {"rolling": "Rolling 30 Days", "monthly": "This Month", "all": "All Time"}[scope]
+    if success:
+        log.info(f"Stats reset via web UI — scope: {scope}")
+        return jsonify({"success": True, "message": f"{label} stats have been reset"})
+    return jsonify({"success": False, "message": "Reset failed — invalid scope"}), 400

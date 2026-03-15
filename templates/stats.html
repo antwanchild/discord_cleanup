@@ -141,6 +141,45 @@
   </div>
 </div>
 
+<!-- Stats reset -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Reset Stats</span>
+  </div>
+  <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center">
+    <button class="btn btn-ghost" onclick="confirmReset('rolling', 'Rolling 30 Days')">Reset Rolling 30 Days</button>
+    <button class="btn btn-ghost" onclick="confirmReset('monthly', 'This Month')">Reset This Month</button>
+    <button class="btn btn-danger" onclick="confirmReset('all', 'All Time')">Reset All Time</button>
+  </div>
+</div>
+
+<!-- Confirm reset modal -->
+<div id="reset-modal" style="
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+">
+  <div style="
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+  ">
+    <h2 style="font-size:1.1rem; margin:0 0 0.5rem">⚠️ Confirm Reset</h2>
+    <p id="modal-message" style="color:var(--text-muted); font-size:0.875rem; margin:0 0 1.5rem"></p>
+    <div style="display:flex; gap:0.75rem; justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="doReset()">Confirm Reset</button>
+    </div>
+  </div>
+</div>
+
 <!-- Reset periods -->
 <div class="card">
   <div class="card-header">
@@ -164,6 +203,31 @@
 {% block scripts %}
 <script>
   const STORAGE_VIEW = "dcb-stats-view";
+  let pendingResetScope = null;
+
+  function confirmReset(scope, label) {
+    pendingResetScope = scope;
+    document.getElementById("modal-message").textContent =
+      `Are you sure you want to reset ${label} stats? This cannot be undone.`;
+    const modal = document.getElementById("reset-modal");
+    modal.style.display = "flex";
+  }
+
+  function closeModal() {
+    document.getElementById("reset-modal").style.display = "none";
+    pendingResetScope = null;
+  }
+
+  async function doReset() {
+    if (!pendingResetScope) return;
+    closeModal();
+    const fd = new FormData();
+    fd.append("scope", pendingResetScope);
+    const data = await postForm("/api/stats/reset", fd);
+    if (data.success) setTimeout(() => window.location.reload(), 1000);
+  }
+
+  
 
   function setView(view) {
     document.getElementById("view-summary").style.display = view === "summary" ? "" : "none";

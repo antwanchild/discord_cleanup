@@ -253,3 +253,29 @@ curl -X POST http://192.168.1.4:8080/run/channel \
 - All `POST` endpoints accept `application/x-www-form-urlencoded` (standard HTML form encoding)
 - Run triggers are async — the response returns immediately and the run executes in the background
 - The API has no authentication — secure access at the network level if needed
+
+---
+
+### `POST /api/stats/reset`
+
+Reset stats for a given scope.
+
+**Form parameters**
+
+| Parameter | Required | Values | Description |
+|-----------|----------|--------|-------------|
+| `scope` | ✅ | `rolling`, `monthly`, `all` | Which stats period to reset |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "Rolling 30 Days stats have been reset"
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `400` | `"Invalid scope"` | scope not one of rolling, monthly, all |
