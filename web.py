@@ -363,7 +363,8 @@ def trigger_channel_run():
 
 @app.route("/api/run_status")
 def api_run_status():
-    """Returns whether a cleanup run is currently in progress."""    return jsonify({"run_in_progress": utils.run_in_progress})
+    """Returns whether a cleanup run is currently in progress."""
+    return jsonify({"run_in_progress": utils.run_in_progress})
 
 
 # ── Thread management ─────────────────────────────────────────────────────────
