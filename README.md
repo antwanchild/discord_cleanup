@@ -3,6 +3,7 @@
 An automated Discord bot that cleans up old messages from configured channels on a schedule. Built for homelab setups running services like Plex, Radarr, Sonarr, and similar tools that generate frequent notifications.
 
 > **Just want to run the bot?** See [SETUP.md](SETUP.md) for a quick start guide.
+> **API reference?** See [API.md](API.md) for all endpoints, parameters, and response examples.
 
 ---
 
@@ -12,13 +13,21 @@ An automated Discord bot that cleans up old messages from configured channels on
 /
 ├── cleanup_bot.py                  # Entry point — bot setup, tasks, events
 ├── config.py                       # Constants, env loading, file creation, logging
-├── stats.py                        # Stats load, save, update, reset
+├── stats.py                        # Stats load, save, update, reset, migration
 ├── utils.py                        # Health, uptime, next run, log setup, env updates
 ├── notifications.py                # Discord embed notifications
 ├── cleanup.py                      # Core cleanup logic, channel map, validation
 ├── commands.py                     # Core slash commands — run, status, reload, logs, etc.
 ├── commands_stats.py               # Stats slash commands — view, reset
-├── commands_config.py              # Config slash commands — retention, loglevel, schedule
+├── web.py                          # Flask web UI — page routes and server thread
+├── api.py                          # Flask Blueprint — all /api/* and /run/* endpoints
+├── templates/                      # Jinja2 HTML templates for web UI
+│   ├── base.html                   # Base layout — nav, theme system, toast
+│   ├── index.html                  # Dashboard — status, stats, run controls
+│   ├── config.html                 # Config editor — settings and channels.yml
+│   ├── schedule.html               # Schedule management
+│   ├── stats.html                  # Statistics — summary, detail, grouped views
+│   └── logs.html                   # Log viewer
 ├── healthcheck.py                  # Docker health check script
 ├── entrypoint.sh                   # PUID/PGID entrypoint script
 ├── requirements.txt                # Python dependencies
@@ -30,7 +39,8 @@ An automated Discord bot that cleans up old messages from configured channels on
     ├── dependabot.yml
     └── workflows/
         ├── docker-publish.yml          # Build, test, and push workflow
-        ├── discord-notify.yml          # Build success/failure notifications
+        ├── notify-discord.yml          # Build success/failure notifications
+        ├── release-discord.yml         # GitHub Release notifications
         ├── dependabot-notify.yml       # Dependabot PR notifications
         ├── dependabot-automerge.yml    # Auto-merge patch and minor Dependabot PRs
         ├── pr-notify.yml               # PR opened/merged/closed notifications

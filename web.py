@@ -11,32 +11,17 @@ from utils import (
     get_uptime_str, get_next_run_str, reload_channels,
     update_retention, update_log_level, update_warn_unconfigured,
     update_report_frequency, update_log_max_files, update_schedule,
-    get_bot, get_bot_loop
+    get_bot
 )
-import utils
 from stats import load_stats
+from api import api, _get_status_context
 
 # Flask app setup — templates and static files live alongside web.py
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.urandom(24)
+app.register_blueprint(api)
 
 WEB_PORT = int(os.getenv("WEB_PORT", 8080))
-
-
-def _get_status_context() -> dict:
-    """Builds the shared context dict used across dashboard and status endpoints."""
-    import config as cfg
-    return {
-        "version": BOT_VERSION,
-        "uptime": get_uptime_str(),
-        "next_run": get_next_run_str(),
-        "schedule": cfg.CLEAN_TIMES,
-        "default_retention": cfg.DEFAULT_RETENTION,
-        "log_level": cfg.LOG_LEVEL,
-        "warn_unconfigured": cfg.WARN_UNCONFIGURED,
-        "report_frequency": cfg.REPORT_FREQUENCY,
-        "log_max_files": cfg.LOG_MAX_FILES,
-    }
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -295,90 +280,6 @@ def stats_page():
 
 
 
-
-@app.route("/api/status")
-def api_status():
-    """JSON status endpoint for health checks or external tools."""
-    return jsonify(_get_status_context())
-
-
-@app.route("/run/full", methods=["POST"])
-def trigger_full_run():
-    """Trigger a full cleanup run via the web UI."""
-    import asyncio
-    from cleanup import run_cleanup
-
-    if utils.run_in_progress:
-        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
-
-    bot  = get_bot()
-    loop = get_bot_loop()
-    if not bot or not loop:
-        return jsonify({"success": False, "message": "Bot is not ready yet"}), 503
-
-    if not bot.guilds:
-        return jsonify({"success": False, "message": "Bot is not in any guilds"}), 503
-
-    guild = bot.guilds[0]
-
-    async def _run():
-        utils.run_in_progress = True
-        try:
-            await run_cleanup(bot, guild, triggered_by="web UI")
-        finally:
-            utils.run_in_progress = False
-
-    asyncio.run_coroutine_threadsafe(_run(), loop)
-    log.info("Full cleanup run triggered from web UI")
-    return jsonify({"success": True, "message": "Full cleanup run started — check the log channel for results"})
-
-
-@app.route("/run/channel", methods=["POST"])
-def trigger_channel_run():
-    """Trigger a cleanup run on a specific channel via the web UI."""
-    import asyncio
-    from cleanup import run_cleanup, build_channel_map
-
-    if utils.run_in_progress:
-        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
-
-    bot  = get_bot()
-    loop = get_bot_loop()
-    if not bot or not loop:
-        return jsonify({"success": False, "message": "Bot is not ready yet"}), 503
-
-    if not bot.guilds:
-        return jsonify({"success": False, "message": "Bot is not in any guilds"}), 503
-
-    guild = bot.guilds[0]
-
-    try:
-        channel_id = int(request.form.get("channel_id", 0))
-    except ValueError:
-        return jsonify({"success": False, "message": "Invalid channel ID"}), 400
-
-    channel_map = build_channel_map(guild)
-    if channel_id not in channel_map:
-        return jsonify({"success": False, "message": "Channel not found in configured channels"}), 404
-
-    channel_name = channel_map[channel_id].get("name", str(channel_id))
-
-    async def _run():
-        utils.run_in_progress = True
-        try:
-            await run_cleanup(bot, guild, single_channel_id=channel_id, triggered_by="web UI")
-        finally:
-            utils.run_in_progress = False
-
-    asyncio.run_coroutine_threadsafe(_run(), loop)
-    log.info(f"Channel cleanup run triggered from web UI for #{channel_name}")
-    return jsonify({"success": True, "message": f"Cleanup started for #{channel_name} — check the log channel for results"})
-
-
-@app.route("/api/run_status")
-def api_run_status():
-    """Returns whether a cleanup run is currently in progress."""
-    return jsonify({"run_in_progress": utils.run_in_progress})
 
 
 # ── Thread management ─────────────────────────────────────────────────────────
