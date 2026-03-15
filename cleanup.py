@@ -344,8 +344,8 @@ async def purge_all_channel(channel) -> dict:
     return {"count": total_deleted, "error": None}
 
 
-async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False):
-    """Core cleanup logic used by both scheduler and slash commands."""
+async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False, triggered_by: str = "scheduler"):
+    """Core cleanup logic used by scheduler, slash commands, and web UI."""
     update_health()
 
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
@@ -378,7 +378,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
         if ch.get("exclude", False):
             log.info(f"#{ch.get('name', ch['id'])} — excluded (skipping)")
 
-    log.info(f"Starting {'dry run' if dry_run else 'cleanup run'} on {guild.name} across {len(channel_map)} channel(s)...")
+    log.info(f"Starting {'dry run' if dry_run else 'cleanup run'} on {guild.name} across {len(channel_map)} channel(s) | triggered by: {triggered_by}")
 
     category_results = {}
     standalone_results = {}

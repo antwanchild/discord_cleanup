@@ -310,7 +310,7 @@ def trigger_full_run():
     async def _run():
         utils.run_in_progress = True
         try:
-            await run_cleanup(bot, guild)
+            await run_cleanup(bot, guild, triggered_by="web UI")
         finally:
             utils.run_in_progress = False
 
@@ -352,7 +352,7 @@ def trigger_channel_run():
     async def _run():
         utils.run_in_progress = True
         try:
-            await run_cleanup(bot, guild, single_channel_id=channel_id)
+            await run_cleanup(bot, guild, single_channel_id=channel_id, triggered_by="web UI")
         finally:
             utils.run_in_progress = False
 

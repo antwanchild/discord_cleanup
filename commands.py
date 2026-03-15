@@ -21,7 +21,7 @@ async def cleanup_run(interaction: discord.Interaction):
     bot = get_bot()
     await interaction.response.send_message("🧹 Full cleanup started — report will be posted to the log channel when complete.", ephemeral=True)
     log.info(f"Manual full cleanup triggered by {interaction.user} in #{interaction.channel.name}")
-    await run_cleanup(bot, interaction.guild)
+    await run_cleanup(bot, interaction.guild, triggered_by=f"slash command ({interaction.user})")
 
 
 @cleanup_group.command(name="channel", description="Trigger cleanup on a specific configured channel")
@@ -35,7 +35,7 @@ async def cleanup_channel(interaction: discord.Interaction, channel: discord.Tex
         return
     await interaction.response.send_message(f"🧹 Cleanup started for `#{channel.name}` — report will be posted to the log channel when complete.", ephemeral=True)
     log.info(f"Manual channel cleanup triggered by {interaction.user} for #{channel.name}")
-    await run_cleanup(bot, interaction.guild, single_channel_id=channel.id)
+    await run_cleanup(bot, interaction.guild, single_channel_id=channel.id, triggered_by=f"slash command ({interaction.user})")
 
 
 @cleanup_group.command(name="dryrun", description="Preview what would be deleted without actually deleting anything")
@@ -44,7 +44,7 @@ async def cleanup_dryrun(interaction: discord.Interaction):
     bot = get_bot()
     await interaction.response.send_message("🔍 Dry run started — preview report will be posted to the log channel when complete.", ephemeral=True)
     log.info(f"Dry run triggered by {interaction.user} in #{interaction.channel.name}")
-    await run_cleanup(bot, interaction.guild, dry_run=True)
+    await run_cleanup(bot, interaction.guild, dry_run=True, triggered_by=f"slash command ({interaction.user})")
 
 
 @cleanup_group.command(name="reload", description="Reload channels.yml without restarting the bot")
