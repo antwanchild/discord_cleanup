@@ -407,7 +407,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
 
         if stats["count"] > 0:
             grand_total += stats["count"]
-            channel_results[str(channel.id)] = {"name": channel.name, "count": stats["count"]}
+            channel_results[str(channel.id)] = {"name": channel.name, "count": stats["count"], "category": ch_config.get("category_name") or "Standalone"}
             log.info(f"  ✅ #{channel.name} — deleted {stats['count']} message(s)")
         elif stats["count"] == 0:
             log.info(f"  ℹ️ #{channel.name} — nothing to delete")

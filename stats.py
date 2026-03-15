@@ -77,10 +77,11 @@ def update_stats(channel_results: dict):
         for ch_id, ch_data in channel_results.items():
             if ch_data["count"] > 0:
                 if ch_id not in stats[bucket]["channels"]:
-                    stats[bucket]["channels"][ch_id] = {"name": ch_data["name"], "count": 0}
+                    stats[bucket]["channels"][ch_id] = {"name": ch_data["name"], "count": 0, "category": ch_data.get("category", "Standalone")}
                 else:
-                    # Update name in case it changed
+                    # Update name and category in case they changed
                     stats[bucket]["channels"][ch_id]["name"] = ch_data["name"]
+                    stats[bucket]["channels"][ch_id]["category"] = ch_data.get("category", "Standalone")
                 stats[bucket]["channels"][ch_id]["count"] += ch_data["count"]
 
     save_stats(stats)
