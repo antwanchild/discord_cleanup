@@ -226,19 +226,59 @@ def view_log(filename):
 
 @app.route("/stats")
 def stats_page():
-    """Statistics page."""
+    """Statistics page — provides both per-channel detail and category summary views."""
+    import yaml
     context = _get_status_context()
     stats = load_stats()
 
-    # Pre-sort channels by count descending so the template doesn't need to
+    # Pre-sort channels by count descending for the detail view
     raw_channels = stats.get("all_time", {}).get("channels", {})
     sorted_channels = sorted(
         raw_channels.items(),
         key=lambda x: x[1]["count"] if isinstance(x[1], dict) else x[1],
         reverse=True
     )
+
+    # Build category summary by cross-referencing channels.yml
+    category_summary = []
+    try:
+        with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
+            ch_config = yaml.safe_load(f) or {}
+        entries = ch_config.get("channels", [])
+
+        # Map channel IDs to their category name
+        cat_map = {}       # channel_id (int) -> category_name
+        current_cat = None
+        for entry in entries:
+            if entry.get("type") == "category":
+                current_cat = entry.get("name", str(entry["id"]))
+            elif not entry.get("exclude"):
+                cat_map[entry["id"]] = current_cat or "Standalone"
+
+        # Aggregate stats by category
+        cat_totals = {}
+        standalone = []
+        for ch_id, ch_data in raw_channels.items():
+            count = ch_data["count"] if isinstance(ch_data, dict) else ch_data
+            name  = ch_data["name"]  if isinstance(ch_data, dict) else ch_id
+            cat   = cat_map.get(int(ch_id), "Standalone")
+            if cat == "Standalone":
+                standalone.append({"name": name, "count": count})
+            else:
+                if cat not in cat_totals:
+                    cat_totals[cat] = {"count": 0, "channels": 0}
+                cat_totals[cat]["count"]    += count
+                cat_totals[cat]["channels"] += 1
+
+        category_summary = sorted(cat_totals.items(), key=lambda x: x[1]["count"], reverse=True)
+        standalone = sorted(standalone, key=lambda x: x["count"], reverse=True)
+    except Exception:
+        pass  # Falls back gracefully — detail view still works
+
     context["stats"] = stats
     context["sorted_channels"] = sorted_channels
+    context["category_summary"] = category_summary
+    context["standalone_channels"] = standalone
     return render_template("stats.html", **context)
 
 

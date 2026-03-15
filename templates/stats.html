@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-header">
   <h1>Statistics</h1>
-  <p>Cleanup run history and per-channel breakdown</p>
+  <p>Cleanup run history and message deletion breakdown</p>
 </div>
 
 <!-- Summary buckets -->
@@ -36,32 +36,72 @@
   </div>
 </div>
 
-<!-- Per-channel breakdown -->
+<!-- Breakdown with view toggle -->
 <div class="card">
   <div class="card-header">
-    <span class="card-title">Top Channels — All Time</span>
+    <span class="card-title">All-Time Breakdown</span>
+    <div style="display:flex; gap:0.4rem; margin-left:auto">
+      <button class="btn btn-ghost" id="btn-summary" onclick="setView('summary')">Summary</button>
+      <button class="btn btn-primary" id="btn-detail" onclick="setView('detail')">Detail</button>
+    </div>
   </div>
-  {% set channels = sorted_channels %}
-  {% if channels %}
-  <table>
-    <thead>
-      <tr>
-        <th>Channel</th>
-        <th>Messages Deleted</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for ch_id, ch_data in channels %}
-      <tr>
-        <td class="mono">#{{ ch_data.name if ch_data is mapping else ch_id }}</td>
-        <td class="mono">{{ ch_data.count if ch_data is mapping else ch_data }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <p style="color:var(--text-muted); font-size:0.875rem">No channel data yet.</p>
-  {% endif %}
+
+  <!-- Summary view — mirrors Discord notification format -->
+  <div id="view-summary" style="display:none">
+    {% if category_summary %}
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Deleted</th>
+          <th>Channels</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cat_name, cat_data in category_summary %}
+        <tr>
+          <td>📁 {{ cat_name }}</td>
+          <td class="mono">{{ cat_data.count }}</td>
+          <td class="mono">{{ cat_data.channels }}</td>
+        </tr>
+        {% endfor %}
+        {% for ch in standalone_channels %}
+        <tr>
+          <td class="mono">📄 #{{ ch.name }}</td>
+          <td class="mono">{{ ch.count }}</td>
+          <td class="mono">—</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p style="color:var(--text-muted); font-size:0.875rem">No data yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Detail view — per-channel table -->
+  <div id="view-detail">
+    {% if sorted_channels %}
+    <table>
+      <thead>
+        <tr>
+          <th>Channel</th>
+          <th>Messages Deleted</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ch_id, ch_data in sorted_channels %}
+        <tr>
+          <td class="mono">#{{ ch_data.name if ch_data is mapping else ch_id }}</td>
+          <td class="mono">{{ ch_data.count if ch_data is mapping else ch_data }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p style="color:var(--text-muted); font-size:0.875rem">No channel data yet.</p>
+    {% endif %}
+  </div>
 </div>
 
 <!-- Reset periods -->
@@ -82,4 +122,25 @@
     </tbody>
   </table>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const STORAGE_VIEW = "dcb-stats-view";
+
+  function setView(view) {
+    const isSummary = view === "summary";
+    document.getElementById("view-summary").style.display = isSummary ? "" : "none";
+    document.getElementById("view-detail").style.display  = isSummary ? "none" : "";
+    document.getElementById("btn-summary").className = isSummary ? "btn btn-primary" : "btn btn-ghost";
+    document.getElementById("btn-detail").className  = isSummary ? "btn btn-ghost"   : "btn btn-primary";
+    localStorage.setItem(STORAGE_VIEW, view);
+  }
+
+  // Restore saved view preference on load
+  (function() {
+    const saved = localStorage.getItem(STORAGE_VIEW) || "detail";
+    setView(saved);
+  })();
+</script>
 {% endblock %}

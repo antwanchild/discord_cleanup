@@ -5,11 +5,12 @@ from datetime import datetime, timezone, timedelta
 
 import config as cfg
 from config import (
-    BOT_VERSION, DEFAULT_RETENTION, LOG_CHANNEL_ID,
+    BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_CHANNEL_ID,
     RETRY_DELAY, WARN_UNCONFIGURED, log
 )
 from stats import update_stats, load_stats
 from utils import get_next_run_str, setup_run_log, update_health
+
 
 def build_channel_map(guild):
     """Builds a map of channel_id -> config dict."""
@@ -532,7 +533,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
         color=color,
         timestamp=run_end
     )
-    page_label = "📋 Per-Channel Breakdown" if total_pages == 1 else f"📋 Per-Channel Breakdown (1/{total_pages})"
+    page_label = f"📋 Category Summary" if total_pages == 1 else f"📋 Category Summary (1/{total_pages})"
     first_embed.add_field(name=page_label, value="\n".join(chunks[0]), inline=False)
     if total_pages == 1:
         first_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
@@ -541,7 +542,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False)
     # Additional embeds if needed
     for i, chunk in enumerate(chunks[1:], start=2):
         page_embed = discord.Embed(color=color, timestamp=run_end)
-        page_label = f"📋 Per-Channel Breakdown ({i}/{total_pages})"
+        page_label = f"📋 Category Summary ({i}/{total_pages})"
         page_embed.add_field(name=page_label, value="\n".join(chunk), inline=False)
         if i == total_pages:
             page_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
