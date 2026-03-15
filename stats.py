@@ -107,3 +107,30 @@ def reset_stats(scope: str) -> bool:
 
     save_stats(stats)
     return True
+
+
+def migrate_stats_categories(guild):
+    """One-time migration to backfill missing category fields in existing stats entries.
+    Runs on startup — skips entries that already have a category set."""
+    from cleanup import build_channel_map
+    stats = load_stats()
+    changed = False
+
+    channel_map = build_channel_map(guild)
+    # Build id -> category_name lookup from the live channel map
+    id_to_category = {
+        str(ch_id): data.get("category_name") or "Standalone"
+        for ch_id, data in channel_map.items()
+    }
+
+    for bucket in ["all_time", "rolling_30", "monthly"]:
+        for ch_id, ch_data in stats[bucket].get("channels", {}).items():
+            if isinstance(ch_data, dict) and "category" not in ch_data:
+                ch_data["category"] = id_to_category.get(ch_id, "Standalone")
+                changed = True
+
+    if changed:
+        save_stats(stats)
+        log.info("Stats migration complete — backfilled category fields")
+    else:
+        log.debug("Stats migration — no entries needed updating")

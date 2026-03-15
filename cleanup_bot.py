@@ -19,6 +19,7 @@ from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
 import commands_stats
 from notifications import post_deploy_notification, post_startup_notification, post_missed_run_alert, post_status_report
+from stats import migrate_stats_categories
 from utils import update_health, register_task, log_restart_separator, set_bot_loop
 from web import start_web_thread
 
@@ -155,6 +156,7 @@ async def on_ready():
 
     for guild in bot.guilds:
         validate_channels(guild)
+        migrate_stats_categories(guild)
         await post_deploy_notification(bot, guild)
         await post_startup_notification(bot, guild)
 
