@@ -19,7 +19,7 @@ from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
 import commands_stats
 from notifications import post_deploy_notification, post_startup_notification, post_missed_run_alert, post_status_report
-from utils import update_health, register_task, log_restart_separator
+from utils import update_health, register_task, log_restart_separator, set_bot_loop
 from web import start_web_thread
 
 MISSED_RUN_THRESHOLD_MINUTES = 15
@@ -175,6 +175,7 @@ async def on_ready():
         health_task.start()
         log.debug("Health task started")
 
+    set_bot_loop(asyncio.get_event_loop())
     start_web_thread()
     update_health()
 

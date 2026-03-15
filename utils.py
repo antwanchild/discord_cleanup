@@ -16,6 +16,10 @@ from config import (
 _cleanup_task = None
 _task_tz = None
 _bot = None
+_bot_loop = None
+
+# Prevents simultaneous manual runs triggered from web UI or slash commands
+run_in_progress = False
 
 
 def register_task(cleanup_task, task_tz, bot):
@@ -29,6 +33,17 @@ def register_task(cleanup_task, task_tz, bot):
 def get_bot():
     """Returns the bot instance."""
     return _bot
+
+
+def set_bot_loop(loop):
+    """Stores the running event loop. Called from on_ready once the loop is live."""
+    global _bot_loop
+    _bot_loop = loop
+
+
+def get_bot_loop():
+    """Returns the bot's event loop for use by the web UI thread."""
+    return _bot_loop
 
 
 def update_health():

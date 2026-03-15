@@ -42,6 +42,36 @@
   </div>
 </div>
 
+<!-- Run controls -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Run Controls</span>
+    <span id="run-status-pill" class="pill pill-success" style="margin-left:auto">Idle</span>
+  </div>
+
+  <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end">
+    <div style="flex:1; min-width:180px">
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem">Full Run</div>
+      <button class="btn btn-primary" onclick="triggerFullRun()" id="btn-full-run">
+        🧹 Run All Channels
+      </button>
+    </div>
+    <div style="flex:2; min-width:220px">
+      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem">Single Channel</div>
+      <div style="display:flex; gap:0.5rem">
+        <select id="channel-select" style="flex:1; margin:0; font-size:0.8rem">
+          {% for ch in configured_channels %}
+            <option value="{{ ch.id }}">{{ ch.name }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-ghost" onclick="triggerChannelRun()" id="btn-channel-run">
+          Run
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Schedule quick view -->
 <div class="card">
   <div class="card-header">
@@ -97,4 +127,47 @@
     </tbody>
   </table>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Poll run status every 3 seconds to update the idle/running pill
+  function updateRunStatus() {
+    fetch("/api/run_status")
+      .then(r => r.json())
+      .then(data => {
+        const pill    = document.getElementById("run-status-pill");
+        const btnFull = document.getElementById("btn-full-run");
+        const btnCh   = document.getElementById("btn-channel-run");
+        if (data.run_in_progress) {
+          pill.className = "pill pill-warning";
+          pill.textContent = "Running…";
+          btnFull.disabled = true;
+          btnCh.disabled   = true;
+        } else {
+          pill.className = "pill pill-success";
+          pill.textContent = "Idle";
+          btnFull.disabled = false;
+          btnCh.disabled   = false;
+        }
+      })
+      .catch(() => {});
+  }
+
+  setInterval(updateRunStatus, 3000);
+  updateRunStatus();
+
+  async function triggerFullRun() {
+    const fd = new FormData();
+    const data = await postForm("/run/full", fd);
+    if (data.success) updateRunStatus();
+  }
+
+  async function triggerChannelRun() {
+    const fd = new FormData();
+    fd.append("channel_id", document.getElementById("channel-select").value);
+    const data = await postForm("/run/channel", fd);
+    if (data.success) updateRunStatus();
+  }
+</script>
 {% endblock %}
