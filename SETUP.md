@@ -19,8 +19,9 @@ An automated Discord bot that cleans up old messages from configured channels on
 - Deploy notifications — posts to log channel when a new version is detected
 - Missed run alerts — posts to log channel if a scheduled run is delayed more than 15 minutes
 - Error notifications — separate embed posted when errors occur during a run
-- Multi-message breakdown — automatically splits into multiple embeds if channel count is large
+- Category-summary notifications — Discord cleanup report shows totals per category rather than per channel, keeping embeds concise
 - Cleanup statistics — rolling 30-day, current month, and all-time tracking with per-channel breakdown
+- Stats page view toggle — switch between category summary and per-channel detail in the web UI
 - Stats reset — reset any stat period via slash command with confirmation
 - Monthly automated report — posts to report channel on the 1st of each month, weekly every Monday, or both, with month-over-month diff
 - Color-coded Discord embed notifications
@@ -212,7 +213,7 @@ The bot includes a built-in web interface accessible on port 8080. It provides f
 | Dashboard | `/` | Bot status, uptime, next run, stats summary |
 | Config | `/config` | Edit retention, log level, warn unconfigured, report frequency, and `channels.yml` directly |
 | Schedule | `/schedule` | Add and remove scheduled run times |
-| Stats | `/stats` | Full statistics breakdown with per-channel table |
+| Stats | `/stats` | Full statistics breakdown — toggle between category summary and per-channel detail |
 | Logs | `/logs` | Log viewer with file selector and color-coded entries |
 
 **API:**
