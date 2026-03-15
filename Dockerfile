@@ -21,6 +21,7 @@ COPY web.py .
 COPY api.py .
 COPY templates/ templates/
 COPY VERSION .
+COPY CHANGELOG .
 COPY healthcheck.py .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
