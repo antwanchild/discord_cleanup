@@ -1,41 +1,250 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Discord Cleanup Bot{% endblock %} — v{{ version }}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.slate.min.css">
   <style>
+    /* ── Theme definitions ─────────────────────────────────────────────────── */
+
+    /* Purple (default) — dark */
+    [data-color="purple"][data-mode="dark"] {
+      --brand:       #7b4fd4;
+      --brand-soft:  #5a3a99;
+      --brand-glow:  rgba(123, 79, 212, 0.15);
+      --border:      rgba(123, 79, 212, 0.25);
+      --surface:     #1a1a2e;
+      --surface-alt: #16213e;
+      --text-muted:  #8888aa;
+      --text-base:   #e0e0f0;
+      --bg-body:     #1a1a2e;
+    }
+
+    /* Purple — light */
+    [data-color="purple"][data-mode="light"] {
+      --brand:       #6b3fc4;
+      --brand-soft:  #5a3a99;
+      --brand-glow:  rgba(107, 63, 196, 0.1);
+      --border:      rgba(107, 63, 196, 0.2);
+      --surface:     #f5f3ff;
+      --surface-alt: #ede9ff;
+      --text-muted:  #6655aa;
+      --text-base:   #1a1040;
+      --bg-body:     #f5f3ff;
+    }
+
+    /* Slate — dark */
+    [data-color="slate"][data-mode="dark"] {
+      --brand:       #5b8dd9;
+      --brand-soft:  #3a6ab8;
+      --brand-glow:  rgba(91, 141, 217, 0.15);
+      --border:      rgba(91, 141, 217, 0.25);
+      --surface:     #0f1923;
+      --surface-alt: #0d1520;
+      --text-muted:  #7a90aa;
+      --text-base:   #d8e4f0;
+      --bg-body:     #0f1923;
+    }
+
+    /* Slate — light */
+    [data-color="slate"][data-mode="light"] {
+      --brand:       #2563b8;
+      --brand-soft:  #1a4a99;
+      --brand-glow:  rgba(37, 99, 184, 0.1);
+      --border:      rgba(37, 99, 184, 0.2);
+      --surface:     #f0f4fa;
+      --surface-alt: #e4ecf7;
+      --text-muted:  #4a6080;
+      --text-base:   #0f1e30;
+      --bg-body:     #f0f4fa;
+    }
+
+    /* Emerald — dark */
+    [data-color="emerald"][data-mode="dark"] {
+      --brand:       #2ecc71;
+      --brand-soft:  #27ae60;
+      --brand-glow:  rgba(46, 204, 113, 0.12);
+      --border:      rgba(46, 204, 113, 0.2);
+      --surface:     #0d1f14;
+      --surface-alt: #0a1910;
+      --text-muted:  #6aaa88;
+      --text-base:   #d0f0e0;
+      --bg-body:     #0d1f14;
+    }
+
+    /* Emerald — light */
+    [data-color="emerald"][data-mode="light"] {
+      --brand:       #18a050;
+      --brand-soft:  #138040;
+      --brand-glow:  rgba(24, 160, 80, 0.1);
+      --border:      rgba(24, 160, 80, 0.2);
+      --surface:     #f0faf4;
+      --surface-alt: #e0f5ea;
+      --text-muted:  #3a7a54;
+      --text-base:   #0a2014;
+      --bg-body:     #f0faf4;
+    }
+
+    /* Crimson — dark */
+    [data-color="crimson"][data-mode="dark"] {
+      --brand:       #e05555;
+      --brand-soft:  #b83a3a;
+      --brand-glow:  rgba(224, 85, 85, 0.12);
+      --border:      rgba(224, 85, 85, 0.2);
+      --surface:     #1f0d0d;
+      --surface-alt: #190a0a;
+      --text-muted:  #aa6a6a;
+      --text-base:   #f0d8d8;
+      --bg-body:     #1f0d0d;
+    }
+
+    /* Crimson — light */
+    [data-color="crimson"][data-mode="light"] {
+      --brand:       #c03030;
+      --brand-soft:  #a02020;
+      --brand-glow:  rgba(192, 48, 48, 0.1);
+      --border:      rgba(192, 48, 48, 0.2);
+      --surface:     #fff5f5;
+      --surface-alt: #ffe8e8;
+      --text-muted:  #884444;
+      --text-base:   #200a0a;
+      --bg-body:     #fff5f5;
+    }
+
+
+    /* Gold — dark */
+    [data-color="gold"][data-mode="dark"] {
+      --brand:       #f0a500;
+      --brand-soft:  #c87f00;
+      --brand-glow:  rgba(240, 165, 0, 0.12);
+      --border:      rgba(240, 165, 0, 0.2);
+      --surface:     #1a1500;
+      --surface-alt: #151000;
+      --text-muted:  #aa8833;
+      --text-base:   #f5e8c0;
+      --bg-body:     #1a1500;
+    }
+
+    /* Gold — light */
+    [data-color="gold"][data-mode="light"] {
+      --brand:       #b07800;
+      --brand-soft:  #8a5e00;
+      --brand-glow:  rgba(176, 120, 0, 0.1);
+      --border:      rgba(176, 120, 0, 0.2);
+      --surface:     #fffbf0;
+      --surface-alt: #fff3d0;
+      --text-muted:  #7a5800;
+      --text-base:   #1a1000;
+      --bg-body:     #fffbf0;
+    }
+
+    /* Teal — dark */
+    [data-color="teal"][data-mode="dark"] {
+      --brand:       #1abc9c;
+      --brand-soft:  #148f76;
+      --brand-glow:  rgba(26, 188, 156, 0.12);
+      --border:      rgba(26, 188, 156, 0.2);
+      --surface:     #0a1e1a;
+      --surface-alt: #071814;
+      --text-muted:  #4a9980;
+      --text-base:   #c8f0e8;
+      --bg-body:     #0a1e1a;
+    }
+
+    /* Teal — light */
+    [data-color="teal"][data-mode="light"] {
+      --brand:       #0e9070;
+      --brand-soft:  #0a7058;
+      --brand-glow:  rgba(14, 144, 112, 0.1);
+      --border:      rgba(14, 144, 112, 0.2);
+      --surface:     #f0faf8;
+      --surface-alt: #d8f5ee;
+      --text-muted:  #2a7060;
+      --text-base:   #051a14;
+      --bg-body:     #f0faf8;
+    }
+
+    /* Rose — dark */
+    [data-color="rose"][data-mode="dark"] {
+      --brand:       #e8679a;
+      --brand-soft:  #c44878;
+      --brand-glow:  rgba(232, 103, 154, 0.12);
+      --border:      rgba(232, 103, 154, 0.2);
+      --surface:     #1f0d18;
+      --surface-alt: #180a12;
+      --text-muted:  #aa5580;
+      --text-base:   #f5d8e8;
+      --bg-body:     #1f0d18;
+    }
+
+    /* Rose — light */
+    [data-color="rose"][data-mode="light"] {
+      --brand:       #c03878;
+      --brand-soft:  #a02860;
+      --brand-glow:  rgba(192, 56, 120, 0.1);
+      --border:      rgba(192, 56, 120, 0.2);
+      --surface:     #fff5fa;
+      --surface-alt: #ffe8f4;
+      --text-muted:  #884466;
+      --text-base:   #200510;
+      --bg-body:     #fff5fa;
+    }
+
+    /* Mono — dark */
+    [data-color="mono"][data-mode="dark"] {
+      --brand:       #cccccc;
+      --brand-soft:  #aaaaaa;
+      --brand-glow:  rgba(200, 200, 200, 0.08);
+      --border:      rgba(200, 200, 200, 0.15);
+      --surface:     #111111;
+      --surface-alt: #0d0d0d;
+      --text-muted:  #777777;
+      --text-base:   #e8e8e8;
+      --bg-body:     #111111;
+    }
+
+    /* Mono — light */
+    [data-color="mono"][data-mode="light"] {
+      --brand:       #333333;
+      --brand-soft:  #111111;
+      --brand-glow:  rgba(50, 50, 50, 0.08);
+      --border:      rgba(50, 50, 50, 0.15);
+      --surface:     #f8f8f8;
+      --surface-alt: #eeeeee;
+      --text-muted:  #777777;
+      --text-base:   #111111;
+      --bg-body:     #f8f8f8;
+    }
+    /* ── Shared variables ──────────────────────────────────────────────────── */
     :root {
-      --brand:        #7b4fd4;
-      --brand-soft:   #5a3a99;
-      --brand-glow:   rgba(123, 79, 212, 0.15);
-      --surface:      #1a1a2e;
-      --surface-alt:  #16213e;
-      --border:       rgba(123, 79, 212, 0.25);
-      --text-muted:   #8888aa;
-      --success:      #2ecc71;
-      --warning:      #f39c12;
-      --danger:       #e74c3c;
-      --font-mono:    "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+      --success:   #2ecc71;
+      --warning:   #f39c12;
+      --danger:    #e74c3c;
+      --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+      --transition: 0.2s ease;
     }
 
-    /* ── Layout ── */
+    /* ── Base ──────────────────────────────────────────────────────────────── */
     body {
-      background: var(--surface);
+      background: var(--bg-body);
+      color: var(--text-base);
       min-height: 100vh;
+      transition: background var(--transition), color var(--transition);
     }
 
+    /* ── Topbar ────────────────────────────────────────────────────────────── */
     nav.topbar {
       background: var(--surface-alt);
       border-bottom: 1px solid var(--border);
       padding: 0.75rem 2rem;
       display: flex;
       align-items: center;
-      gap: 2rem;
+      gap: 1.5rem;
       position: sticky;
       top: 0;
       z-index: 100;
+      transition: background var(--transition), border-color var(--transition);
     }
 
     .topbar-brand {
@@ -72,7 +281,7 @@
     }
 
     .topbar-nav a:hover {
-      color: #fff;
+      color: var(--text-base);
       background: var(--brand-glow);
     }
 
@@ -88,20 +297,133 @@
       white-space: nowrap;
     }
 
-    /* ── Main content ── */
+    /* ── Theme controls ────────────────────────────────────────────────────── */
+    .theme-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    /* Custom theme dropdown */
+    .theme-dropdown {
+      position: relative;
+    }
+
+    .theme-dropdown-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-base);
+      cursor: pointer;
+      height: 28px;
+      white-space: nowrap;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+
+    .theme-dropdown-btn:hover { border-color: var(--brand); }
+
+    .theme-dropdown-btn .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .theme-dropdown-btn .chevron {
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      margin-left: 0.15rem;
+    }
+
+    .theme-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.35rem;
+      z-index: 200;
+      min-width: 130px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    .theme-dropdown-menu.open { display: block; }
+
+    .theme-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      color: var(--text-base);
+      transition: background 0.1s;
+    }
+
+    .theme-option:hover { background: var(--brand-glow); }
+    .theme-option.active { color: var(--brand); font-weight: 600; }
+
+    .theme-option .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Dark/light toggle */
+    .mode-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--brand-glow);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      color: var(--brand);
+      font-size: 0.85rem;
+      margin-left: 0.25rem;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+
+    .mode-toggle:hover { background: var(--brand); color: #fff; }
+
+    /* Divider between swatches and toggle */
+    .theme-divider {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      margin: 0 0.25rem;
+    }
+
+    /* ── Main content ──────────────────────────────────────────────────────── */
     main {
       max-width: 1200px;
       margin: 0 auto;
       padding: 2rem;
     }
 
-    /* ── Cards ── */
+    /* ── Cards ─────────────────────────────────────────────────────────────── */
     .card {
       background: var(--surface-alt);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 1.5rem;
       margin-bottom: 1.5rem;
+      transition: background var(--transition), border-color var(--transition);
     }
 
     .card-header {
@@ -122,7 +444,7 @@
       margin: 0;
     }
 
-    /* ── Stats grid ── */
+    /* ── Stats grid ─────────────────────────────────────────────────────────── */
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -139,6 +461,7 @@
       border-radius: 8px;
       padding: 1rem;
       text-align: center;
+      transition: background var(--transition), border-color var(--transition);
     }
 
     .stat-value {
@@ -158,7 +481,7 @@
       letter-spacing: 0.06em;
     }
 
-    /* ── Status pills ── */
+    /* ── Status pills ───────────────────────────────────────────────────────── */
     .pill {
       display: inline-flex;
       align-items: center;
@@ -171,8 +494,8 @@
     }
 
     .pill-success { background: rgba(46, 204, 113, 0.15); color: var(--success); }
-    .pill-warning { background: rgba(243, 156, 18, 0.15); color: var(--warning); }
-    .pill-danger  { background: rgba(231, 76, 60, 0.15);  color: var(--danger); }
+    .pill-warning { background: rgba(243, 156, 18, 0.15);  color: var(--warning); }
+    .pill-danger  { background: rgba(231, 76, 60, 0.15);   color: var(--danger); }
     .pill-brand   { background: var(--brand-glow); color: var(--brand); }
 
     .pill::before {
@@ -183,7 +506,7 @@
       background: currentColor;
     }
 
-    /* ── Form elements ── */
+    /* ── Form elements ──────────────────────────────────────────────────────── */
     .form-row {
       display: flex;
       align-items: center;
@@ -206,7 +529,7 @@
       margin: 0;
     }
 
-    /* ── Buttons ── */
+    /* ── Buttons ────────────────────────────────────────────────────────────── */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -226,7 +549,7 @@
     .btn-danger  { background: var(--danger); color: #fff; }
     .btn-ghost   { background: var(--brand-glow); color: var(--brand); border: 1px solid var(--border); }
 
-    /* ── Toast notifications ── */
+    /* ── Toast ──────────────────────────────────────────────────────────────── */
     #toast {
       position: fixed;
       bottom: 1.5rem;
@@ -241,35 +564,18 @@
       pointer-events: none;
     }
 
-    #toast.show { opacity: 1; }
+    #toast.show    { opacity: 1; }
     #toast.success { background: rgba(46, 204, 113, 0.9); color: #fff; }
     #toast.error   { background: rgba(231, 76, 60, 0.9);  color: #fff; }
 
-    /* ── Mono text ── */
+    /* ── Misc ───────────────────────────────────────────────────────────────── */
     .mono { font-family: var(--font-mono); font-size: 0.85em; }
 
-    /* ── Page header ── */
-    .page-header {
-      margin-bottom: 2rem;
-    }
+    .page-header { margin-bottom: 2rem; }
+    .page-header h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; }
+    .page-header p  { color: var(--text-muted); font-size: 0.875rem; margin: 0; }
 
-    .page-header h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin: 0 0 0.25rem;
-    }
-
-    .page-header p {
-      color: var(--text-muted);
-      font-size: 0.875rem;
-      margin: 0;
-    }
-
-    /* ── Table ── */
-    table {
-      font-size: 0.875rem;
-    }
-
+    table { font-size: 0.875rem; }
     thead th {
       font-size: 0.75rem;
       text-transform: uppercase;
@@ -289,12 +595,36 @@
       Discord Cleanup
     </a>
     <div class="topbar-nav">
-      <a href="/"        class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
-      <a href="/config"  class="{% if request.path == '/config' %}active{% endif %}">Config</a>
-      <a href="/schedule"class="{% if request.path == '/schedule' %}active{% endif %}">Schedule</a>
-      <a href="/stats"   class="{% if request.path == '/stats' %}active{% endif %}">Stats</a>
-      <a href="/logs"    class="{% if '/logs' in request.path %}active{% endif %}">Logs</a>
+      <a href="/"         class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
+      <a href="/config"   class="{% if request.path == '/config' %}active{% endif %}">Config</a>
+      <a href="/schedule" class="{% if request.path == '/schedule' %}active{% endif %}">Schedule</a>
+      <a href="/stats"    class="{% if request.path == '/stats' %}active{% endif %}">Stats</a>
+      <a href="/logs"     class="{% if '/logs' in request.path %}active{% endif %}">Logs</a>
     </div>
+
+    <!-- Theme controls -->
+    <div class="theme-controls">
+      <div class="theme-dropdown" id="theme-dropdown">
+        <div class="theme-dropdown-btn" id="theme-btn" onclick="toggleDropdown()">
+          <span class="dot" id="theme-dot"></span>
+          <span id="theme-label">Purple</span>
+          <span class="chevron">▾</span>
+        </div>
+        <div class="theme-dropdown-menu" id="theme-menu">
+          <div class="theme-option" onclick="setColor('purple')">  <span class="dot" style="background:#7b4fd4"></span> Purple  </div>
+          <div class="theme-option" onclick="setColor('slate')">   <span class="dot" style="background:#5b8dd9"></span> Slate   </div>
+          <div class="theme-option" onclick="setColor('emerald')"> <span class="dot" style="background:#2ecc71"></span> Emerald </div>
+          <div class="theme-option" onclick="setColor('crimson')"> <span class="dot" style="background:#e05555"></span> Crimson </div>
+          <div class="theme-option" onclick="setColor('gold')">    <span class="dot" style="background:#f0a500"></span> Gold    </div>
+          <div class="theme-option" onclick="setColor('teal')">    <span class="dot" style="background:#1abc9c"></span> Teal    </div>
+          <div class="theme-option" onclick="setColor('rose')">    <span class="dot" style="background:#e8679a"></span> Rose    </div>
+          <div class="theme-option" onclick="setColor('mono')">    <span class="dot" style="background:#888888"></span> Mono    </div>
+        </div>
+      </div>
+      <div class="theme-divider"></div>
+      <div class="mode-toggle" id="mode-toggle" onclick="toggleMode()" title="Toggle dark/light"></div>
+    </div>
+
     <span class="topbar-version">v{{ version }}</span>
   </nav>
 
@@ -306,12 +636,86 @@
   <div id="toast"></div>
 
   <script>
+    // ── Theme system ────────────────────────────────────────────────────────
+
+    const STORAGE_COLOR = "dcb-color";
+    const STORAGE_MODE  = "dcb-mode";
+
+    const DEFAULT_COLOR = "purple";
+    const DEFAULT_MODE  = "dark";
+
+    function applyTheme(color, mode) {
+      const html = document.documentElement;
+      html.setAttribute("data-color", color);
+      html.setAttribute("data-mode", mode);
+
+      // Sync custom dropdown button label and dot
+      const colors = {
+        purple: { label: "Purple", dot: "#7b4fd4" },
+        slate:  { label: "Slate",  dot: "#5b8dd9" },
+        emerald:{ label: "Emerald",dot: "#2ecc71" },
+        crimson:{ label: "Crimson",dot: "#e05555" },
+        gold:   { label: "Gold",   dot: "#f0a500" },
+        teal:   { label: "Teal",   dot: "#1abc9c" },
+        rose:   { label: "Rose",   dot: "#e8679a" },
+        mono:   { label: "Mono",   dot: "#888888" },
+      };
+      const info = colors[color] || colors.purple;
+      const labelEl = document.getElementById("theme-label");
+      const dotEl   = document.getElementById("theme-dot");
+      if (labelEl) labelEl.textContent = info.label;
+      if (dotEl)   dotEl.style.background = info.dot;
+
+      // Mark active option
+      document.querySelectorAll(".theme-option").forEach(opt => {
+        opt.classList.toggle("active", opt.textContent.trim().toLowerCase() === info.label.toLowerCase());
+      });
+
+      // Update mode toggle icon
+      document.getElementById("mode-toggle").textContent = mode === "dark" ? "☀" : "☾";
+    }
+
+    function setColor(color) {
+      const mode = localStorage.getItem(STORAGE_MODE) || DEFAULT_MODE;
+      localStorage.setItem(STORAGE_COLOR, color);
+      applyTheme(color, mode);
+    }
+
+    function toggleMode() {
+      const current = localStorage.getItem(STORAGE_MODE) || DEFAULT_MODE;
+      const next    = current === "dark" ? "light" : "dark";
+      const color   = localStorage.getItem(STORAGE_COLOR) || DEFAULT_COLOR;
+      localStorage.setItem(STORAGE_MODE, next);
+      applyTheme(color, next);
+    }
+
+    // Apply saved theme on page load — defaults to purple dark
+    (function() {
+      const color = localStorage.getItem(STORAGE_COLOR) || DEFAULT_COLOR;
+      const mode  = localStorage.getItem(STORAGE_MODE)  || DEFAULT_MODE;
+      applyTheme(color, mode);
+    })();
+
+    // ── Utilities ───────────────────────────────────────────────────────────
+
     function showToast(message, type = "success") {
       const toast = document.getElementById("toast");
       toast.textContent = message;
       toast.className = `show ${type}`;
       setTimeout(() => { toast.className = ""; }, 3000);
     }
+
+    function toggleDropdown() {
+      document.getElementById("theme-menu").classList.toggle("open");
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener("click", function(e) {
+      const dropdown = document.getElementById("theme-dropdown");
+      if (dropdown && !dropdown.contains(e.target)) {
+        document.getElementById("theme-menu").classList.remove("open");
+      }
+    });
 
     async function postForm(url, formData) {
       const resp = await fetch(url, { method: "POST", body: formData });
