@@ -43,6 +43,7 @@
     <div style="display:flex; gap:0.4rem; margin-left:auto">
       <button class="btn btn-ghost" id="btn-summary" onclick="setView('summary')">Summary</button>
       <button class="btn btn-primary" id="btn-detail" onclick="setView('detail')">Detail</button>
+      <button class="btn btn-ghost" id="btn-grouped" onclick="setView('grouped')">Grouped</button>
     </div>
   </div>
 
@@ -79,7 +80,7 @@
     {% endif %}
   </div>
 
-  <!-- Detail view — per-channel table -->
+  <!-- Detail view — flat list sorted by count -->
   <div id="view-detail">
     {% if sorted_channels %}
     <table>
@@ -94,6 +95,42 @@
         <tr>
           <td class="mono">#{{ ch_data.name if ch_data is mapping else ch_id }}</td>
           <td class="mono">{{ ch_data.count if ch_data is mapping else ch_data }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p style="color:var(--text-muted); font-size:0.875rem">No channel data yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Grouped view — channels nested under categories -->
+  <div id="view-grouped" style="display:none">
+    {% if grouped_categories %}
+    <table>
+      <thead>
+        <tr>
+          <th>Category / Channel</th>
+          <th>Messages Deleted</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cat in grouped_categories %}
+        <tr style="background: var(--surface)">
+          <td style="font-weight:600; color:var(--brand)">📁 {{ cat.name }}</td>
+          <td class="mono" style="font-weight:600; color:var(--brand)">{{ cat.count }}</td>
+        </tr>
+        {% for ch in cat.channels %}
+        <tr>
+          <td class="mono" style="padding-left:2rem">↳ #{{ ch.name }}</td>
+          <td class="mono">{{ ch.count }}</td>
+        </tr>
+        {% endfor %}
+        {% endfor %}
+        {% for ch in standalone_channels %}
+        <tr>
+          <td class="mono">📄 #{{ ch.name }}</td>
+          <td class="mono">{{ ch.count }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -129,11 +166,12 @@
   const STORAGE_VIEW = "dcb-stats-view";
 
   function setView(view) {
-    const isSummary = view === "summary";
-    document.getElementById("view-summary").style.display = isSummary ? "" : "none";
-    document.getElementById("view-detail").style.display  = isSummary ? "none" : "";
-    document.getElementById("btn-summary").className = isSummary ? "btn btn-primary" : "btn btn-ghost";
-    document.getElementById("btn-detail").className  = isSummary ? "btn btn-ghost"   : "btn btn-primary";
+    document.getElementById("view-summary").style.display = view === "summary" ? "" : "none";
+    document.getElementById("view-detail").style.display  = view === "detail"  ? "" : "none";
+    document.getElementById("view-grouped").style.display = view === "grouped" ? "" : "none";
+    document.getElementById("btn-summary").className = view === "summary" ? "btn btn-primary" : "btn btn-ghost";
+    document.getElementById("btn-detail").className  = view === "detail"  ? "btn btn-primary" : "btn btn-ghost";
+    document.getElementById("btn-grouped").className = view === "grouped" ? "btn btn-primary" : "btn btn-ghost";
     localStorage.setItem(STORAGE_VIEW, view);
   }
 

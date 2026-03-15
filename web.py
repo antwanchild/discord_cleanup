@@ -256,9 +256,9 @@ def stats_page():
         reverse=True
     )
 
-    # Build category summary using the category field stored in each channel's stats entry
-    cat_totals = {}
-    standalone = []
+    # Build grouped data — both summary totals and per-channel detail, grouped by category
+    cat_totals  = {}  # category -> {count, channels: [{name, count}]}
+    standalone  = []
     for ch_id, ch_data in raw_channels.items():
         if not isinstance(ch_data, dict):
             continue
@@ -269,16 +269,27 @@ def stats_page():
             standalone.append({"name": name, "count": count})
         else:
             if category not in cat_totals:
-                cat_totals[category] = {"count": 0, "channels": 0}
-            cat_totals[category]["count"]    += count
-            cat_totals[category]["channels"] += 1
+                cat_totals[category] = {"count": 0, "channels": []}
+            cat_totals[category]["count"] += count
+            cat_totals[category]["channels"].append({"name": name, "count": count})
 
-    category_summary    = sorted(cat_totals.items(), key=lambda x: x[1]["count"], reverse=True)
+    # Sort categories by total count, sort channels within each category by count
+    grouped_categories = sorted(
+        [
+            {"name": cat, "count": data["count"], "channels": sorted(data["channels"], key=lambda x: x["count"], reverse=True)}
+            for cat, data in cat_totals.items()
+        ],
+        key=lambda x: x["count"], reverse=True
+    )
     standalone_channels = sorted(standalone, key=lambda x: x["count"], reverse=True)
+
+    # Summary view still just needs totals
+    category_summary = [(g["name"], {"count": g["count"], "channels": len(g["channels"])}) for g in grouped_categories]
 
     context["stats"] = stats
     context["sorted_channels"] = sorted_channels
     context["category_summary"] = category_summary
+    context["grouped_categories"] = grouped_categories
     context["standalone_channels"] = standalone_channels
     return render_template("stats.html", **context)
 
