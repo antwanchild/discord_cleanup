@@ -3,18 +3,23 @@
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
 
-if [ "$(id -u botuser)" != "$PUID" ]; then
-    usermod -u "$PUID" botuser
-else
-    echo "PUID already set to $PUID — no changes needed"
-fi
+CURRENT_PUID=$(id -u botuser)
+CURRENT_PGID=$(getent group botgroup | cut -d: -f3)
 
-if [ "$(getent group botgroup | cut -d: -f3)" != "$PGID" ]; then
+if [ "$CURRENT_PGID" != "$PGID" ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] entrypoint: PGID changed ($CURRENT_PGID -> $PGID) — updating"
     groupmod -g "$PGID" botgroup
+    chown -R botuser:botgroup /app
 else
-    echo "PGID already set to $PGID — no changes needed"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] entrypoint: PGID $PGID — no changes needed"
 fi
 
-chown -R botuser:botgroup /app
+if [ "$CURRENT_PUID" != "$PUID" ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] entrypoint: PUID changed ($CURRENT_PUID -> $PUID) — updating"
+    usermod -u "$PUID" botuser
+    chown -R botuser:botgroup /app
+else
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] entrypoint: PUID $PUID — no changes needed"
+fi
 
 exec gosu botuser "$@"
