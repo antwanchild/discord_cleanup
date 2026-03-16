@@ -44,11 +44,13 @@ def dashboard():
     if bot and bot.guilds:
         guild = bot.guilds[0]
         channel_map = build_channel_map(guild)
-        for ch_id in channel_map:
+        for ch_id, data in channel_map.items():
             discord_channel = guild.get_channel(ch_id)
-            name = discord_channel.name if discord_channel else str(ch_id)
-            configured_channels.append({"id": ch_id, "name": name})
-        configured_channels.sort(key=lambda x: x["name"].lower())
+            name     = discord_channel.name if discord_channel else str(ch_id)
+            category = data.get("category_name") or "Standalone"
+            label    = f"{category} / #{name}"
+            configured_channels.append({"id": ch_id, "name": name, "label": label, "category": category})
+        configured_channels.sort(key=lambda x: (x["category"], x["name"]))
     context["configured_channels"] = configured_channels
     return render_template("index.html", **context)
 
