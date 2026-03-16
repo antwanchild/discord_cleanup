@@ -134,3 +134,27 @@ def migrate_stats_categories(guild):
         log.info("Stats migration complete — backfilled category fields")
     else:
         log.debug("Stats migration — no entries needed updating")
+
+
+def save_last_run(data: dict):
+    """Persists last run summary to /config/data/last_run.json."""
+    path = os.path.join(DATA_DIR, "last_run.json")
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        log.warning(f"Could not save last run summary — {e}")
+
+
+def load_last_run() -> dict:
+    """Loads last run summary. Returns None if not found."""
+    path = os.path.join(DATA_DIR, "last_run.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        log.warning(f"Could not load last run summary — {e}")
+        return None

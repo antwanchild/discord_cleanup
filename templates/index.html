@@ -85,6 +85,75 @@
   </div>
 </div>
 
+<!-- Last run summary -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Last Run</span>
+    {% if last_run %}
+      {% if last_run.status == "success" %}
+        <span class="pill pill-success">✅ Successful</span>
+      {% elif last_run.status == "warning" %}
+        <span class="pill pill-warning">⚠️ Warnings</span>
+      {% elif last_run.status == "error" %}
+        <span class="pill pill-danger">⛔ Errors</span>
+      {% else %}
+        <span class="pill pill-brand">ℹ️ Nothing to Clean</span>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  {% if last_run %}
+  <div class="stat-grid" style="margin-bottom:1rem">
+    <div class="stat-box">
+      <div class="stat-value">{{ last_run.total_deleted }}</div>
+      <div class="stat-label">Messages Deleted</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value mono">{{ last_run.duration }}</div>
+      <div class="stat-label">Duration</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">{{ last_run.channels_checked }}</div>
+      <div class="stat-label">Channels Checked</div>
+    </div>
+  </div>
+
+  <table style="margin-bottom:0.5rem">
+    <tbody>
+      <tr>
+        <td style="color:var(--text-muted); font-size:0.8rem">Timestamp</td>
+        <td class="mono">{{ last_run.timestamp }}</td>
+      </tr>
+      <tr>
+        <td style="color:var(--text-muted); font-size:0.8rem">Triggered by</td>
+        <td class="mono">{{ last_run.triggered_by }}</td>
+      </tr>
+      {% if last_run.rate_limits > 0 %}
+      <tr>
+        <td style="color:var(--text-muted); font-size:0.8rem">Rate Limits</td>
+        <td class="mono" style="color:var(--warning)">{{ last_run.rate_limits }}</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  {% if last_run.categories %}
+  <div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--border)">
+    <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem">Top Categories</div>
+    {% for cat_name, cat_count in last_run.categories %}
+    <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:0.2rem 0">
+      <span>{% if cat_name.startswith('#') %}📄{% else %}📁{% endif %} {{ cat_name }}</span>
+      <span class="mono" style="color:var(--brand)">{{ cat_count }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% else %}
+    <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No runs recorded yet.</p>
+  {% endif %}
+</div>
+
 <!-- Stats summary -->
 <div class="card">
   <div class="card-header">

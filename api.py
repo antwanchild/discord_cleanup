@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 
 from config import BOT_VERSION, LOG_DIR, log
 from utils import get_uptime_str, get_next_run_str, get_bot, get_bot_loop
-from stats import load_stats, reset_stats
+from stats import load_stats, reset_stats, load_last_run
 import utils
 
 # All /api/* and /run/* routes live here, registered as a Blueprint in web.py
@@ -39,6 +39,15 @@ def api_status():
 def api_stats():
     """Full stats payload — all-time, rolling 30-day, monthly, and per-channel breakdown."""
     return jsonify(load_stats())
+
+
+@api.route("/api/last_run")
+def api_last_run():
+    """Last cleanup run summary — timestamp, status, deleted count, duration, top categories."""
+    data = load_last_run()
+    if not data:
+        return jsonify({"error": "No runs recorded yet"}), 404
+    return jsonify(data)
 
 
 @api.route("/api/schedule")

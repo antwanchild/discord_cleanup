@@ -13,7 +13,7 @@ from utils import (
     update_report_frequency, update_log_max_files, update_schedule,
     get_bot
 )
-from stats import load_stats
+from stats import load_stats, load_last_run
 from api import api, _get_status_context
 import utils
 
@@ -35,6 +35,7 @@ def dashboard():
     stats = load_stats()
     context["stats"] = stats
     context["now"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    context["last_run"] = load_last_run()
     context["run_in_progress"] = utils.run_in_progress
 
     # Build sorted channel list for the single-channel run selector

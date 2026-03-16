@@ -442,6 +442,37 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
 
     if not dry_run and not single_channel_id:
         update_stats(channel_results)
+
+        # Build category totals for last run summary
+        cat_totals = {}
+        for cat_name, cat_data in category_results.items():
+            cat_total = sum(s["count"] for s in cat_data["channels"].values() if s["count"] > 0)
+            if cat_total > 0:
+                cat_totals[cat_name] = cat_total
+        for ch_name, s in standalone_results.items():
+            if s["count"] > 0:
+                cat_totals[f"#{ch_name}"] = s["count"]
+
+        # Determine status label for summary
+        if has_warnings and grand_total == 0:
+            run_status = "error"
+        elif has_warnings:
+            run_status = "warning"
+        elif grand_total > 0:
+            run_status = "success"
+        else:
+            run_status = "clean"
+
+        save_last_run({
+            "timestamp":        run_end.strftime("%Y-%m-%d %H:%M:%S"),
+            "triggered_by":     triggered_by,
+            "duration":         duration_str,
+            "total_deleted":    grand_total,
+            "channels_checked": len(channel_map),
+            "rate_limits":      grand_rate_limits,
+            "status":           run_status,
+            "categories":       sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:5],
+        })
         stats_data = load_stats()
         log.info(
             f"Stats | All-time: {stats_data['all_time']['deleted']} deleted across {stats_data['all_time']['runs']} runs "
