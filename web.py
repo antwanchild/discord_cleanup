@@ -15,6 +15,7 @@ from utils import (
 )
 from stats import load_stats
 from api import api, _get_status_context
+import utils
 
 # Flask app setup — templates and static files live alongside web.py
 app = Flask(__name__, template_folder="templates", static_folder="static")
