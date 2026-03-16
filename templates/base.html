@@ -582,6 +582,106 @@
       letter-spacing: 0.06em;
       color: var(--text-muted);
     }
+
+    /* ── Mobile & tablet responsive ────────────────────────────────────────── */
+
+    /* Hamburger button — hidden on desktop */
+    .nav-toggle {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      cursor: pointer;
+      padding: 4px;
+      margin-left: auto;
+    }
+
+    .nav-toggle span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: var(--text-muted);
+      border-radius: 2px;
+      transition: background 0.15s;
+    }
+
+    .nav-toggle:hover span { background: var(--brand); }
+
+    /* Tablet — tighten nav, hide version */
+    @media (max-width: 900px) {
+      nav.topbar { padding: 0.75rem 1.25rem; gap: 1rem; }
+      .topbar-version { display: none; }
+      main { padding: 1.25rem; }
+    }
+
+    /* Mobile — hamburger nav */
+    @media (max-width: 640px) {
+      nav.topbar {
+        flex-wrap: wrap;
+        padding: 0.75rem 1rem;
+        gap: 0.5rem;
+      }
+
+      .topbar-brand { flex: 1; }
+
+      .nav-toggle { display: flex; }
+
+      .theme-controls { order: 3; margin-left: auto; }
+
+      .topbar-nav {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        order: 4;
+        gap: 0.1rem;
+        padding: 0.5rem 0;
+        border-top: 1px solid var(--border);
+      }
+
+      .topbar-nav.open { display: flex; }
+
+      .topbar-nav a {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.9rem;
+      }
+
+      main { padding: 1rem; }
+
+      /* Stack form rows vertically */
+      .form-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .form-row label { min-width: unset; }
+      .form-row select,
+      .form-row input { width: 100%; }
+
+      /* Full-width buttons in form rows */
+      .form-row .btn { width: 100%; justify-content: center; }
+
+      /* Tables — horizontal scroll */
+      .card { overflow-x: auto; }
+
+      /* Stat grid — 2 columns on mobile */
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+
+      /* Card padding tighter */
+      .card { padding: 1rem; }
+
+      /* Toast full width on mobile */
+      #toast {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+        text-align: center;
+      }
+
+      /* Theme dropdown opens upward on mobile to avoid overflow */
+      .theme-dropdown-menu {
+        bottom: calc(100% + 6px);
+        top: auto;
+      }
+    }
   </style>
 </head>
 <body>
@@ -601,6 +701,11 @@
       <a href="/stats"    class="{% if request.path == '/stats' %}active{% endif %}">Stats</a>
       <a href="/logs"     class="{% if '/logs' in request.path %}active{% endif %}">Logs</a>
     </div>
+
+    <!-- Hamburger toggle — mobile only -->
+    <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
 
     <!-- Theme controls -->
     <div class="theme-controls">
@@ -704,6 +809,17 @@
       toast.className = `show ${type}`;
       setTimeout(() => { toast.className = ""; }, 3000);
     }
+
+    function toggleNav() {
+      document.querySelector(".topbar-nav").classList.toggle("open");
+    }
+
+    // Close nav when a link is clicked on mobile
+    document.querySelectorAll(".topbar-nav a").forEach(a => {
+      a.addEventListener("click", () => {
+        document.querySelector(".topbar-nav").classList.remove("open");
+      });
+    });
 
     function toggleDropdown() {
       document.getElementById("theme-menu").classList.toggle("open");
