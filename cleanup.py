@@ -8,7 +8,7 @@ from config import (
     BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_CHANNEL_ID,
     RETRY_DELAY, WARN_UNCONFIGURED, log
 )
-from stats import update_stats, load_stats
+from stats import load_stats, update_stats, save_last_run
 from utils import get_next_run_str, setup_run_log, update_health
 
 
