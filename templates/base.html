@@ -861,6 +861,14 @@
     tbody tr:nth-child(odd)  { background: rgba(255,255,255,0.02) !important; }
     tbody tr:nth-child(even) { background: transparent !important; }
     tbody tr:hover { background: var(--brand-glow) !important; }
+
+    /* Hide number input spinners — browser arrows are not theme-aware */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] { -moz-appearance: textfield; }
   </style>
 </head>
 <body>
