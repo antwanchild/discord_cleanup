@@ -53,23 +53,19 @@
     <span id="run-status-pill" class="pill pill-success" style="margin-left:auto">Idle</span>
   </div>
 
-  <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end">
-    <div style="flex:1; min-width:180px">
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem">Full Run</div>
-      <button class="btn btn-primary" onclick="triggerFullRun()" id="btn-full-run">
-        🧹 Run All Channels
-      </button>
-    </div>
-    <div style="flex:2; min-width:220px">
-      <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.4rem">Single Channel</div>
-      <div style="display:flex; gap:0.5rem">
-        <select id="channel-select" style="flex:1; margin:0; font-size:0.8rem">
-          {% for ch in configured_channels %}
-            <option value="{{ ch.id }}">{{ ch.label }}</option>
-          {% endfor %}
-        </select>
-        <button class="btn btn-ghost" onclick="triggerChannelRun()" id="btn-channel-run">
-          Run
+  <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center">
+    <div style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap">Full Run</div>
+    <button class="btn btn-primary" onclick="triggerFullRun()" id="btn-full-run" style="height:36px; white-space:nowrap">
+      🧹 Run All Channels
+    </button>
+    <div style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap; margin-left:0.5rem">Single Channel</div>
+    <select id="channel-select" style="flex:1; min-width:180px; margin:0; font-size:0.8rem; height:36px">
+      {% for ch in configured_channels %}
+        <option value="{{ ch.id }}">{{ ch.label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-ghost" onclick="triggerChannelRun()" id="btn-channel-run" style="height:36px; white-space:nowrap">
+      Run
         </button>
       </div>
     </div>
