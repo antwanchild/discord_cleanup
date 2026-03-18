@@ -870,6 +870,29 @@
       margin: 0;
     }
     input[type=number] { -moz-appearance: textfield; }
+
+    .modal-close-x {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--brand-glow);
+      color: var(--text-muted);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+
+    .modal-close-x:hover { background: var(--danger); color: #fff; }
+
+    .modal-box { position: relative; }
   </style>
 </head>
 <body>
@@ -930,6 +953,7 @@
   <!-- Global help modal -->
   <div class="modal-overlay" id="modal-global-help">
     <div class="modal-box">
+      <div class="modal-close-x" onclick="closeModal('global-help')" title="Close">✕</div>
       <h2>Discord Cleanup Bot</h2>
       <p>Automated message cleanup for Discord servers. Removes old messages from configured channels on a schedule.</p>
 
@@ -951,15 +975,15 @@
       <h3>API</h3>
       <p>All data is also available as JSON at <span class="mono">/api/status</span>, <span class="mono">/api/stats</span>, <span class="mono">/api/channels</span>, <span class="mono">/api/schedule</span>, <span class="mono">/api/logs/latest</span>, and <span class="mono">/api/last_run</span>.</p>
 
-      <div class="modal-footer">
-        <button class="btn btn-primary" onclick="closeModal('global-help')">Close</button>
-      </div>
     </div>
   </div>
 
   <!-- Page-level help modal — content injected by each page -->
   <div class="modal-overlay" id="modal-page-help">
-    <div class="modal-box" id="modal-page-help-content"></div>
+    <div class="modal-box" style="position:relative">
+      <div class="modal-close-x" onclick="closeModal('page-help')" title="Close">✕</div>
+      <div id="modal-page-help-content"></div>
+    </div>
   </div>
 
   <!-- Toast notification -->
