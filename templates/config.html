@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Config
-{% endblock %}
+{% block title %}Config{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -25,32 +24,56 @@
     <button class="btn btn-primary" onclick="saveRetention()">Save</button>
   </div>
 
+  <!-- Log Level -->
   <div class="form-row">
     <label>Log Level</label>
-    <select id="loglevel-select">
-      {% for level in ["DEBUG", "INFO", "WARNING", "ERROR"] %}
-        <option value="{{ level }}" {% if log_level == level %}selected{% endif %}>{{ level }}</option>
-      {% endfor %}
-    </select>
+    <div class="cfg-dropdown" id="dd-loglevel" style="position:relative; flex:1">
+      <div class="theme-dropdown-btn" onclick="toggleCfgDropdown('loglevel')" style="width:100%; justify-content:space-between">
+        <span id="dd-loglevel-label">{{ log_level }}</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="theme-dropdown-menu" id="dd-loglevel-menu">
+        {% for level in ["DEBUG", "INFO", "WARNING", "ERROR"] %}
+        <div class="theme-option" onclick="setCfgValue('loglevel', '{{ level }}', '{{ level }}')">{{ level }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    <input type="hidden" id="loglevel-select" value="{{ log_level }}">
     <button class="btn btn-primary" onclick="saveLogLevel()">Save</button>
   </div>
 
+  <!-- Warn Unconfigured -->
   <div class="form-row">
     <label>Warn Unconfigured</label>
-    <select id="warn-select">
-      <option value="true"  {% if warn_unconfigured %}selected{% endif %}>Enabled</option>
-      <option value="false" {% if not warn_unconfigured %}selected{% endif %}>Disabled</option>
-    </select>
+    <div class="cfg-dropdown" id="dd-warn" style="position:relative; flex:1">
+      <div class="theme-dropdown-btn" onclick="toggleCfgDropdown('warn')" style="width:100%; justify-content:space-between">
+        <span id="dd-warn-label">{{ "Enabled" if warn_unconfigured else "Disabled" }}</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="theme-dropdown-menu" id="dd-warn-menu">
+        <div class="theme-option" onclick="setCfgValue('warn', 'true', 'Enabled')">Enabled</div>
+        <div class="theme-option" onclick="setCfgValue('warn', 'false', 'Disabled')">Disabled</div>
+      </div>
+    </div>
+    <input type="hidden" id="warn-select" value="{{ 'true' if warn_unconfigured else 'false' }}">
     <button class="btn btn-primary" onclick="saveWarnUnconfigured()">Save</button>
   </div>
 
+  <!-- Report Frequency -->
   <div class="form-row">
     <label>Report Frequency</label>
-    <select id="freq-select">
-      {% for freq in ["monthly", "weekly", "both"] %}
-        <option value="{{ freq }}" {% if report_frequency == freq %}selected{% endif %}>{{ freq | capitalize }}</option>
-      {% endfor %}
-    </select>
+    <div class="cfg-dropdown" id="dd-freq" style="position:relative; flex:1">
+      <div class="theme-dropdown-btn" onclick="toggleCfgDropdown('freq')" style="width:100%; justify-content:space-between">
+        <span id="dd-freq-label">{{ report_frequency | capitalize }}</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="theme-dropdown-menu" id="dd-freq-menu">
+        {% for freq in ["monthly", "weekly", "both"] %}
+        <div class="theme-option" onclick="setCfgValue('freq', '{{ freq }}', '{{ freq | capitalize }}')">{{ freq | capitalize }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    <input type="hidden" id="freq-select" value="{{ report_frequency }}">
     <button class="btn btn-primary" onclick="saveReportFrequency()">Save</button>
   </div>
 
@@ -74,7 +97,7 @@
     font-family: var(--font-mono);
     font-size: 0.8rem;
     background: var(--surface);
-    color: #e0e0f0;
+    color: var(--text-base);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 1rem;
@@ -85,18 +108,18 @@
 
 <template id="help-config">
   <h2>Config Help</h2>
-    <h3>Default Retention</h3>
-    <p>Messages older than this many days will be deleted during cleanup. Range: 1-365 days. Channels can override this in channels.yml.</p>
-    <h3>Log Level</h3>
-    <p>Controls how much detail is written to log files. DEBUG is very verbose — use INFO for normal operation.</p>
-    <h3>Warn Unconfigured</h3>
-    <p>When enabled, the bot logs a warning for any Discord channel not listed in channels.yml.</p>
-    <h3>Report Frequency</h3>
-    <p>How often the automated stats report is posted. Monthly posts on the 1st, weekly posts every Monday, both does both.</p>
-    <h3>Log Files Retained</h3>
-    <p>Number of daily log files to keep. Files older than this are deleted automatically.</p>
-    <h3>channels.yml Editor</h3>
-    <p>Direct editor for the channel configuration file. Must be valid YAML. Click Save and Reload to apply immediately without restarting.</p>
+  <h3>Default Retention</h3>
+  <p>Messages older than this many days will be deleted during cleanup. Range: 1-365 days. Channels can override this in channels.yml.</p>
+  <h3>Log Level</h3>
+  <p>Controls how much detail is written to log files. DEBUG is very verbose — use INFO for normal operation.</p>
+  <h3>Warn Unconfigured</h3>
+  <p>When enabled, the bot logs a warning for any Discord channel not listed in channels.yml.</p>
+  <h3>Report Frequency</h3>
+  <p>How often the automated stats report is posted. Monthly posts on the 1st, weekly posts every Monday, both does both.</p>
+  <h3>Log Files Retained</h3>
+  <p>Number of daily log files to keep. Files older than this are deleted automatically.</p>
+  <h3>channels.yml Editor</h3>
+  <p>Direct editor for the channel configuration file. Must be valid YAML. Click Save and Reload to apply immediately without restarting.</p>
   <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
     <button onclick="closeModal('page-help')" style="background:var(--brand);color:#fff;padding:0.4rem 1rem;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem">Close</button>
   </div>
@@ -105,6 +128,31 @@
 
 {% block scripts %}
 <script>
+  // ── Config custom dropdowns ─────────────────────────────────────────────────
+  function toggleCfgDropdown(id) {
+    const menu = document.getElementById(`dd-${id}-menu`);
+    // Close all others first
+    document.querySelectorAll('.cfg-dropdown .theme-dropdown-menu').forEach(m => {
+      if (m !== menu) m.classList.remove('open');
+    });
+    menu.classList.toggle('open');
+  }
+
+  function setCfgValue(id, value, label) {
+    document.getElementById(`dd-${id}-label`).textContent = label;
+    document.getElementById(`${id}-select`).value = value;
+    document.getElementById(`dd-${id}-menu`).classList.remove('open');
+  }
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', function(e) {
+    document.querySelectorAll('.cfg-dropdown').forEach(dd => {
+      if (!dd.contains(e.target)) {
+        dd.querySelector('.theme-dropdown-menu').classList.remove('open');
+      }
+    });
+  });
+
   async function saveRetention() {
     const fd = new FormData();
     fd.append("days", document.getElementById("retention-input").value);

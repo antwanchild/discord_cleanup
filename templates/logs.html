@@ -15,13 +15,21 @@
 <div class="card">
   <div class="card-header" style="flex-wrap:wrap; gap:0.5rem">
     <span class="card-title">Log File</span>
-    <!-- Log file selector -->
+    <!-- Log file custom dropdown -->
     {% if available_logs %}
-    <select onchange="window.location='/logs/' + this.value" style="flex:1; min-width:160px; max-width:300px; margin:0; height:36px;">
-      {% for f in available_logs %}
-        <option value="{{ f }}" {% if f == log_file %}selected{% endif %} style="color:var(--text-base); background:var(--surface);">{{ f }}</option>
-      {% endfor %}
-    </select>
+    <div class="log-file-dropdown" id="log-file-dropdown" style="position:relative; flex:1; min-width:160px; max-width:300px;">
+      <div class="theme-dropdown-btn" id="log-file-btn" onclick="toggleLogDropdown()" style="width:100%; justify-content:space-between">
+        <span id="log-file-label" class="mono" style="font-size:0.75rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ log_file or 'Select log file' }}</span>
+        <span class="chevron" style="margin-left:0.5rem; flex-shrink:0">▾</span>
+      </div>
+      <div class="theme-dropdown-menu" id="log-file-menu" style="width:100%; max-height:200px; overflow-y:auto">
+        {% for f in available_logs %}
+        <div class="theme-option mono" style="font-size:0.75rem" onclick="selectLogFile('{{ f }}')">
+          {{ f }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
     {% endif %}
     <button class="btn btn-ghost" onclick="window.location.reload()">Refresh</button>
   </div>
@@ -75,5 +83,25 @@
   // Auto-scroll to bottom of log container on load
   const container = document.getElementById("log-container");
   if (container) container.scrollTop = container.scrollHeight;
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function toggleLogDropdown() {
+    document.getElementById("log-file-menu").classList.toggle("open");
+  }
+
+  function selectLogFile(filename) {
+    window.location = '/logs/' + filename;
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener("click", function(e) {
+    const dropdown = document.getElementById("log-file-dropdown");
+    if (dropdown && !dropdown.contains(e.target)) {
+      document.getElementById("log-file-menu").classList.remove("open");
+    }
+  });
 </script>
 {% endblock %}

@@ -59,16 +59,23 @@
       🧹 Run All Channels
     </button>
     <div style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap; margin-left:0.5rem">Single Channel</div>
-    <select id="channel-select" style="flex:1; min-width:180px; margin:0; font-size:0.8rem; height:36px">
-      {% for ch in configured_channels %}
-        <option value="{{ ch.id }}">{{ ch.label }}</option>
-      {% endfor %}
-    </select>
-    <button class="btn btn-ghost" onclick="triggerChannelRun()" id="btn-channel-run" style="height:36px; white-space:nowrap">
-      Run
-        </button>
+    <div class="cfg-dropdown" id="dd-channel" style="position:relative; flex:1; min-width:180px">
+      <div class="theme-dropdown-btn" onclick="toggleChannelDropdown()" style="width:100%; justify-content:space-between">
+        <span id="dd-channel-label" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8rem">
+          {% if configured_channels %}{{ configured_channels[0].label }}{% else %}No channels{% endif %}
+        </span>
+        <span class="chevron" style="margin-left:0.5rem; flex-shrink:0">▾</span>
+      </div>
+      <div class="theme-dropdown-menu" id="dd-channel-menu" style="max-height:250px; overflow-y:auto; width:100%">
+        {% for ch in configured_channels %}
+        <div class="theme-option" style="font-size:0.8rem" onclick="selectChannel('{{ ch.id }}', '{{ ch.label | replace("'", "\'") }}')">{{ ch.label }}</div>
+        {% endfor %}
       </div>
     </div>
+    <input type="hidden" id="channel-select" value="{{ configured_channels[0].id if configured_channels else '' }}">
+    <button class="btn btn-ghost" onclick="triggerChannelRun()" id="btn-channel-run" style="height:36px; white-space:nowrap">
+      Run
+    </button>
   </div>
 </div>
 
@@ -247,6 +254,25 @@
     const data = await postForm("/run/full", fd);
     if (data.success) updateRunStatus();
   }
+
+  // Channel dropdown
+  function toggleChannelDropdown() {
+    document.getElementById("dd-channel-menu").classList.toggle("open");
+  }
+
+  function selectChannel(id, label) {
+    document.getElementById("channel-select").value = id;
+    document.getElementById("dd-channel-label").textContent = label;
+    document.getElementById("dd-channel-menu").classList.remove("open");
+  }
+
+  // Close channel dropdown on outside click
+  document.addEventListener("click", function(e) {
+    const dd = document.getElementById("dd-channel");
+    if (dd && !dd.contains(e.target)) {
+      document.getElementById("dd-channel-menu").classList.remove("open");
+    }
+  });
 
   async function triggerChannelRun() {
     const fd = new FormData();
