@@ -27,7 +27,7 @@
   <!-- Log Level -->
   <div class="form-row">
     <label>Log Level</label>
-    <div class="cfg-dropdown" id="dd-loglevel" style="position:relative; flex:1">
+    <div class="cfg-dropdown" id="dd-loglevel" style="position:relative; flex:1; max-width:200px">
       <div class="theme-dropdown-btn" onclick="toggleCfgDropdown('loglevel')" style="width:100%; justify-content:space-between">
         <span id="dd-loglevel-label">{{ log_level }}</span>
         <span class="chevron">▾</span>
@@ -45,7 +45,7 @@
   <!-- Warn Unconfigured -->
   <div class="form-row">
     <label>Warn Unconfigured</label>
-    <div class="cfg-dropdown" id="dd-warn" style="position:relative; flex:1">
+    <div class="cfg-dropdown" id="dd-warn" style="position:relative; flex:1; max-width:200px">
       <div class="theme-dropdown-btn" onclick="toggleCfgDropdown('warn')" style="width:100%; justify-content:space-between">
         <span id="dd-warn-label">{{ "Enabled" if warn_unconfigured else "Disabled" }}</span>
         <span class="chevron">▾</span>
@@ -62,7 +62,7 @@
   <!-- Report Frequency -->
   <div class="form-row">
     <label>Report Frequency</label>
-    <div class="cfg-dropdown" id="dd-freq" style="position:relative; flex:1">
+    <div class="cfg-dropdown" id="dd-freq" style="position:relative; flex:1; max-width:200px">
       <div class="theme-dropdown-btn" onclick="toggleCfgDropdown('freq')" style="width:100%; justify-content:space-between">
         <span id="dd-freq-label">{{ report_frequency | capitalize }}</span>
         <span class="chevron">▾</span>
