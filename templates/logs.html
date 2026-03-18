@@ -19,8 +19,8 @@
     {% if available_logs %}
     <select onchange="window.location='/logs/' + this.value" style="margin-left:1rem; max-width:300px; margin-bottom:0; height:36px; color:var(--text-base); background:var(--surface);">
       {% for f in available_logs %}
-        <option value="{{ f }}" {% if f == log_file %}selected{% endif %}>{{ f }}</option>
-      {% endfor %}
+      <option value="{{ f }}" {% if f == log_file %}selected{% endif %} style="color:var(--text-base); background:var(--surface);">{{ f }}</option>
+    {% endfor %}    
     </select>
     {% endif %}
     <button class="btn btn-ghost" onclick="window.location.reload()" style="margin-left:auto">Refresh</button>
