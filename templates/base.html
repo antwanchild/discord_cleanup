@@ -32,6 +32,7 @@
       --text-muted:  #6655aa;
       --text-base:   #1a1040;
       --bg-body:     #f5f3ff;
+      --input-bg:    #ddd8f8;
     }
 
     /* Slate — dark */
@@ -58,6 +59,7 @@
       --text-muted:  #4a6080;
       --text-base:   #0f1e30;
       --bg-body:     #f0f4fa;
+      --input-bg:    #d4e0f0;
     }
 
     /* Emerald — dark */
@@ -84,6 +86,7 @@
       --text-muted:  #3a7a54;
       --text-base:   #0a2014;
       --bg-body:     #f0faf4;
+      --input-bg:    #cceedd;
     }
 
     /* Crimson — dark */
@@ -110,6 +113,7 @@
       --text-muted:  #884444;
       --text-base:   #200a0a;
       --bg-body:     #fff5f5;
+      --input-bg:    #f5d8d8;
     }
 
 
@@ -137,6 +141,7 @@
       --text-muted:  #7a5800;
       --text-base:   #1a1000;
       --bg-body:     #fffbf0;
+      --input-bg:    #ffe8a0;
     }
 
     /* Teal — dark */
@@ -163,6 +168,7 @@
       --text-muted:  #2a7060;
       --text-base:   #051a14;
       --bg-body:     #f0faf8;
+      --input-bg:    #c8eee8;
     }
 
     /* Rose — dark */
@@ -189,6 +195,7 @@
       --text-muted:  #884466;
       --text-base:   #200510;
       --bg-body:     #fff5fa;
+      --input-bg:    #f5d0e8;
     }
 
     /* Mono — dark */
@@ -215,6 +222,7 @@
       --text-muted:  #777777;
       --text-base:   #111111;
       --bg-body:     #f8f8f8;
+      --input-bg:    #dddddd;
     }
     /* ── Shared variables ──────────────────────────────────────────────────── */
     :root {
@@ -317,8 +325,8 @@
       font-family: var(--font-mono);
       padding: 0.25rem 0.6rem;
       border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--surface);
+      border: 1px solid var(--brand);
+      background: var(--surface-alt);
       color: var(--text-base);
       cursor: pointer;
       height: 28px;
@@ -327,7 +335,11 @@
       user-select: none;
     }
 
-    .theme-dropdown-btn:hover { border-color: var(--brand); }
+    .theme-dropdown-btn:hover { border-color: var(--brand); background: var(--brand-glow); }
+
+    [data-mode='light'] .theme-dropdown-btn {
+      background: var(--input-bg, var(--surface-alt));
+    }
 
     .theme-dropdown-btn .dot {
       width: 8px;
@@ -514,8 +526,6 @@
       flex-wrap: wrap;
       margin-bottom: 1rem;
     }
-
-    .form-row .btn { margin-left: auto; }
 
     .form-row label {
       min-width: 160px;
@@ -813,7 +823,17 @@
     }
 
     /* ── Form inputs and selects — theme aware ──────────────────────────────── */
-    input, select, textarea {
+    [data-mode='light'] input,
+    [data-mode='light'] select,
+    [data-mode='light'] textarea {
+      background: var(--input-bg, var(--surface-alt)) !important;
+      color: var(--text-base) !important;
+      border: 1px solid var(--brand) !important;
+    }
+
+    [data-mode='dark'] input,
+    [data-mode='dark'] select,
+    [data-mode='dark'] textarea {
       background: var(--surface-alt) !important;
       color: var(--text-base) !important;
       border: 1px solid var(--brand) !important;
