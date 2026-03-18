@@ -1,20 +1,6 @@
 {% extends "base.html" %}
 
 {% block title %}Schedule
-<template id="help-schedule">
-  <h2>Schedule Help</h2>
-    <h3>Run Times</h3>
-    <p>Each entry is a daily cleanup run time in 24-hour format (e.g. 03:00 for 3 AM). The bot runs cleanup on all configured channels at each scheduled time.</p>
-    <h3>Timezone</h3>
-    <p>Times use the timezone set via the TZ environment variable in your Docker config. If TZ is not set the bot defaults to UTC.</p>
-    <h3>Adding a Time</h3>
-    <p>Use the time picker and click Add. Duplicate times are rejected. Changes reschedule the task immediately — no restart needed.</p>
-    <h3>Removing a Time</h3>
-    <p>Click Remove next to any run time. The last remaining run time cannot be removed.</p>
-  <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
-    <button onclick="closeModal('page-help')" style="background:var(--brand);color:#fff;padding:0.4rem 1rem;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem">Close</button>
-  </div>
-</template>
 {% endblock %}
 
 {% block content %}
@@ -65,6 +51,21 @@
     Times are in the timezone configured via the <span class="mono">TZ</span> environment variable.
   </p>
 </div>
+
+<template id="help-schedule">
+  <h2>Schedule Help</h2>
+    <h3>Run Times</h3>
+    <p>Each entry is a daily cleanup run time in 24-hour format (e.g. 03:00 for 3 AM).</p>
+    <h3>Timezone</h3>
+    <p>Times use the timezone set via the TZ environment variable. If TZ is not set the bot defaults to UTC.</p>
+    <h3>Adding a Time</h3>
+    <p>Use the time picker and click Add. Duplicate times are rejected. Changes reschedule the task immediately.</p>
+    <h3>Removing a Time</h3>
+    <p>Click Remove next to any run time. The last remaining run time cannot be removed.</p>
+  <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+    <button onclick="closeModal('page-help')" style="background:var(--brand);color:#fff;padding:0.4rem 1rem;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem">Close</button>
+  </div>
+</template>
 {% endblock %}
 
 {% block scripts %}
