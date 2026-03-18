@@ -811,7 +811,8 @@
     }
 
     /* ── Form inputs and selects — theme aware ──────────────────────────────── */
-    input, select, textarea {
+    body input, body select, body textarea,
+    input[type], select[type], select {
       background: var(--surface) !important;
       color: var(--text-base) !important;
       border-color: var(--border) !important;
