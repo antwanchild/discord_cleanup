@@ -1,6 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}Logs{% endblock %}
+{% block title %}Logs
+<template id="help-logs">
+  <h2>Logs Help</h2>
+    <h3>Log Files</h3>
+    <p>The bot creates one log file per day. Use the dropdown to switch between available files. The most recent is shown by default.</p>
+    <h3>Color Coding</h3>
+    <p>Lines are color-coded by level — grey for DEBUG, white for INFO, orange for WARNING, red for ERROR.</p>
+    <h3>Log Retention</h3>
+    <p>Files older than the Log Files Retained setting are deleted automatically. Change this on the Config page.</p>
+    <h3>Download</h3>
+    <p>To download a log file use the slash command /cleanup logs in Discord, which sends today's log as a file attachment.</p>
+  <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+    <button onclick="closeModal('page-help')" style="background:var(--brand);color:#fff;padding:0.4rem 1rem;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem">Close</button>
+  </div>
+</template>
+{% endblock %}
 
 {% block content %}
 <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between">
@@ -8,18 +23,7 @@
     <h1>Logs</h1>
     <p>Last 200 lines from the most recent log file</p>
   </div>
-  <div class="help-btn" onclick="openPageHelp(`
-    <h2>Logs Help</h2>
-    <h3>Log Files</h3>
-    <p>The bot creates one log file per day named cleanup-YYYY-MM-DD.log. Use the dropdown to switch between available files. The most recent file is shown by default.</p>
-    <h3>Color Coding</h3>
-    <p>Log lines are color-coded by level — grey for DEBUG, white for INFO, orange for WARNING, red for ERROR.</p>
-    <h3>Log Retention</h3>
-    <p>Files older than the Log Files Retained setting are deleted automatically. Change this on the Config page.</p>
-    <h3>Download</h3>
-    <p>To download a log file use the slash command /cleanup logs in Discord, which sends today's log as a file attachment.</p>
-    <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)"><button style="background:var(--brand);color:#fff;padding:0.4rem 1rem;border:none;border-radius:6px;cursor:pointer" onclick="closeModal('page-help')">Close</button></div>
-  `)">?</div>
+  <div class="help-btn" onclick="openPageHelp('help-logs')" title="Help">?</div>
 </div>
 
 <div class="card">

@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 
-{% block title %}Config{% endblock %}
+{% block title %}Config
+<template id="help-config">
+  <h2>Config Help</h2>
+    <h3>Default Retention</h3>
+    <p>Messages older than this many days will be deleted during cleanup. Range: 1–365 days. Channels can override this in channels.yml.</p>
+    <h3>Log Level</h3>
+    <p>Controls how much detail is written to log files. DEBUG is very verbose — use INFO for normal operation.</p>
+    <h3>Warn Unconfigured</h3>
+    <p>When enabled, the bot logs a warning for any Discord channel not listed in channels.yml. Useful for auditing coverage.</p>
+    <h3>Report Frequency</h3>
+    <p>How often the automated stats report is posted. Monthly posts on the 1st, weekly posts every Monday, both does both.</p>
+    <h3>Log Files Retained</h3>
+    <p>Number of daily log files to keep. Files older than this are deleted automatically.</p>
+    <h3>channels.yml Editor</h3>
+    <p>Direct editor for the channel configuration file. Must be valid YAML — validated before saving. Click Save and Reload to apply immediately without restarting.</p>
+  <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+    <button onclick="closeModal('page-help')" style="background:var(--brand);color:#fff;padding:0.4rem 1rem;border:none;border-radius:6px;cursor:pointer;font-size:0.8rem">Close</button>
+  </div>
+</template>
+{% endblock %}
 
 {% block content %}
 <div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between">
@@ -8,22 +27,7 @@
     <h1>Configuration</h1>
     <p>Changes apply immediately in memory and persist to .env.discord_cleanup</p>
   </div>
-  <div class="help-btn" onclick="openPageHelp(`
-    <h2>Config Help</h2>
-    <h3>Default Retention</h3>
-    <p>Messages older than this many days will be deleted during cleanup. Range: 1–365 days. Channels can override this individually in channels.yml.</p>
-    <h3>Log Level</h3>
-    <p>Controls how much detail is written to log files. DEBUG is very verbose — use INFO for normal operation.</p>
-    <h3>Warn Unconfigured</h3>
-    <p>When enabled, the bot logs a warning for any Discord channel that is not listed in channels.yml. Useful for auditing coverage.</p>
-    <h3>Report Frequency</h3>
-    <p>How often the automated stats report is posted to the report channel. Monthly posts on the 1st, weekly posts every Monday, both does both.</p>
-    <h3>Log Files Retained</h3>
-    <p>Number of daily log files to keep. Files older than this are deleted automatically. Range: 1–365 days.</p>
-    <h3>channels.yml Editor</h3>
-    <p>Direct editor for the channel configuration file. Must be valid YAML — the bot validates before saving. Click Save and Reload to apply changes immediately without restarting.</p>
-    <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)"><button style="background:var(--brand);color:#fff;padding:0.4rem 1rem;border:none;border-radius:6px;cursor:pointer" onclick="closeModal('page-help')">Close</button></div>
-  `)">?</div>
+  <div class="help-btn" onclick="openPageHelp('help-config')" title="Help">?</div>
 </div>
 
 <!-- Bot settings -->
