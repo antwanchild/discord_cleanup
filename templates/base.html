@@ -782,6 +782,24 @@
       padding-top: 1rem;
       border-top: 1px solid var(--border);
     }
+
+    /* ── Form inputs and selects — theme aware ──────────────────────────────── */
+    input, select, textarea {
+      background: var(--surface) !important;
+      color: var(--text-base) !important;
+      border-color: var(--border) !important;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--brand) !important;
+      outline: none !important;
+      box-shadow: 0 0 0 2px var(--brand-glow) !important;
+    }
+
+    option {
+      background: var(--surface-alt);
+      color: var(--text-base);
+    }
   </style>
 </head>
 <body>
