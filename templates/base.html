@@ -676,6 +676,25 @@
       /* Card padding tighter */
       .card { padding: 1rem; }
 
+      /* Buttons — smaller on mobile */
+      .btn {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.75rem;
+        height: 32px;
+      }
+
+      /* Card headers — wrap on mobile */
+      .card-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      /* Manage/Edit links in card headers — don't push to far right */
+      .card-header a.btn { margin-left: 0; }
+
+      /* Stats view toggle buttons — stack if needed */
+      .card-header .btn + .btn { margin-left: 0; }
+
       /* Toast full width on mobile */
       #toast {
         left: 1rem;
