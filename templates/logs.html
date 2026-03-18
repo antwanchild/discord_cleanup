@@ -44,7 +44,7 @@
       {% if 'ERROR' in line %}color: var(--danger);
       {% elif 'WARNING' in line %}color: var(--warning);
       {% elif 'DEBUG' in line %}color: var(--text-muted);
-      {% else %}color: #c8c8e8;
+      {% else %}color: var(--text-base);
       {% endif %}
     ">{{ line }}</div>
     {% endfor %}
