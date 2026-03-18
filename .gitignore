@@ -1,5 +1,10 @@
 .env.discord_cleanup
 logs/
+data/
 __pycache__/
 *.pyc
+*.pyo
 *.log
+.DS_Store
+venv/
+.venv/

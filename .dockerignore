@@ -1,11 +1,16 @@
 .env.discord_cleanup
 logs/
+data/
 .git/
 .github/
 __pycache__/
 *.pyc
+*.pyo
 *.md
 .gitignore
 .dockerignore
 *.log
-data/
+.DS_Store
+venv/
+.venv/
+icon.png
