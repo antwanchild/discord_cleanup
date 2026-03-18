@@ -83,11 +83,7 @@
   // Auto-scroll to bottom of log container on load
   const container = document.getElementById("log-container");
   if (container) container.scrollTop = container.scrollHeight;
-</script>
-{% endblock %}
 
-{% block scripts %}
-<script>
   function toggleLogDropdown() {
     document.getElementById("log-file-menu").classList.toggle("open");
   }
