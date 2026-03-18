@@ -20,6 +20,7 @@ COPY commands_stats.py .
 COPY web.py .
 COPY api.py .
 COPY templates/ templates/
+COPY static/ static/
 COPY VERSION .
 COPY CHANGELOG .
 COPY healthcheck.py .
