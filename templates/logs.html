@@ -17,7 +17,7 @@
     <span class="card-title">Log File</span>
     <!-- Log file selector -->
     {% if available_logs %}
-    <select onchange="window.location='/logs/' + this.value" style="margin-left:1rem; max-width:300px; margin-bottom:0; height:36px; color:var(--text-base); background:var(--surface);">
+    <select onchange="window.location='/logs/' + this.value" style="margin-left:1rem; max-width:300px; margin-bottom:0; height:36px;">
       {% for f in available_logs %}
       <option value="{{ f }}" {% if f == log_file %}selected{% endif %} style="color:var(--text-base); background:var(--surface);">{{ f }}</option>
     {% endfor %}    
