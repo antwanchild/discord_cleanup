@@ -113,8 +113,24 @@ except PermissionError:
 
 # --- Environment Variables ---
 TOKEN = os.getenv("DISCORD_TOKEN")
-LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
-REPORT_CHANNEL_ID = int(os.getenv("REPORT_CHANNEL_ID"))
+if not TOKEN:
+    print("ERROR: DISCORD_TOKEN is not set in .env.discord_cleanup — cannot start bot.")
+    sys.exit(1)
+
+_raw_log_channel = os.getenv("LOG_CHANNEL_ID")
+_raw_report_channel = os.getenv("REPORT_CHANNEL_ID")
+if not _raw_log_channel:
+    print("ERROR: LOG_CHANNEL_ID is not set in .env.discord_cleanup — cannot start bot.")
+    sys.exit(1)
+if not _raw_report_channel:
+    print("ERROR: REPORT_CHANNEL_ID is not set in .env.discord_cleanup — cannot start bot.")
+    sys.exit(1)
+try:
+    LOG_CHANNEL_ID = int(_raw_log_channel)
+    REPORT_CHANNEL_ID = int(_raw_report_channel)
+except ValueError:
+    print("ERROR: LOG_CHANNEL_ID and REPORT_CHANNEL_ID must be numeric Discord channel IDs.")
+    sys.exit(1)
 CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if t.strip()]
 LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
 DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
@@ -136,8 +152,8 @@ RETRY_DELAY = 300
 # --- Channels ---
 try:
     with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
-        _config = yaml.safe_load(f)
-        raw_channels = _config.get("channels", [])
+        yaml_data = yaml.safe_load(f)
+        raw_channels = yaml_data.get("channels", [])
 except FileNotFoundError:
     print(f"ERROR: {CONFIG_DIR}/channels.yml not found — cannot start bot.")
     sys.exit(1)

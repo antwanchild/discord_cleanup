@@ -13,11 +13,19 @@ from utils import get_next_run_str, setup_run_log, update_health
 
 
 def build_channel_map(guild):
-    """Builds a map of channel_id -> config dict."""
+    """Builds a map of channel_id -> config dict for all channels to be cleaned.
+
+    Uses three passes over raw_channels:
+      1. Index all entries into override_map, exclude_set, and category_map.
+      2. Expand each category into its child text channels, applying per-channel
+         overrides where present and skipping excluded channels.
+      3. Add any standalone (non-category) channels not already accounted for.
+    """
     override_map = {}
     exclude_set = set()
     category_map = {}
 
+    # Pass 1: index all configured entries by type
     for ch in cfg.raw_channels:
         ch_id = ch["id"]
         if ch.get("type") == "category":
@@ -36,6 +44,7 @@ def build_channel_map(guild):
 
     channel_map = {}
 
+    # Pass 2: expand categories into their child text channels
     for ch_config in cfg.raw_channels:
         if ch_config.get("type") != "category":
             continue
@@ -53,13 +62,13 @@ def build_channel_map(guild):
             if sub.id in exclude_set:
                 continue
             if sub.id in override_map:
-                ov = override_map[sub.id]
+                ch_override = override_map[sub.id]
                 channel_map[sub.id] = {
-                    "days": ov["days"],
+                    "days": ch_override["days"],
                     "category_name": cat_name,
                     "category_default": cat_days,
                     "is_override": True,
-                    "deep_clean": ov["deep_clean"] or cat_deep_clean
+                    "deep_clean": ch_override["deep_clean"] or cat_deep_clean
                 }
             else:
                 channel_map[sub.id] = {
@@ -70,6 +79,7 @@ def build_channel_map(guild):
                     "deep_clean": cat_deep_clean
                 }
 
+    # Pass 3: add standalone channels not already in the map or excluded
     for ch_config in cfg.raw_channels:
         if ch_config.get("type") == "category":
             continue
@@ -516,14 +526,14 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             breakdown_lines.append(f"📁 **{cat_name}** ({cat_data['default_days']}d default)")
             breakdown_lines.extend(active_lines)
 
-    for ch_name, stats in standalone_results.items():
-        if stats["count"] == -1:
+    for ch_name, ch_stats in standalone_results.items():
+        if ch_stats["count"] == -1:
             breakdown_lines.append(f"🚫 `#{ch_name}` — skipped (missing permissions)")
-        elif stats["count"] > 0:
+        elif ch_stats["count"] > 0:
             label = "would delete" if dry_run else "deleted"
-            deep_tag = " 🧹deep" if stats.get("deep_clean") else ""
-            override_tag = f" ({stats['days']}d ⚡override)" if stats["is_override"] else ""
-            breakdown_lines.append(f"🗑️ `#{ch_name}` — **{stats['count']}** {label}{override_tag}{deep_tag}")
+            deep_tag = " 🧹deep" if ch_stats.get("deep_clean") else ""
+            override_tag = f" ({ch_stats['days']}d ⚡override)" if ch_stats["is_override"] else ""
+            breakdown_lines.append(f"🗑️ `#{ch_name}` — **{ch_stats['count']}** {label}{override_tag}{deep_tag}")
 
     if not breakdown_lines:
         breakdown_lines.append("✅ No messages to clean")
@@ -584,11 +594,11 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             page_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
         await log_channel.send(embed=page_embed)
 
-    _footer1 = f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
-    _footer2 = f"  Warnings: {len(error_lines)} | Rate limits: {grand_rate_limits}"
+    footer_line1 = f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
+    footer_line2 = f"  Warnings: {len(error_lines)} | Rate limits: {grand_rate_limits}"
     log.info("╔══════════════════════════════════════════════════════════╗")
-    log.info(f"║{_footer1:<58}║")
-    log.info(f"║{_footer2:<58}║")
+    log.info(f"║{footer_line1:<58}║")
+    log.info(f"║{footer_line2:<58}║")
     log.info("╚══════════════════════════════════════════════════════════╝")
 
     if error_lines:

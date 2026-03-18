@@ -110,12 +110,13 @@ def setup_run_log(channel_count=None):
         log.error(f"Could not create log file {log_path} — check directory permissions.")
         return
 
-    _next = get_next_run_str()
-    _ch = f"  |  Channels: {channel_count}" if channel_count is not None else ""
-    _line2 = f"  Next run: {_next}{_ch}"
+    next_run = get_next_run_str()
+    channel_suffix = f"  |  Channels: {channel_count}" if channel_count is not None else ""
+    header_line = f"  Next run: {next_run}{channel_suffix}"
+    # Box-drawing banner logged at the start of each run
     log.info("╔══════════════════════════════════════════════════════════╗")
     log.info(f"║  Discord Cleanup Bot  v{BOT_VERSION:<34}║")
-    log.info(f"║{_line2:<58}║")
+    log.info(f"║{header_line:<58}║")
     log.info("╚══════════════════════════════════════════════════════════╝")
     log.debug(f"Log file: {log_path}")
     log.debug(
@@ -150,8 +151,8 @@ def reload_channels():
     with config_lock:
         try:
             with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
-                cfg = yaml.safe_load(f)
-                config.raw_channels = cfg.get("channels", [])
+                yaml_data = yaml.safe_load(f)
+                config.raw_channels = yaml_data.get("channels", [])
             log.info("channels.yml reloaded successfully")
             return True, f"Loaded {len(config.raw_channels)} channel entries"
         except FileNotFoundError:
@@ -166,8 +167,13 @@ def reload_channels():
 
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:
-    """Updates a single key in .env.discord_cleanup. Returns (success, message)."""
+    """Updates a single key in .env.discord_cleanup. Returns (success, message).
+
+    Rejects values containing newlines to prevent injecting extra env entries.
+    """
     import time
+    if "\n" in value or "\r" in value:
+        return False, f"Invalid value for {key} — newlines are not allowed"
     env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
     with config_lock:
         try:
@@ -262,8 +268,13 @@ def update_log_max_files(days: int) -> tuple[bool, str]:
     return success, message
 
 
-def update_schedule(new_times: list) -> tuple[bool, str]:
-    """Updates CLEAN_TIME in .env file and reschedules the cleanup task. Returns (success, message)."""
+def update_schedule(new_times: list) -> tuple[bool, str, str | None]:
+    """Updates CLEAN_TIME in .env file and reschedules the cleanup task.
+
+    Returns (success, message, reschedule_error) where reschedule_error is None
+    on success or a string describing why the in-memory reschedule failed (the
+    .env change is still saved and will apply on restart).
+    """
     import config
     from datetime import time as dtime
 
