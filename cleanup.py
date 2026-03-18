@@ -8,7 +8,7 @@ from config import (
     BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_CHANNEL_ID,
     RETRY_DELAY, WARN_UNCONFIGURED, log
 )
-from stats import load_stats, update_stats, save_last_run
+from stats import update_stats, load_stats, save_last_run
 from utils import get_next_run_str, setup_run_log, update_health
 
 
@@ -51,7 +51,6 @@ def build_channel_map(guild):
 
         for sub in category.text_channels:
             if sub.id in exclude_set:
-                log.info(f"#{sub.name} — excluded from cleanup (configured in channels.yml)")
                 continue
             if sub.id in override_map:
                 ov = override_map[sub.id]
@@ -463,16 +462,22 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
         else:
             run_status = "clean"
 
-        save_last_run({
-            "timestamp":        run_end.strftime("%Y-%m-%d %H:%M:%S"),
-            "triggered_by":     triggered_by,
-            "duration":         duration_str,
-            "total_deleted":    grand_total,
-            "channels_checked": len(channel_map),
-            "rate_limits":      grand_rate_limits,
-            "status":           run_status,
-            "categories":       sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:5],
-        })
+        try:
+            save_last_run({
+                "timestamp":        run_end.strftime("%Y-%m-%d %H:%M:%S"),
+                "triggered_by":     triggered_by,
+                "duration":         duration_str,
+                "total_deleted":    grand_total,
+                "channels_checked": len(channel_map),
+                "rate_limits":      grand_rate_limits,
+                "status":           run_status,
+                "categories":       [
+                    {"name": k, "count": v}
+                    for k, v in sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:5]
+                ],
+            })
+        except Exception as e:
+            log.warning(f"Could not save last run summary — {e}")
         stats_data = load_stats()
         log.info(
             f"Stats | All-time: {stats_data['all_time']['deleted']} deleted across {stats_data['all_time']['runs']} runs "

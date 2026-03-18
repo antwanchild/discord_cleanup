@@ -9,6 +9,7 @@ import os
 import logging
 
 warnings.filterwarnings("ignore", message=".*PyNaCl.*")
+warnings.filterwarnings("ignore", message=".*davey.*")
 
 from config import (
     BOT_VERSION, CLEAN_TIMES, STATUS_REPORT_TIME, TOKEN,
