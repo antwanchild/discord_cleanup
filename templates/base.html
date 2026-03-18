@@ -800,6 +800,18 @@
       background: var(--surface-alt);
       color: var(--text-base);
     }
+
+    /* ── Table theme override — Pico CSS compatibility ──────────────────────── */
+    table { border-collapse: collapse; width: 100%; }
+    tr { background: transparent !important; }
+    td, th { 
+      background: transparent !important; 
+      color: var(--text-base) !important;
+      border-color: var(--border) !important;
+    }
+    tbody tr:nth-child(odd)  { background: rgba(255,255,255,0.02) !important; }
+    tbody tr:nth-child(even) { background: transparent !important; }
+    tbody tr:hover { background: var(--brand-glow) !important; }
   </style>
 </head>
 <body>
@@ -849,7 +861,7 @@
     </div>
 
     <span class="topbar-version">v{{ version }}</span>
-    <div class="global-help-btn" onclick="openModal('global-help')" title="Help">?</div>
+    <div class="global-help-btn" onclick="openModal('global-help')" title="About / Help">ℹ</div>
   </nav>
 
   <main>

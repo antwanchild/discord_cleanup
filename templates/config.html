@@ -4,12 +4,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between">
-  <div>
+<div class="page-header">
+  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem">
     <h1>Configuration</h1>
-    <p>Changes apply immediately in memory and persist to .env.discord_cleanup</p>
+    <div class="help-btn" onclick="openPageHelp('help-config')" title="Help">?</div>
   </div>
-  <div class="help-btn" onclick="openPageHelp('help-config')" title="Help">?</div>
+  <p>Changes apply immediately in memory and persist to .env.discord_cleanup</p>
 </div>
 
 <!-- Bot settings -->

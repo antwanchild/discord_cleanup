@@ -4,12 +4,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between">
-  <div>
+<div class="page-header">
+  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem">
     <h1>Logs</h1>
-    <p>Last 200 lines from the most recent log file</p>
+    <div class="help-btn" onclick="openPageHelp('help-logs')" title="Help">?</div>
   </div>
-  <div class="help-btn" onclick="openPageHelp('help-logs')" title="Help">?</div>
+  <p>Last 200 lines from the most recent log file</p>
 </div>
 
 <div class="card">

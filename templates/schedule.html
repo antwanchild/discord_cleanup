@@ -4,12 +4,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between">
-  <div>
+<div class="page-header">
+  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem">
     <h1>Schedule</h1>
-    <p>Manage cleanup run times — changes apply immediately without a restart</p>
+    <div class="help-btn" onclick="openPageHelp('help-schedule')" title="Help">?</div>
   </div>
-  <div class="help-btn" onclick="openPageHelp('help-schedule')" title="Help">?</div>
+  <p>Manage cleanup run times — changes apply immediately without a restart</p>
 </div>
 
 <div class="card">
