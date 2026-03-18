@@ -3,9 +3,23 @@
 {% block title %}Schedule{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h1>Schedule</h1>
-  <p>Manage cleanup run times — changes apply immediately without a restart</p>
+<div class="page-header" style="display:flex; align-items:flex-start; justify-content:space-between">
+  <div>
+    <h1>Schedule</h1>
+    <p>Manage cleanup run times — changes apply immediately without a restart</p>
+  </div>
+  <div class="help-btn" onclick="openPageHelp(`
+    <h2>Schedule Help</h2>
+    <h3>Run Times</h3>
+    <p>Each entry is a daily cleanup run time in 24-hour format (e.g. 03:00 for 3 AM). The bot runs cleanup on all configured channels at each scheduled time.</p>
+    <h3>Timezone</h3>
+    <p>Times use the timezone set via the TZ environment variable in your Docker config. If TZ is not set the bot defaults to UTC.</p>
+    <h3>Adding a Time</h3>
+    <p>Use the time picker to select a time and click Add. Duplicate times are rejected. Changes reschedule the task immediately — no restart needed.</p>
+    <h3>Removing a Time</h3>
+    <p>Click Remove next to any run time. The last remaining run time cannot be removed — at least one must always be present.</p>
+    <div style="display:flex;justify-content:flex-end;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)"><button style="background:var(--brand);color:#fff;padding:0.4rem 1rem;border:none;border-radius:6px;cursor:pointer" onclick="closeModal('page-help')">Close</button></div>
+  `)">?</div>
 </div>
 
 <div class="card">

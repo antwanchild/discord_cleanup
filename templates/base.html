@@ -682,6 +682,105 @@
         top: auto;
       }
     }
+
+    /* ── Help modals ────────────────────────────────────────────────────────── */
+    .help-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--brand-glow);
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+
+    .help-btn:hover { background: var(--brand); color: #fff; }
+
+    .global-help-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--brand-glow);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+
+    .global-help-btn:hover { background: var(--brand); color: #fff; }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      z-index: 600;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      max-width: 520px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-box h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 0 0 0.25rem;
+    }
+
+    .modal-box h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--brand);
+      margin: 1.25rem 0 0.4rem;
+    }
+
+    .modal-box p, .modal-box li {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin: 0 0 0.4rem;
+    }
+
+    .modal-box ul {
+      padding-left: 1.25rem;
+      margin: 0 0 0.5rem;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
   </style>
 </head>
 <body>
@@ -731,11 +830,48 @@
     </div>
 
     <span class="topbar-version">v{{ version }}</span>
+    <div class="global-help-btn" onclick="openModal('global-help')" title="Help">?</div>
   </nav>
 
   <main>
     {% block content %}{% endblock %}
   </main>
+
+
+  <!-- Global help modal -->
+  <div class="modal-overlay" id="modal-global-help">
+    <div class="modal-box">
+      <h2>Discord Cleanup Bot</h2>
+      <p>Automated message cleanup for Discord servers. Removes old messages from configured channels on a schedule.</p>
+
+      <h3>Dashboard</h3>
+      <p>Overview of bot status, last run summary, stats, and run controls. Trigger a full or single-channel cleanup run directly from here.</p>
+
+      <h3>Config</h3>
+      <p>Edit bot settings — retention period, log level, report frequency, and the raw <span class="mono">channels.yml</span> file. Changes take effect immediately without a restart.</p>
+
+      <h3>Schedule</h3>
+      <p>Add or remove scheduled cleanup run times. Uses the timezone set via the <span class="mono">TZ</span> environment variable. At least one run time must remain.</p>
+
+      <h3>Stats</h3>
+      <p>Cleanup statistics in three views — Summary (category totals), Detail (per-channel sorted by count), and Grouped (channels nested under categories). Reset any period from this page.</p>
+
+      <h3>Logs</h3>
+      <p>View the last 200 lines of any log file. Color-coded by level — grey for DEBUG, white for INFO, orange for WARNING, red for ERROR. Auto-scrolls to the bottom on load.</p>
+
+      <h3>API</h3>
+      <p>All data is also available as JSON at <span class="mono">/api/status</span>, <span class="mono">/api/stats</span>, <span class="mono">/api/channels</span>, <span class="mono">/api/schedule</span>, <span class="mono">/api/logs/latest</span>, and <span class="mono">/api/last_run</span>.</p>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeModal('global-help')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page-level help modal — content injected by each page -->
+  <div class="modal-overlay" id="modal-page-help">
+    <div class="modal-box" id="modal-page-help-content"></div>
+  </div>
 
   <!-- Toast notification -->
   <div id="toast"></div>
@@ -809,6 +945,35 @@
       toast.className = `show ${type}`;
       setTimeout(() => { toast.className = ""; }, 3000);
     }
+
+
+    // ── Help modals ─────────────────────────────────────────────────────────
+    function openModal(id) {
+      document.getElementById(`modal-${id}`).classList.add("open");
+    }
+
+    function closeModal(id) {
+      document.getElementById(`modal-${id}`).classList.remove("open");
+    }
+
+    function openPageHelp(html) {
+      document.getElementById("modal-page-help-content").innerHTML = html;
+      document.getElementById("modal-page-help").classList.add("open");
+    }
+
+    // Close modals on overlay click
+    document.querySelectorAll(".modal-overlay").forEach(overlay => {
+      overlay.addEventListener("click", function(e) {
+        if (e.target === this) this.classList.remove("open");
+      });
+    });
+
+    // Close modals on Escape
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        document.querySelectorAll(".modal-overlay.open").forEach(m => m.classList.remove("open"));
+      }
+    });
 
     function toggleNav() {
       document.querySelector(".topbar-nav").classList.toggle("open");
