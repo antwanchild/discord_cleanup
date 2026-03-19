@@ -7,34 +7,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY cleanup_bot.py .
-COPY config.py .
-COPY stats.py .
-COPY utils.py .
-COPY config_utils.py .
-COPY scheduler.py .
-COPY notifications.py .
-COPY cleanup.py .
-COPY commands.py .
-COPY commands_stats.py .
-COPY web.py .
-COPY api.py .
+COPY *.py .
 COPY templates/ templates/
 COPY static/ static/
 COPY VERSION .
 COPY CHANGELOG .
-COPY healthcheck.py .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 RUN groupadd -g 1000 botgroup && useradd -u 1000 -g botgroup -s /bin/sh botuser
 
-ENV PUID=1000
-ENV PGID=1000
-ENV PYTHONPATH=/app
-ENV WEB_PORT=8080
+ENV PUID=1000 \
+    PGID=1000 \
+    PYTHONPATH=/app \
+    WEB_PORT=8080
 
 EXPOSE 8080
 
