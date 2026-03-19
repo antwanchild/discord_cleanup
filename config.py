@@ -45,7 +45,9 @@ def create_default_files():
                         "# Report frequency: monthly, weekly, or both\n"
                         "REPORT_FREQUENCY=monthly\n\n"
                         "# Warn about Discord channels not in channels.yml (true/false)\n"
-                        "WARN_UNCONFIGURED=false\n")
+                        "WARN_UNCONFIGURED=false\n\n"
+                        "# Trigger a catchup run on startup if a scheduled run was missed (true/false)\n"
+                        "CATCHUP_MISSED_RUNS=true\n")
             print(f"{CONFIG_DIR}/.env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
             created = True
         except PermissionError:
@@ -136,7 +138,9 @@ LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
 DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
 STATUS_REPORT_TIME = os.getenv("STATUS_REPORT_TIME", "09:00")
 REPORT_FREQUENCY = os.getenv("REPORT_FREQUENCY", "monthly").lower()
-WARN_UNCONFIGURED = os.getenv("WARN_UNCONFIGURED", "false").lower() == "true"
+WARN_UNCONFIGURED    = os.getenv("WARN_UNCONFIGURED", "false").lower() == "true"
+# When true, a missed scheduled run is detected on startup and triggered automatically
+CATCHUP_MISSED_RUNS  = os.getenv("CATCHUP_MISSED_RUNS", "true").lower() == "true"
 
 # --- Paths ---
 LOG_DIR = f"{CONFIG_DIR}/logs"

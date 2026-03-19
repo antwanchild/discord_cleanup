@@ -249,6 +249,28 @@ async def post_missed_run_alert(bot, guild, scheduled_time: str):
     log.warning(f"Missed run alert posted for scheduled time {scheduled_time}")
 
 
+async def post_catchup_notification(bot, guild, missed_time_str: str):
+    """Posts a notification when a missed scheduled run is detected on startup."""
+    log_channel = bot.get_channel(LOG_CHANNEL_ID)
+    if not log_channel:
+        log.warning("Could not post catchup notification — log channel not found")
+        return
+    embed = discord.Embed(
+        title="🔄 Missed Run Detected — Running Now",
+        description=(
+            f"🏠 Server: **{guild.name}**\n"
+            f"🕐 Missed scheduled time: **{missed_time_str}**\n\n"
+            f"A cleanup run was missed while the bot was offline. "
+            f"Running now to catch up."
+        ),
+        color=0x5865F2,
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await log_channel.send(embed=embed)
+    log.info(f"Catchup notification posted for missed run at {missed_time_str}")
+
+
 async def post_schedule_error_notification(bot, guild, error: str):
     """Posts a notification when the cleanup task fails to reschedule after a schedule change."""
     log_channel = bot.get_channel(LOG_CHANNEL_ID)

@@ -7,7 +7,7 @@ import signal
 import warnings
 import discord
 from discord.ext import commands, tasks
-from datetime import datetime, time as dtime
+from datetime import datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import os
 import logging
@@ -16,15 +16,18 @@ warnings.filterwarnings("ignore", message=".*PyNaCl.*")
 warnings.filterwarnings("ignore", message=".*davey.*")
 
 from config import (
-    BOT_VERSION, CLEAN_TIMES, MISSED_RUN_THRESHOLD_MINUTES,
+    BOT_VERSION, CATCHUP_MISSED_RUNS, CLEAN_TIMES, MISSED_RUN_THRESHOLD_MINUTES,
     STATUS_REPORT_TIME, TOKEN, LOG_LEVEL, REPORT_FREQUENCY, log
 )
 import config as cfg
 from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
 import commands_stats
-from notifications import post_deploy_notification, post_startup_notification, post_missed_run_alert, post_status_report
-from stats import migrate_stats_categories
+from notifications import (
+    post_deploy_notification, post_startup_notification,
+    post_missed_run_alert, post_status_report, post_catchup_notification,
+)
+from stats import migrate_stats_categories, load_last_run
 from utils import update_health, register_task, log_restart_separator, set_bot_loop
 from web import start_web_thread
 
@@ -148,6 +151,54 @@ async def before_health():
 register_task(cleanup_task, TASK_TZ, bot)
 
 
+# --- Missed run catchup ---
+
+def _find_missed_run_time(last_run_time: datetime, now: datetime, clean_times: list) -> datetime | None:
+    """Scans all scheduled times between last_run_time and now.
+    Returns the most recent missed scheduled time, or None if no runs were missed."""
+    missed = None
+    current_day = last_run_time.date()
+    while current_day <= now.date():
+        for t in clean_times:
+            hour, minute = map(int, t.split(":"))
+            candidate = datetime(current_day.year, current_day.month, current_day.day, hour, minute)
+            if last_run_time < candidate < now:
+                if missed is None or candidate > missed:
+                    missed = candidate
+        current_day += timedelta(days=1)
+    return missed
+
+
+async def _check_and_catchup_missed_run(bot, guild):
+    """Checks on startup whether a scheduled cleanup run was missed while the bot was offline.
+    If CATCHUP_MISSED_RUNS is enabled and a missed run is detected, posts a notification
+    and triggers a catchup run immediately."""
+    if not CATCHUP_MISSED_RUNS:
+        log.debug("CATCHUP_MISSED_RUNS is disabled — skipping missed run check")
+        return
+
+    last_run_data = load_last_run()
+    if not last_run_data:
+        log.debug("No previous run data found — skipping missed run check")
+        return
+
+    try:
+        last_run_time = datetime.strptime(last_run_data["timestamp"], "%Y-%m-%d %H:%M:%S")
+    except (KeyError, ValueError) as e:
+        log.warning(f"Could not parse last run timestamp — skipping missed run check: {e}")
+        return
+
+    missed_time = _find_missed_run_time(last_run_time, datetime.now(), CLEAN_TIMES)
+    if missed_time is None:
+        log.debug("No missed scheduled runs detected")
+        return
+
+    missed_str = missed_time.strftime('%Y-%m-%d %I:%M %p')
+    log.info(f"Missed scheduled run detected for {missed_str} — triggering catchup run")
+    await post_catchup_notification(bot, guild, missed_str)
+    await run_cleanup(bot, guild, triggered_by=f"catchup (missed {missed_str})")
+
+
 # --- Events ---
 
 @bot.event
@@ -183,6 +234,10 @@ async def on_ready():
     set_bot_loop(asyncio.get_event_loop())
     start_web_thread()
     update_health()
+
+    # Fire catchup check as a background task — runs after on_ready without blocking it
+    for guild in bot.guilds:
+        asyncio.create_task(_check_and_catchup_missed_run(bot, guild))
 
 
 @bot.event
