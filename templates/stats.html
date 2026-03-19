@@ -38,6 +38,10 @@
     <div class="stat-value">{{ stats.monthly.runs | default(0) }}</div>
     <div class="stat-label">Runs (Month)</div>
   </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ stats.all_time.catchup_runs | default(0) }}</div>
+    <div class="stat-label">Catchup Runs</div>
+  </div>
 </div>
 
 <!-- Breakdown with view toggle -->
@@ -213,6 +217,8 @@
     <p>Totals since the 1st of the current month. Resets on the 1st of each month.</p>
     <h3>Views</h3>
     <p>Summary shows category totals. Detail shows every channel sorted by count. Grouped shows channels nested under their category. Your preference is saved automatically.</p>
+    <h3>Catchup Runs</h3>
+    <p>All-time count of cleanup runs that were triggered automatically on startup because a scheduled run was missed while the bot was offline.</p>
     <h3>Reset Stats</h3>
     <p>Resets the chosen period back to zero. This cannot be undone.</p>
 </template>

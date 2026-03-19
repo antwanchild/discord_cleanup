@@ -27,7 +27,7 @@ from notifications import (
     post_deploy_notification, post_startup_notification,
     post_missed_run_alert, post_status_report, post_catchup_notification,
 )
-from stats import migrate_stats_categories, load_last_run
+from stats import migrate_stats_categories, load_last_run, record_catchup_run
 from utils import update_health, register_task, log_restart_separator, set_bot_loop
 from web import start_web_thread
 
@@ -197,6 +197,7 @@ async def _check_and_catchup_missed_run(bot, guild):
     log.info(f"Missed scheduled run detected for {missed_str} — triggering catchup run")
     await post_catchup_notification(bot, guild, missed_str)
     await run_cleanup(bot, guild, triggered_by=f"catchup (missed {missed_str})")
+    record_catchup_run()
 
 
 # --- Events ---

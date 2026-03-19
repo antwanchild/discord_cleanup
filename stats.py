@@ -16,9 +16,9 @@ logger = logging.getLogger("discord-cleanup")
 def _empty_stats():
     now = datetime.now().strftime("%Y-%m-%d")
     return {
-        "all_time": {"runs": 0, "deleted": 0, "channels": {}},
-        "rolling_30": {"runs": 0, "deleted": 0, "channels": {}, "reset": now},
-        "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": now},
+        "all_time": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}},
+        "rolling_30": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}, "reset": now},
+        "monthly": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}, "reset": now},
         "last_month": None
     }
 
@@ -112,6 +112,15 @@ def reset_stats(scope: str) -> bool:
 
     save_stats(stats)
     return True
+
+
+def record_catchup_run():
+    """Increments the catchup_runs counter in all three stat buckets."""
+    stats = load_stats()
+    for bucket in ["all_time", "rolling_30", "monthly"]:
+        stats[bucket]["catchup_runs"] = stats[bucket].get("catchup_runs", 0) + 1
+    save_stats(stats)
+    log.info("Catchup run recorded in stats")
 
 
 def migrate_stats_categories(guild):
