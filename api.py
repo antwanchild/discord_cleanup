@@ -207,3 +207,99 @@ def api_stats_reset():
         log.info(f"Stats reset via web UI — scope: {scope}")
         return jsonify({"success": True, "message": f"{label} stats have been reset"})
     return jsonify({"success": False, "message": "Reset failed — invalid scope"}), 400
+
+
+@api.route("/api/health")
+def api_health():
+    """Simple health check endpoint for uptime monitoring tools."""
+    return jsonify({"status": "ok", "version": BOT_VERSION})
+
+
+@api.route("/api/channels/unconfigured")
+def api_channels_unconfigured():
+    """List of Discord channels not in channels.yml — requires WARN_UNCONFIGURED to be meaningful."""
+    import config as cfg
+    bot = get_bot()
+    if not bot or not bot.guilds:
+        return jsonify({"error": "Bot not ready"}), 503
+
+    guild       = bot.guilds[0]
+    configured  = set()
+
+    # Collect all configured channel IDs including category sub-channels
+    from cleanup import build_channel_map
+    channel_map = build_channel_map(guild)
+    configured  = set(channel_map.keys())
+
+    # Also add excluded channel IDs
+    excluded_ids = {ch["id"] for ch in cfg.raw_channels if ch.get("exclude")}
+    configured.update(excluded_ids)
+
+    # Find all text channels in the guild not in configured set
+    unconfigured = []
+    for channel in guild.text_channels:
+        if channel.id not in configured:
+            unconfigured.append({
+                "id":       channel.id,
+                "name":     channel.name,
+                "category": channel.category.name if channel.category else "No Category",
+            })
+
+    unconfigured.sort(key=lambda x: (x["category"], x["name"]))
+    return jsonify({
+        "guild":       guild.name,
+        "total":       len(unconfigured),
+        "channels":    unconfigured,
+    })
+
+
+@api.route("/api/logs")
+def api_logs_list():
+    """List all available log files with name, date and size."""
+    try:
+        log_files = sorted([
+            f for f in os.listdir(LOG_DIR)
+            if f.startswith("cleanup-") and f.endswith(".log")
+        ], reverse=True)
+
+        files = []
+        for f in log_files:
+            path = os.path.join(LOG_DIR, f)
+            size = os.path.getsize(path)
+            files.append({
+                "filename": f,
+                "date":     f.replace("cleanup-", "").replace(".log", ""),
+                "size_kb":  round(size / 1024, 1),
+            })
+
+        return jsonify({"total": len(files), "files": files})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api.route("/api/logs/<filename>")
+def api_logs_file(filename):
+    """Fetch a specific log file by name. Query param: ?lines=200 (default 200, max 500)."""
+    try:
+        lines_requested = min(int(request.args.get("lines", 200)), 500)
+    except ValueError:
+        lines_requested = 200
+
+    try:
+        log_files = [
+            f for f in os.listdir(LOG_DIR)
+            if f.startswith("cleanup-") and f.endswith(".log")
+        ]
+        if filename not in log_files:
+            return jsonify({"error": "Log file not found"}), 404
+
+        path = os.path.join(LOG_DIR, filename)
+        with open(path, "r") as f:
+            lines = f.readlines()[-lines_requested:]
+        return jsonify({
+            "log_file":       filename,
+            "lines_returned": len(lines),
+            "lines":          [line.rstrip() for line in lines],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

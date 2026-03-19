@@ -279,3 +279,97 @@ Reset stats for a given scope.
 | Status | Body | Meaning |
 |--------|------|---------|
 | `400` | `"Invalid scope"` | scope not one of rolling, monthly, all |
+
+---
+
+### `GET /api/health`
+
+Simple health check for uptime monitoring tools like Uptime Kuma.
+
+**Response**
+```json
+{
+  "status": "ok",
+  "version": "5.0.53"
+}
+```
+
+---
+
+### `GET /api/channels/unconfigured`
+
+List of Discord channels not in channels.yml.
+
+**Response**
+```json
+{
+  "guild": "My Server",
+  "total": 3,
+  "channels": [
+    {
+      "id": 1234567890123456789,
+      "name": "general",
+      "category": "Text Channels"
+    }
+  ]
+}
+```
+
+**Error responses**
+
+| Status | Meaning |
+|--------|---------|
+| `503` | Bot not ready |
+
+---
+
+### `GET /api/logs`
+
+List all available log files with name, date and size.
+
+**Response**
+```json
+{
+  "total": 7,
+  "files": [
+    {
+      "filename": "cleanup-2026-03-18.log",
+      "date": "2026-03-18",
+      "size_kb": 12.4
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/logs/<filename>`
+
+Fetch a specific log file by name.
+
+**Query parameters**
+
+| Parameter | Default | Max | Description |
+|-----------|---------|-----|-------------|
+| `lines` | `200` | `500` | Number of lines to return |
+
+**Example**
+```
+GET /api/logs/cleanup-2026-03-18.log?lines=100
+```
+
+**Response**
+```json
+{
+  "log_file": "cleanup-2026-03-18.log",
+  "lines_returned": 100,
+  "lines": ["2026-03-18 05:45:00 [INFO] discord-cleanup: ..."]
+}
+```
+
+**Error responses**
+
+| Status | Meaning |
+|--------|---------|
+| `404` | Log file not found |
+| `500` | Could not read log file |
