@@ -1,3 +1,8 @@
+"""
+stats.py — Load, save, update, and reset cleanup statistics.
+Stats are persisted to /config/data/stats.json across three rolling buckets:
+all_time, rolling_30, and monthly.
+"""
 import json
 import os
 import logging

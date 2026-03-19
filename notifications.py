@@ -1,3 +1,7 @@
+"""
+notifications.py — Discord embed notifications for startup, deploy, reports, and schedule events.
+All functions are async and post directly to the configured log or report channel.
+"""
 import os
 import discord
 from datetime import datetime
@@ -96,7 +100,7 @@ async def post_deploy_notification(bot, guild):
         log.info(f"First run detected — posting deploy notification for v{BOT_VERSION}")
         description = f"First deployment of **v{BOT_VERSION}**"
 
-    # Read and filter changelog by last_version
+    # Read and filter changelog by last_version (relative to project root working dir)
     changelog = None
     try:
         with open("CHANGELOG", "r") as f:

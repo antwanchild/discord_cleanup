@@ -1,3 +1,7 @@
+"""
+commands.py — Discord slash commands for the cleanup group.
+All commands require Administrator permissions and respond ephemerally.
+"""
 import discord
 from discord import app_commands
 from datetime import datetime
@@ -5,7 +9,7 @@ import os
 
 import config as cfg
 from config import (
-    BOT_VERSION, DEFAULT_RETENTION, LOG_DIR, log
+    BOT_VERSION, DEFAULT_RETENTION, LOG_CHANNEL_ID, LOG_DIR, log
 )
 from cleanup import build_channel_map, run_cleanup, purge_all_channel
 from notifications import post_status_report
@@ -185,7 +189,6 @@ async def cleanup_status(interaction: discord.Interaction):
 async def cleanup_test(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     bot = get_bot()
-    from config import LOG_CHANNEL_ID
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
     if not log_channel:
         await interaction.followup.send("⛔ Could not find the log channel — check `LOG_CHANNEL_ID` in your env file.", ephemeral=True)

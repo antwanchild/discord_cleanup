@@ -14,3 +14,4 @@ __pycache__/
 venv/
 .venv/
 icon.png
+discord_cleanup.xml

@@ -17,8 +17,8 @@ def reload_channels() -> tuple[bool, str]:
     with config_lock:
         try:
             with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
-                cfg = yaml.safe_load(f)
-                config.raw_channels = cfg.get("channels", [])
+                yaml_data = yaml.safe_load(f)
+                config.raw_channels = yaml_data.get("channels", [])
             log.info("channels.yml reloaded successfully")
             return True, f"Loaded {len(config.raw_channels)} channel entries"
         except FileNotFoundError:
@@ -33,8 +33,12 @@ def reload_channels() -> tuple[bool, str]:
 
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:
-    """Updates a single key in .env.discord_cleanup. Returns (success, message)."""
+    """Updates a single key in .env.discord_cleanup. Returns (success, message).
+    Rejects values containing newline characters to prevent env injection."""
     import time
+    # Guard: newlines in a value would silently inject additional env entries
+    if "\n" in value or "\r" in value:
+        return False, f"Invalid value for {key} — newline characters are not allowed"
     env_path = os.path.join(CONFIG_DIR, ".env.discord_cleanup")
     with config_lock:
         try:

@@ -1,3 +1,7 @@
+"""
+cleanup_bot.py — Discord bot entry point. Initialises the bot, schedules tasks,
+and wires together cleanup, reporting, health, and web UI threads.
+"""
 import asyncio
 import signal
 import warnings
@@ -12,8 +16,8 @@ warnings.filterwarnings("ignore", message=".*PyNaCl.*")
 warnings.filterwarnings("ignore", message=".*davey.*")
 
 from config import (
-    BOT_VERSION, CLEAN_TIMES, STATUS_REPORT_TIME, TOKEN,
-    LOG_LEVEL, REPORT_FREQUENCY, log
+    BOT_VERSION, CLEAN_TIMES, MISSED_RUN_THRESHOLD_MINUTES,
+    STATUS_REPORT_TIME, TOKEN, LOG_LEVEL, REPORT_FREQUENCY, log
 )
 import config as cfg
 from cleanup import run_cleanup, validate_channels
@@ -23,8 +27,6 @@ from notifications import post_deploy_notification, post_startup_notification, p
 from stats import migrate_stats_categories
 from utils import update_health, register_task, log_restart_separator, set_bot_loop
 from web import start_web_thread
-
-MISSED_RUN_THRESHOLD_MINUTES = 15
 
 # --- Discord logging suppression ---
 discord_log_level = logging.DEBUG if LOG_LEVEL == "DEBUG" else logging.WARNING

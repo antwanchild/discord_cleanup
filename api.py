@@ -1,3 +1,7 @@
+"""
+api.py — Flask Blueprint for all /api/* and /run/* endpoints.
+Registered in web.py — do not instantiate a separate Flask app here.
+"""
 import os
 import asyncio
 from flask import Blueprint, jsonify, request

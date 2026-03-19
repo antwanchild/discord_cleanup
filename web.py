@@ -1,3 +1,7 @@
+"""
+web.py — Flask app, page routes, and web server thread management.
+Registers the api Blueprint and starts the server on WEB_PORT (default 8080).
+"""
 import os
 import threading
 import logging
@@ -281,8 +285,6 @@ def stats_page():
     context["grouped_categories"] = grouped_categories
     context["standalone_channels"] = standalone_channels
     return render_template("stats.html", **context)
-
-
 
 
 

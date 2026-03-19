@@ -1,3 +1,7 @@
+"""
+commands_stats.py — /cleanup stats subcommands: view, channel, and reset.
+Registered as a subgroup of cleanup_group from commands.py.
+"""
 import discord
 from discord import app_commands
 from datetime import datetime

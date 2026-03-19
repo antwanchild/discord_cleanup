@@ -122,12 +122,12 @@ def setup_run_log(channel_count=None):
         log.error(f"Could not create log file {log_path} — check directory permissions.")
         return
 
-    _next  = get_next_run_str()
-    _ch    = f"  |  Channels: {channel_count}" if channel_count is not None else ""
-    _line2 = f"  Next run: {_next}{_ch}"
+    next_run       = get_next_run_str()
+    channel_suffix = f"  |  Channels: {channel_count}" if channel_count is not None else ""
+    header_line    = f"  Next run: {next_run}{channel_suffix}"
     log.info("╔══════════════════════════════════════════════════════════╗")
     log.info(f"║  Discord Cleanup Bot  v{BOT_VERSION:<34}║")
-    log.info(f"║{_line2:<58}║")
+    log.info(f"║{header_line:<58}║")
     log.info("╚══════════════════════════════════════════════════════════╝")
     log.debug(f"Log file: {log_path}")
     log.debug(
@@ -154,6 +154,6 @@ def setup_run_log(channel_count=None):
 
 def log_restart_separator():
     """Logs a separator line to mark a bot restart in the log file."""
-    now   = datetime.now().strftime("%Y-%m-%d %I:%M %p")
-    _line = f" Bot Restarted | {now} | v{BOT_VERSION} "
-    log.info(f"{'═' * 4}{_line:{'═'}<54}{'═' * 2}")
+    now            = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+    separator_line = f" Bot Restarted | {now} | v{BOT_VERSION} "
+    log.info(f"{'═' * 4}{separator_line:{'═'}<54}{'═' * 2}")
