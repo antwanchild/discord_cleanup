@@ -13,6 +13,8 @@ COPY cleanup_bot.py .
 COPY config.py .
 COPY stats.py .
 COPY utils.py .
+COPY config_utils.py .
+COPY scheduler.py .
 COPY notifications.py .
 COPY cleanup.py .
 COPY commands.py .

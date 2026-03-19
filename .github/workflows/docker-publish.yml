@@ -40,7 +40,8 @@ jobs:
       - name: Syntax check
         run: |
           python3 -m py_compile cleanup_bot.py config.py stats.py utils.py \
-            notifications.py cleanup.py commands.py commands_stats.py web.py api.py
+            notifications.py cleanup.py commands.py commands_stats.py web.py api.py \
+            config_utils.py scheduler.py
           echo "✅ Syntax check passed"
 
       - name: Lint and security check
@@ -50,6 +51,7 @@ jobs:
           ruff check --select F,S \
             cleanup_bot.py config.py stats.py utils.py \
             notifications.py cleanup.py commands.py commands_stats.py web.py api.py \
+            config_utils.py scheduler.py \
             || echo "⚠️ Warnings found — build continues"
 
       # ── Version bump ────────────────────────────────────────────────────────
