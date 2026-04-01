@@ -151,16 +151,24 @@ async def post_status_report(bot, guild, label: str = "monthly"):
     stats = load_stats()
     monthly = stats.get("monthly", {})
     last_month = stats.get("last_month")
-    channels = monthly.get("channels", {})
+
+    # If monthly stats were reset today, the cleanup already ran before the report.
+    # Display last month's completed data instead of the partial current-month data.
+    today = datetime.now().strftime("%Y-%m-%d")
+    display = monthly
+    if label == "monthly" and last_month and monthly.get("reset") == today:
+        display = last_month
+
+    channels = display.get("channels", {})
     top_channels = sorted(
         channels.items(),
         key=lambda x: x[1]["count"] if isinstance(x[1], dict) else x[1],
         reverse=True
     )[:10]
 
-    # Build diff string if last month data exists
+    # Build diff string — only meaningful when showing current month vs prior month
     diff_str = ""
-    if last_month:
+    if last_month and display is monthly:
         prev = last_month.get("deleted", 0)
         curr = monthly.get("deleted", 0)
         delta = curr - prev
@@ -177,9 +185,9 @@ async def post_status_report(bot, guild, label: str = "monthly"):
         title=title,
         description=(
             f"🏠 Server: **{guild.name}**\n"
-            f"📅 Period: **Since {monthly.get('reset', 'N/A')}**\n"
-            f"🔁 Runs completed: **{monthly.get('runs', 0)}**\n"
-            f"🗑️ Total deleted: **{monthly.get('deleted', 0)}**{diff_str}\n"
+            f"📅 Period: **Since {display.get('reset', 'N/A')}**\n"
+            f"🔁 Runs completed: **{display.get('runs', 0)}**\n"
+            f"🗑️ Total deleted: **{display.get('deleted', 0)}**{diff_str}\n"
             f"📋 Active channels: **{len(channels)}**"
         ),
         color=0xE67E22,
