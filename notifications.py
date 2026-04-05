@@ -26,13 +26,12 @@ def _version_gt(a: str, b: str) -> bool:
 
 
 async def _fetch_latest_version() -> str | None:
-    """Fetches the latest release tag from GitHub. Returns None on failure."""
+    """Fetches the latest version from the VERSION file on main branch. Returns None on failure."""
     def _get():
-        url = "https://api.github.com/repos/antwanchild/discord_cleanup/releases/latest"
+        url = "https://raw.githubusercontent.com/antwanchild/discord_cleanup/main/VERSION"
         req = urllib.request.Request(url, headers={"User-Agent": "discord-cleanup-bot"})
         with urllib.request.urlopen(req, timeout=5) as resp:
-            import json
-            return json.loads(resp.read())["tag_name"].lstrip("v")
+            return resp.read().decode().strip()
     try:
         return await asyncio.to_thread(_get)
     except Exception:
