@@ -6,7 +6,7 @@ on:
       - main
     paths-ignore:
       - 'README.md'
-      - 'SETUP.md'
+      - 'docs/**'
       - '.github/dependabot.yml'
       - '.gitignore'
       - '.dockerignore'
