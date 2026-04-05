@@ -466,14 +466,14 @@
 
     .stat-grid .stat-box:last-child:nth-child(3n+1) {
       grid-column: 1 / -1;
-      max-width: calc((100% - 2rem) / 3);
+      width: calc((100% - 2rem) / 3);
       margin: 0 auto;
     }
 
     @media (max-width: 700px) {
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
-      .stat-grid .stat-box:last-child:nth-child(3n+1) { grid-column: unset; max-width: unset; margin: 0; }
-      .stat-grid .stat-box:last-child:nth-child(2n+1) { grid-column: 1 / -1; max-width: calc((100% - 1rem) / 2); margin: 0 auto; }
+      .stat-grid .stat-box:last-child:nth-child(3n+1) { grid-column: unset; width: unset; margin: 0; }
+      .stat-grid .stat-box:last-child:nth-child(2n+1) { grid-column: 1 / -1; width: calc((100% - 1rem) / 2); margin: 0 auto; }
     }
 
     .stat-box {
@@ -693,8 +693,8 @@
 
       /* Stat grid — 2 columns on mobile */
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
-      .stat-grid .stat-box:last-child:nth-child(3n+1) { grid-column: unset; max-width: unset; margin: 0; }
-      .stat-grid .stat-box:last-child:nth-child(2n+1) { grid-column: 1 / -1; max-width: calc((100% - 1rem) / 2); margin: 0 auto; }
+      .stat-grid .stat-box:last-child:nth-child(3n+1) { grid-column: unset; width: unset; margin: 0; }
+      .stat-grid .stat-box:last-child:nth-child(2n+1) { grid-column: 1 / -1; width: calc((100% - 1rem) / 2); margin: 0 auto; }
 
       /* Card padding tighter */
       .card { padding: 1rem; }
