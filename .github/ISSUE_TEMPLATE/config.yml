@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup & Configuration
+    url: https://github.com/antwanchild/discord_cleanup/blob/main/docs/SETUP.md
+    about: Check the setup guide before opening an issue.
+  - name: API Reference
+    url: https://github.com/antwanchild/discord_cleanup/blob/main/docs/API.md
+    about: Full API documentation.
