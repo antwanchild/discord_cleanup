@@ -38,7 +38,8 @@ async def _fetch_latest_version() -> str | None:
             return resp.read().decode().strip()
     try:
         return await asyncio.to_thread(_get)
-    except Exception:
+    except Exception as e:
+        log.warning(f"Version check failed — {e}. If the repo is private, set GITHUB_TOKEN in your .env.")
         return None
 
 
