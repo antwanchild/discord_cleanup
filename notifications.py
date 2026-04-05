@@ -2,7 +2,9 @@
 notifications.py — Discord embed notifications for startup, deploy, reports, and schedule events.
 All functions are async and post directly to the configured log or report channel.
 """
+import asyncio
 import os
+import urllib.request
 import discord
 from datetime import datetime
 
@@ -23,6 +25,20 @@ def _version_gt(a: str, b: str) -> bool:
         return False
 
 
+async def _fetch_latest_version() -> str | None:
+    """Fetches the latest release tag from GitHub. Returns None on failure."""
+    def _get():
+        url = "https://api.github.com/repos/antwanchild/discord_cleanup/releases/latest"
+        req = urllib.request.Request(url, headers={"User-Agent": "discord-cleanup-bot"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            import json
+            return json.loads(resp.read())["tag_name"].lstrip("v")
+    try:
+        return await asyncio.to_thread(_get)
+    except Exception:
+        return None
+
+
 async def post_startup_notification(bot, guild):
     """Posts a startup notification to the log channel on every boot."""
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
@@ -41,7 +57,13 @@ async def post_startup_notification(bot, guild):
                     continue
                 unaccounted.append(discord_channel)
 
-    description = f"🏠 Server: **{guild.name}**\n⏭️ Next run: **{get_next_run_str()}**"
+    latest_version = await _fetch_latest_version()
+    if latest_version and _version_gt(latest_version, BOT_VERSION):
+        version_str = f"\n📦 Version: vCurr: **{BOT_VERSION}** | vNext: **{latest_version}**"
+    else:
+        version_str = f"\n📦 Version: **{BOT_VERSION}**"
+
+    description = f"🏠 Server: **{guild.name}**\n⏭️ Next run: **{get_next_run_str()}**{version_str}"
 
     if unaccounted:
         names = ", ".join([f"`#{ch.name}`" for ch in unaccounted[:10]])
