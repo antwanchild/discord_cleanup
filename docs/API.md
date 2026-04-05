@@ -69,6 +69,35 @@ Full stats payload — all-time, rolling 30-day, monthly, and per-channel breakd
 
 ---
 
+### `GET /api/last_run`
+
+Summary of the most recent cleanup run.
+
+**Response**
+
+```json
+{
+  "timestamp": "2026-04-01 03:00:12",
+  "triggered_by": "schedule",
+  "duration": "1m 42s",
+  "total_deleted": 211,
+  "channels_checked": 18,
+  "rate_limits": 0,
+  "status": "ok",
+  "categories": [
+    { "name": "Radarr", "count": 134 },
+    { "name": "Sonarr", "count": 77 }
+  ]
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| `200` | Run data returned |
+| `404` | No runs recorded yet |
+
+---
+
 ### `GET /api/schedule`
 
 Current scheduled run times and next run.
