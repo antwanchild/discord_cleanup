@@ -104,36 +104,54 @@ create_default_files()
 
 load_dotenv(f"{CONFIG_DIR}/.env.discord_cleanup")
 
+# --- Logging Setup ---
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+numeric_level = getattr(logging, LOG_LEVEL, logging.INFO)
+
+logger = logging.getLogger()
+logger.setLevel(numeric_level)
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(numeric_level)
+formatter = logging.Formatter(
+    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+console_handler.setFormatter(formatter)
+logger.addHandler(console_handler)
+
+log = logging.getLogger("discord-cleanup")
+
 # --- Version ---
 try:
     with open("VERSION", "r") as f:
         BOT_VERSION = f.read().strip()
 except FileNotFoundError:
-    print("ERROR: VERSION file not found — cannot start bot.")
+    log.error("VERSION file not found — cannot start bot.")
     sys.exit(1)
 except PermissionError:
-    print("ERROR: Could not read VERSION file — check permissions.")
+    log.error("Could not read VERSION file — check permissions.")
     sys.exit(1)
 
 # --- Environment Variables ---
 TOKEN = os.getenv("DISCORD_TOKEN")
 if not TOKEN:
-    print("ERROR: DISCORD_TOKEN is not set in .env.discord_cleanup — cannot start bot.")
+    log.error("DISCORD_TOKEN is not set in .env.discord_cleanup — cannot start bot.")
     sys.exit(1)
 
 _raw_log_channel = os.getenv("LOG_CHANNEL_ID")
 _raw_report_channel = os.getenv("REPORT_CHANNEL_ID")
 if not _raw_log_channel:
-    print("ERROR: LOG_CHANNEL_ID is not set in .env.discord_cleanup — cannot start bot.")
+    log.error("LOG_CHANNEL_ID is not set in .env.discord_cleanup — cannot start bot.")
     sys.exit(1)
 if not _raw_report_channel:
-    print("ERROR: REPORT_CHANNEL_ID is not set in .env.discord_cleanup — cannot start bot.")
+    log.error("REPORT_CHANNEL_ID is not set in .env.discord_cleanup — cannot start bot.")
     sys.exit(1)
 try:
     LOG_CHANNEL_ID = int(_raw_log_channel)
     REPORT_CHANNEL_ID = int(_raw_report_channel)
 except ValueError:
-    print("ERROR: LOG_CHANNEL_ID and REPORT_CHANNEL_ID must be numeric Discord channel IDs.")
+    log.error("LOG_CHANNEL_ID and REPORT_CHANNEL_ID must be numeric Discord channel IDs.")
     sys.exit(1)
 CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if t.strip()]
 LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
@@ -162,30 +180,12 @@ try:
         yaml_data = yaml.safe_load(f)
         raw_channels = yaml_data.get("channels", [])
 except FileNotFoundError:
-    print(f"ERROR: {CONFIG_DIR}/channels.yml not found — cannot start bot.")
+    log.error(f"{CONFIG_DIR}/channels.yml not found — cannot start bot.")
     sys.exit(1)
 except PermissionError:
-    print(f"ERROR: Could not read {CONFIG_DIR}/channels.yml — check directory permissions.")
+    log.error(f"Could not read {CONFIG_DIR}/channels.yml — check directory permissions.")
     sys.exit(1)
 except yaml.YAMLError as e:
-    print(f"ERROR: channels.yml is malformed — {e}")
+    log.error(f"channels.yml is malformed — {e}")
     sys.exit(1)
-
-# --- Logging Setup ---
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-numeric_level = getattr(logging, LOG_LEVEL, logging.INFO)
-
-logger = logging.getLogger()
-logger.setLevel(numeric_level)
-
-console_handler = logging.StreamHandler()
-console_handler.setLevel(numeric_level)
-formatter = logging.Formatter(
-    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-console_handler.setFormatter(formatter)
-logger.addHandler(console_handler)
-
-log = logging.getLogger("discord-cleanup")
 
