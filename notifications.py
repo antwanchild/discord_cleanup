@@ -1,6 +1,7 @@
 """
 notifications.py — Discord embed notifications for startup, deploy, reports, and schedule events.
 All functions are async and post directly to the configured log or report channel.
+Startup notification includes an update check against the latest VERSION on main.
 """
 import asyncio
 import os
