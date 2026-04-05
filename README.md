@@ -33,10 +33,20 @@ An automated Discord bot that cleans up old messages from configured channels on
 ├── requirements.txt                # Python dependencies
 ├── Dockerfile                      # Docker image definition
 ├── VERSION                         # Current version number
+├── LICENSE                         # MIT License
+├── SECURITY.md                     # Security policy and vulnerability reporting
+├── channels.example.yml            # Example channels.yml configuration
 ├── discord_cleanup.xml             # Unraid Docker template
 ├── docker-compose.discord_cleanup.yml
+├── docs/
+│   ├── SETUP.md                    # Setup and configuration guide
+│   └── API.md                      # API reference
 └── .github/
     ├── dependabot.yml
+    ├── pull_request_template.md
+    ├── ISSUE_TEMPLATE/
+    │   ├── bug_report.yml
+    │   └── feature_request.yml
     └── workflows/
         ├── docker-publish.yml          # Build, test, and push workflow
         ├── notify-discord.yml          # Build success/failure notifications
@@ -66,7 +76,7 @@ Every push to `main` triggers `docker-publish.yml` which:
 8. Cleans up old GHCR images keeping the last 10
 9. Posts a success or failure notification to Discord
 
-Pushes that only modify `README.md`, `SETUP.md`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped entirely — no build, no version bump, no release.
+Pushes that only modify `README.md`, `docs/**`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped entirely — no build, no version bump, no release.
 
 All workflow files are linted on every push using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
 
