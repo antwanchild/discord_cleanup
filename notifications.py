@@ -58,10 +58,9 @@ async def post_startup_notification(bot, guild):
                 unaccounted.append(discord_channel)
 
     latest_version = await _fetch_latest_version()
+    version_str = ""
     if latest_version and _version_gt(latest_version, BOT_VERSION):
-        version_str = f"\n📦 Version: vCurr: **{BOT_VERSION}** | vNext: **{latest_version}**"
-    else:
-        version_str = f"\n📦 Version: **{BOT_VERSION}**"
+        version_str = f"\n📦 Update available: vCurr: **{BOT_VERSION}** | vNext: **{latest_version}**"
 
     description = f"🏠 Server: **{guild.name}**\n⏭️ Next run: **{get_next_run_str()}**{version_str}"
 
