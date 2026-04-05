@@ -15,3 +15,7 @@ venv/
 .venv/
 icon.png
 discord_cleanup.xml
+channels.example.yml
+LICENSE
+SECURITY.md
+docs/
