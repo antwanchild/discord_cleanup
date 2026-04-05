@@ -90,6 +90,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post stats report (24hr format) |
 | `REPORT_FREQUENCY` | ❌ | `monthly` | Report frequency: `monthly`, `weekly`, or `both` |
 | `WARN_UNCONFIGURED` | ❌ | `false` | Log a warning for any Discord channels not in channels.yml |
+| `GITHUB_TOKEN` | ❌ | — | GitHub personal access token for version update checks (required for private repos) |
 | `WEB_PORT` | ❌ | `8080` | Port the web UI listens on |
 
 ### Example `.env.discord_cleanup`

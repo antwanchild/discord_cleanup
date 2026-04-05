@@ -50,4 +50,6 @@
 
   <Config Name="WARN_UNCONFIGURED" Target="WARN_UNCONFIGURED" Default="false" Mode="" Description="Log a warning for any Discord channels not listed in channels.yml. Set to true to enable." Type="Variable" Display="advanced" Required="false" Mask="false">false</Config>
 
+  <Config Name="GITHUB_TOKEN" Target="GITHUB_TOKEN" Default="" Mode="" Description="GitHub personal access token for version update checks. Required only if the repo is private." Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+
 </Container>

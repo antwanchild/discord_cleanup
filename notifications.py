@@ -10,7 +10,7 @@ import discord
 from datetime import datetime
 
 from config import (
-    BOT_VERSION, DATA_DIR, LAST_VERSION_FILE, LOG_CHANNEL_ID,
+    BOT_VERSION, DATA_DIR, GITHUB_TOKEN, LAST_VERSION_FILE, LOG_CHANNEL_ID,
     MISSED_RUN_THRESHOLD_MINUTES, REPORT_CHANNEL_ID, WARN_UNCONFIGURED,
     log
 )
@@ -30,7 +30,10 @@ async def _fetch_latest_version() -> str | None:
     """Fetches the latest version from the VERSION file on main branch. Returns None on failure."""
     def _get():
         url = "https://raw.githubusercontent.com/antwanchild/discord_cleanup/main/VERSION"
-        req = urllib.request.Request(url, headers={"User-Agent": "discord-cleanup-bot"})
+        headers = {"User-Agent": "discord-cleanup-bot"}
+        if GITHUB_TOKEN:
+            headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+        req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=5) as resp:
             return resp.read().decode().strip()
     try:

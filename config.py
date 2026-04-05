@@ -47,7 +47,9 @@ def create_default_files():
                         "# Warn about Discord channels not in channels.yml (true/false)\n"
                         "WARN_UNCONFIGURED=false\n\n"
                         "# Trigger a catchup run on startup if a scheduled run was missed (true/false)\n"
-                        "CATCHUP_MISSED_RUNS=true\n")
+                        "CATCHUP_MISSED_RUNS=true\n\n"
+                        "# GitHub personal access token for version update checks (required for private repos)\n"
+                        "# GITHUB_TOKEN=\n")
             print(f"{CONFIG_DIR}/.env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
             created = True
         except PermissionError:
@@ -139,6 +141,7 @@ DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
 STATUS_REPORT_TIME = os.getenv("STATUS_REPORT_TIME", "09:00")
 REPORT_FREQUENCY = os.getenv("REPORT_FREQUENCY", "monthly").lower()
 WARN_UNCONFIGURED    = os.getenv("WARN_UNCONFIGURED", "false").lower() == "true"
+GITHUB_TOKEN         = os.getenv("GITHUB_TOKEN")
 # When true, a missed scheduled run is detected on startup and triggered automatically
 CATCHUP_MISSED_RUNS  = os.getenv("CATCHUP_MISSED_RUNS", "true").lower() == "true"
 
