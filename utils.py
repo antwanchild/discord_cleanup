@@ -6,6 +6,7 @@ Schedule management → scheduler.py
 """
 import os
 import logging
+import threading
 from datetime import datetime, timedelta
 
 from config import (
@@ -38,7 +39,9 @@ _task_tz      = None
 _bot          = None
 _bot_loop     = None
 
-# Prevents simultaneous manual runs triggered from web UI or slash commands
+# Prevents simultaneous cleanup runs across the bot and web UI
+_run_lock = threading.Lock()
+_run_owner = None
 run_in_progress = False
 
 
@@ -66,6 +69,35 @@ def set_bot_loop(loop):
 def get_bot_loop():
     """Returns the bot's event loop for use by the web UI thread."""
     return _bot_loop
+
+
+def try_acquire_run(owner: str) -> bool:
+    """Attempts to reserve the cleanup worker for a single run."""
+    global run_in_progress, _run_owner
+    acquired = _run_lock.acquire(blocking=False)
+    if acquired:
+        _run_owner = owner
+        run_in_progress = True
+    return acquired
+
+
+def release_run() -> None:
+    """Releases the cleanup worker reservation if held."""
+    global run_in_progress, _run_owner
+    if _run_lock.locked():
+        _run_owner = None
+        run_in_progress = False
+        _run_lock.release()
+
+
+def is_run_in_progress() -> bool:
+    """Returns whether a cleanup run is currently active."""
+    return _run_lock.locked()
+
+
+def get_run_owner() -> str | None:
+    """Returns the current cleanup run owner when one is active."""
+    return _run_owner
 
 
 # ── Health ────────────────────────────────────────────────────────────────────

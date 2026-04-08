@@ -1115,6 +1115,8 @@
       document.getElementById("theme-menu").classList.toggle("open");
     }
 
+    window.CSRF_TOKEN = {{ csrf_token|tojson }};
+
     // Close dropdown when clicking outside
     document.addEventListener("click", function(e) {
       const dropdown = document.getElementById("theme-dropdown");
@@ -1124,7 +1126,11 @@
     });
 
     async function postForm(url, formData) {
-      const resp = await fetch(url, { method: "POST", body: formData });
+      const resp = await fetch(url, {
+        method: "POST",
+        body: formData,
+        headers: { "X-CSRF-Token": window.CSRF_TOKEN }
+      });
       const data = await resp.json();
       showToast(data.message, data.success ? "success" : "error");
       return data;

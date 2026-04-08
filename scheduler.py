@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from config import config_lock, CONFIG_DIR, log
 from config_utils import update_env_value
+from validation import validate_time_string
 
 # Task reference set by cleanup_bot.py via utils.register_task
 _cleanup_task = None
@@ -56,10 +57,8 @@ def update_schedule(new_times: list) -> tuple[bool, str, str | None]:
     # Validate all times before writing anything
     for t in new_times:
         try:
-            hour, minute = map(int, t.split(":"))
-            if not (0 <= hour <= 23 and 0 <= minute <= 59):
-                raise ValueError
-        except (ValueError, AttributeError):
+            validate_time_string(t, "schedule time")
+        except ValueError:
             return False, f"`{t}` is not a valid time — use 24hr format e.g. `03:00`", None
 
     with config_lock:

@@ -361,254 +361,280 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
     if not log_channel:
         log.error("Log channel not found. Check LOG_CHANNEL_ID in .env.discord_cleanup")
         return
+    try:
+        run_time = datetime.now(timezone.utc)
+        bulk_cutoff = run_time - timedelta(days=14)
+        local_run_time = datetime.now()
 
-    run_time = datetime.now(timezone.utc)
-    bulk_cutoff = run_time - timedelta(days=14)
-    local_run_time = datetime.now()
+        channel_map = build_channel_map(guild)
 
-    channel_map = build_channel_map(guild)
+        if single_channel_id:
+            if single_channel_id in channel_map:
+                channel_map = {single_channel_id: channel_map[single_channel_id]}
+            else:
+                log.warning(f"Channel ID {single_channel_id} not in configured channels")
+                return
 
-    if single_channel_id:
-        if single_channel_id in channel_map:
-            channel_map = {single_channel_id: channel_map[single_channel_id]}
-        else:
-            log.warning(f"Channel ID {single_channel_id} not in configured channels")
-            return
+        setup_run_log(channel_count=len(channel_map))
 
-    setup_run_log(channel_count=len(channel_map))
-
-    log.info(
-        f"{'[DRY RUN] ' if dry_run else ''}Run cutoff: {local_run_time.strftime('%Y-%m-%d %H:%M:%S')} | "
-        f"Bulk cutoff: {(local_run_time - timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')} | "
-        f"TZ: {os.getenv('TZ', 'UTC')}"
-    )
-
-    for ch in cfg.raw_channels:
-        if ch.get("exclude", False):
-            log.info(f"#{ch.get('name', ch['id'])} — excluded (skipping)")
-
-    log.info(f"Starting {'dry run' if dry_run else 'cleanup run'} on {guild.name} across {len(channel_map)} channel(s) | triggered by: {triggered_by}")
-
-    category_results = {}
-    standalone_results = {}
-    channel_results = {}
-    error_lines = []
-    grand_total = 0
-    grand_rate_limits = 0
-    has_warnings = False
-    oldest_overall = None
-    run_start = datetime.now()
-
-    for channel_id, ch_config in channel_map.items():
-        channel = guild.get_channel(channel_id)
-        if not channel:
-            ch_name = ch_config.get("name", str(channel_id))
-            log.warning(f"Channel ID {channel_id} not found — skipping")
-            error_lines.append(f"⚠️ `#{ch_name}` — channel not found (ID: `{channel_id}`)")
-            has_warnings = True
-            continue
-
-        stats = await purge_channel(
-            channel, ch_config["days"], bulk_cutoff, run_time,
-            dry_run=dry_run, deep_clean=ch_config.get("deep_clean", False)
-        )
-        stats["is_override"] = ch_config["is_override"]
-
-        if stats["count"] > 0:
-            grand_total += stats["count"]
-            channel_results[str(channel.id)] = {"name": channel.name, "count": stats["count"], "category": ch_config.get("category_name") or "Standalone"}
-            log.info(f"  ✅ #{channel.name} — deleted {stats['count']} message(s)")
-        elif stats["count"] == 0:
-            log.info(f"  ℹ️ #{channel.name} — nothing to delete")
-        if stats["count"] == -1:
-            has_warnings = True
-            if stats.get("error"):
-                error_lines.append(f"🚫 `#{channel.name}` — {stats['error']}")
-                log.warning(f"  ❌ #{channel.name} — {stats['error']}")
-
-        grand_rate_limits += stats["rate_limits"]
-        if stats["rate_limits"] > 0:
-            error_lines.append(f"⚡ `#{channel.name}` — rate limited **{stats['rate_limits']}** time(s)")
-            log.warning(f"  ⚡ #{channel.name} — rate limited {stats['rate_limits']} time(s)")
-
-        if stats["oldest"] and (oldest_overall is None or stats["oldest"] < oldest_overall):
-            oldest_overall = stats["oldest"]
-
-        cat_name = ch_config["category_name"]
-        if cat_name:
-            if cat_name not in category_results:
-                category_results[cat_name] = {"default_days": ch_config["category_default"], "channels": {}}
-            category_results[cat_name]["channels"][channel.name] = stats
-        else:
-            standalone_results[channel.name] = stats
-
-        await asyncio.sleep(2)
-
-    run_end = datetime.now()
-    elapsed = run_end - run_start
-    minutes, seconds = divmod(int(elapsed.total_seconds()), 60)
-    duration_str = f"{minutes}m {seconds}s" if minutes else f"{seconds}s"
-
-    if not dry_run and not single_channel_id:
-        update_stats(channel_results)
-
-        # Build category totals for last run summary
-        cat_totals = {}
-        for cat_name, cat_data in category_results.items():
-            cat_total = sum(s["count"] for s in cat_data["channels"].values() if s["count"] > 0)
-            if cat_total > 0:
-                cat_totals[cat_name] = cat_total
-        for ch_name, s in standalone_results.items():
-            if s["count"] > 0:
-                cat_totals[f"#{ch_name}"] = s["count"]
-
-        # Determine status label for summary
-        if has_warnings and grand_total == 0:
-            run_status = "error"
-        elif has_warnings:
-            run_status = "warning"
-        elif grand_total > 0:
-            run_status = "success"
-        else:
-            run_status = "clean"
-
-        try:
-            save_last_run({
-                "timestamp":        run_end.strftime("%Y-%m-%d %H:%M:%S"),
-                "triggered_by":     triggered_by,
-                "duration":         duration_str,
-                "total_deleted":    grand_total,
-                "channels_checked": len(channel_map),
-                "rate_limits":      grand_rate_limits,
-                "status":           run_status,
-                "categories":       [
-                    {"name": k, "count": v}
-                    for k, v in sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:5]
-                ],
-            })
-        except Exception as e:
-            log.warning(f"Could not save last run summary — {e}")
-        stats_data = load_stats()
         log.info(
-            f"Stats | All-time: {stats_data['all_time']['deleted']} deleted across {stats_data['all_time']['runs']} runs "
-            f"| This month: {stats_data['monthly']['deleted']} deleted"
+            f"{'[DRY RUN] ' if dry_run else ''}Run cutoff: {local_run_time.strftime('%Y-%m-%d %H:%M:%S')} | "
+            f"Bulk cutoff: {(local_run_time - timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')} | "
+            f"TZ: {os.getenv('TZ', 'UTC')}"
         )
 
-    # Color logic
-    if dry_run:
-        color, status = 0x95A5A6, "🔍 Dry Run Complete"
-    elif has_warnings and grand_total == 0:
-        color, status = 0xFF0000, "⛔ Completed with Errors"
-        log.error("Run completed with errors and nothing deleted")
-    elif has_warnings:
-        color, status = 0xFFA500, "⚠️ Completed with Warnings"
-        log.warning("Run completed with warnings")
-    elif grand_total > 0:
-        color, status = 0x00C853, "✅ Cleanup Successful"
-        log.info("Run completed successfully")
-    else:
-        color, status = 0x3498DB, "ℹ️ Nothing to Clean"
-        log.info("Run completed — nothing to delete")
+        for ch in cfg.raw_channels:
+            if ch.get("exclude", False):
+                log.info(f"#{ch.get('name', ch['id'])} — excluded (skipping)")
 
-    # Build breakdown
-    breakdown_lines = []
-    for cat_name, cat_data in category_results.items():
-        active_lines = []
-        for ch_name, stats in cat_data["channels"].items():
+        log.info(f"Starting {'dry run' if dry_run else 'cleanup run'} on {guild.name} across {len(channel_map)} channel(s) | triggered by: {triggered_by}")
+
+        category_results = {}
+        standalone_results = {}
+        channel_results = {}
+        error_lines = []
+        grand_total = 0
+        grand_rate_limits = 0
+        has_warnings = False
+        oldest_overall = None
+        run_start = datetime.now()
+
+        for channel_id, ch_config in channel_map.items():
+            channel = guild.get_channel(channel_id)
+            if not channel:
+                ch_name = ch_config.get("name", str(channel_id))
+                log.warning(f"Channel ID {channel_id} not found — skipping")
+                error_lines.append(f"⚠️ `#{ch_name}` — channel not found (ID: `{channel_id}`)")
+                has_warnings = True
+                continue
+
+            stats = await purge_channel(
+                channel, ch_config["days"], bulk_cutoff, run_time,
+                dry_run=dry_run, deep_clean=ch_config.get("deep_clean", False)
+            )
+            stats["is_override"] = ch_config["is_override"]
+
+            if stats["count"] > 0:
+                grand_total += stats["count"]
+                channel_results[str(channel.id)] = {"name": channel.name, "count": stats["count"], "category": ch_config.get("category_name") or "Standalone"}
+                log.info(f"  ✅ #{channel.name} — deleted {stats['count']} message(s)")
+            elif stats["count"] == 0:
+                log.info(f"  ℹ️ #{channel.name} — nothing to delete")
             if stats["count"] == -1:
-                active_lines.append(f"\u3000🚫 `#{ch_name}` — skipped (missing permissions)")
-            elif stats["count"] > 0:
-                label = "would delete" if dry_run else "deleted"
-                deep_tag = " 🧹deep" if stats.get("deep_clean") else ""
-                override_tag = f" ({stats['days']}d ⚡override)" if stats["is_override"] else ""
-                active_lines.append(f"\u3000🗑️ `#{ch_name}` — **{stats['count']}** {label}{override_tag}{deep_tag}")
-        if active_lines:
-            breakdown_lines.append(f"📁 **{cat_name}** ({cat_data['default_days']}d default)")
-            breakdown_lines.extend(active_lines)
+                has_warnings = True
+                if stats.get("error"):
+                    error_lines.append(f"🚫 `#{channel.name}` — {stats['error']}")
+                    log.warning(f"  ❌ #{channel.name} — {stats['error']}")
 
-    for ch_name, ch_stats in standalone_results.items():
-        if ch_stats["count"] == -1:
-            breakdown_lines.append(f"🚫 `#{ch_name}` — skipped (missing permissions)")
-        elif ch_stats["count"] > 0:
-            label = "would delete" if dry_run else "deleted"
-            deep_tag = " 🧹deep" if ch_stats.get("deep_clean") else ""
-            override_tag = f" ({ch_stats['days']}d ⚡override)" if ch_stats["is_override"] else ""
-            breakdown_lines.append(f"🗑️ `#{ch_name}` — **{ch_stats['count']}** {label}{override_tag}{deep_tag}")
+            grand_rate_limits += stats["rate_limits"]
+            if stats["rate_limits"] > 0:
+                error_lines.append(f"⚡ `#{channel.name}` — rate limited **{stats['rate_limits']}** time(s)")
+                log.warning(f"  ⚡ #{channel.name} — rate limited {stats['rate_limits']} time(s)")
 
-    if not breakdown_lines:
-        breakdown_lines.append("✅ No messages to clean")
+            if stats["oldest"] and (oldest_overall is None or stats["oldest"] < oldest_overall):
+                oldest_overall = stats["oldest"]
 
-    oldest_str = oldest_overall.strftime('%Y-%m-%d %I:%M %p') if oldest_overall else "N/A"
-    title_prefix = "🔍 Dry Run Report" if dry_run else "🧹 Daily Cleanup Report"
+            cat_name = ch_config["category_name"]
+            if cat_name:
+                if cat_name not in category_results:
+                    category_results[cat_name] = {"default_days": ch_config["category_default"], "channels": {}}
+                category_results[cat_name]["channels"][channel.name] = stats
+            else:
+                standalone_results[channel.name] = stats
 
-    summary = (
-        f"🏠 Server: **{guild.name}**\n"
-        f"📅 Default retention: **{DEFAULT_RETENTION} days**\n"
-        f"🔍 Channels checked: **{len(channel_map)}**\n"
-        f"🗑️ {'Would delete' if dry_run else 'Total deleted'}: **{grand_total}**\n"
-        + (f"📆 Oldest message: **{oldest_str}**\n" if grand_total > 0 else "")
-        + (f"⚡ Rate limits hit: **{grand_rate_limits}**\n" if not dry_run else "")
-        + f"⏱️ Duration: **{duration_str}**\n"
-        + (f"⏭️ Next run: **{get_next_run_str()}**" if not dry_run else "")
-    )
+            await asyncio.sleep(2)
 
-    # Split breakdown_lines into chunks that fit within Discord's 1024 char field limit
-    chunks = []
-    current_chunk = []
-    current_len = 0
-    for line in breakdown_lines:
-        if current_len + len(line) + 1 > 1000 and current_chunk:
-            chunks.append(current_chunk)
-            current_chunk = [line]
-            current_len = len(line)
+        run_end = datetime.now()
+        elapsed = run_end - run_start
+        minutes, seconds = divmod(int(elapsed.total_seconds()), 60)
+        duration_str = f"{minutes}m {seconds}s" if minutes else f"{seconds}s"
+
+        if not dry_run and not single_channel_id:
+            update_stats(channel_results)
+
+            # Build category totals for last run summary
+            cat_totals = {}
+            for cat_name, cat_data in category_results.items():
+                cat_total = sum(s["count"] for s in cat_data["channels"].values() if s["count"] > 0)
+                if cat_total > 0:
+                    cat_totals[cat_name] = cat_total
+            for ch_name, s in standalone_results.items():
+                if s["count"] > 0:
+                    cat_totals[f"#{ch_name}"] = s["count"]
+
+            # Determine status label for summary
+            if has_warnings and grand_total == 0:
+                run_status = "error"
+            elif has_warnings:
+                run_status = "warning"
+            elif grand_total > 0:
+                run_status = "success"
+            else:
+                run_status = "clean"
+
+            try:
+                save_last_run({
+                    "timestamp":        run_end.strftime("%Y-%m-%d %H:%M:%S"),
+                    "triggered_by":     triggered_by,
+                    "duration":         duration_str,
+                    "total_deleted":    grand_total,
+                    "channels_checked": len(channel_map),
+                    "rate_limits":      grand_rate_limits,
+                    "status":           run_status,
+                    "categories":       [
+                        {"name": k, "count": v}
+                        for k, v in sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:5]
+                    ],
+                })
+            except Exception as e:
+                log.warning(f"Could not save last run summary — {e}")
+            stats_data = load_stats()
+            log.info(
+                f"Stats | All-time: {stats_data['all_time']['deleted']} deleted across {stats_data['all_time']['runs']} runs "
+                f"| This month: {stats_data['monthly']['deleted']} deleted"
+            )
+
+        # Color logic
+        if dry_run:
+            color, status = 0x95A5A6, "🔍 Dry Run Complete"
+        elif has_warnings and grand_total == 0:
+            color, status = 0xFF0000, "⛔ Completed with Errors"
+            log.error("Run completed with errors and nothing deleted")
+        elif has_warnings:
+            color, status = 0xFFA500, "⚠️ Completed with Warnings"
+            log.warning("Run completed with warnings")
+        elif grand_total > 0:
+            color, status = 0x00C853, "✅ Cleanup Successful"
+            log.info("Run completed successfully")
         else:
-            current_chunk.append(line)
-            current_len += len(line) + 1
-    if current_chunk:
-        chunks.append(current_chunk)
+            color, status = 0x3498DB, "ℹ️ Nothing to Clean"
+            log.info("Run completed — nothing to delete")
 
-    if not chunks:
-        chunks = [["✅ No messages to clean"]]
+        # Build breakdown
+        breakdown_lines = []
+        for cat_name, cat_data in category_results.items():
+            active_lines = []
+            for ch_name, stats in cat_data["channels"].items():
+                if stats["count"] == -1:
+                    active_lines.append(f"\u3000🚫 `#{ch_name}` — skipped (missing permissions)")
+                elif stats["count"] > 0:
+                    label = "would delete" if dry_run else "deleted"
+                    deep_tag = " 🧹deep" if stats.get("deep_clean") else ""
+                    override_tag = f" ({stats['days']}d ⚡override)" if stats["is_override"] else ""
+                    active_lines.append(f"\u3000🗑️ `#{ch_name}` — **{stats['count']}** {label}{override_tag}{deep_tag}")
+            if active_lines:
+                breakdown_lines.append(f"📁 **{cat_name}** ({cat_data['default_days']}d default)")
+                breakdown_lines.extend(active_lines)
 
-    total_pages = len(chunks)
+        for ch_name, ch_stats in standalone_results.items():
+            if ch_stats["count"] == -1:
+                breakdown_lines.append(f"🚫 `#{ch_name}` — skipped (missing permissions)")
+            elif ch_stats["count"] > 0:
+                label = "would delete" if dry_run else "deleted"
+                deep_tag = " 🧹deep" if ch_stats.get("deep_clean") else ""
+                override_tag = f" ({ch_stats['days']}d ⚡override)" if ch_stats["is_override"] else ""
+                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{ch_stats['count']}** {label}{override_tag}{deep_tag}")
 
-    # First embed — includes summary
-    first_embed = discord.Embed(
-        title=f"{title_prefix} — {status}",
-        description=summary,
-        color=color,
-        timestamp=run_end
-    )
-    page_label = f"📋 Category Summary" if total_pages == 1 else f"📋 Category Summary (1/{total_pages})"
-    first_embed.add_field(name=page_label, value="\n".join(chunks[0]), inline=False)
-    if total_pages == 1:
-        first_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await log_channel.send(embed=first_embed)
+        if not breakdown_lines:
+            breakdown_lines.append("✅ No messages to clean")
 
-    # Additional embeds if needed
-    for i, chunk in enumerate(chunks[1:], start=2):
-        page_embed = discord.Embed(color=color, timestamp=run_end)
-        page_label = f"📋 Category Summary ({i}/{total_pages})"
-        page_embed.add_field(name=page_label, value="\n".join(chunk), inline=False)
-        if i == total_pages:
-            page_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-        await log_channel.send(embed=page_embed)
+        oldest_str = oldest_overall.strftime('%Y-%m-%d %I:%M %p') if oldest_overall else "N/A"
+        title_prefix = "🔍 Dry Run Report" if dry_run else "🧹 Daily Cleanup Report"
 
-    footer_line1 = f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
-    footer_line2 = f"  Warnings: {len(error_lines)} | Rate limits: {grand_rate_limits}"
-    log.info("╔══════════════════════════════════════════════════════════╗")
-    log.info(f"║{footer_line1:<58}║")
-    log.info(f"║{footer_line2:<58}║")
-    log.info("╚══════════════════════════════════════════════════════════╝")
+        summary = (
+            f"🏠 Server: **{guild.name}**\n"
+            f"📅 Default retention: **{DEFAULT_RETENTION} days**\n"
+            f"🔍 Channels checked: **{len(channel_map)}**\n"
+            f"🗑️ {'Would delete' if dry_run else 'Total deleted'}: **{grand_total}**\n"
+            + (f"📆 Oldest message: **{oldest_str}**\n" if grand_total > 0 else "")
+            + (f"⚡ Rate limits hit: **{grand_rate_limits}**\n" if not dry_run else "")
+            + f"⏱️ Duration: **{duration_str}**\n"
+            + (f"⏭️ Next run: **{get_next_run_str()}**" if not dry_run else "")
+        )
 
-    if error_lines:
-        error_embed = discord.Embed(
-            title=f"⚠️ Run Errors — {len(error_lines)} issue(s) found",
-            description="\n".join(error_lines),
-            color=0xFF0000,
+        # Split breakdown_lines into chunks that fit within Discord's 1024 char field limit
+        chunks = []
+        current_chunk = []
+        current_len = 0
+        for line in breakdown_lines:
+            if current_len + len(line) + 1 > 1000 and current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = [line]
+                current_len = len(line)
+            else:
+                current_chunk.append(line)
+                current_len += len(line) + 1
+        if current_chunk:
+            chunks.append(current_chunk)
+
+        if not chunks:
+            chunks = [["✅ No messages to clean"]]
+
+        total_pages = len(chunks)
+
+        # First embed — includes summary
+        first_embed = discord.Embed(
+            title=f"{title_prefix} — {status}",
+            description=summary,
+            color=color,
             timestamp=run_end
         )
-        error_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-        await log_channel.send(embed=error_embed)
+        page_label = f"📋 Category Summary" if total_pages == 1 else f"📋 Category Summary (1/{total_pages})"
+        first_embed.add_field(name=page_label, value="\n".join(chunks[0]), inline=False)
+        if total_pages == 1:
+            first_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+        await log_channel.send(embed=first_embed)
 
-    update_health()
+        # Additional embeds if needed
+        for i, chunk in enumerate(chunks[1:], start=2):
+            page_embed = discord.Embed(color=color, timestamp=run_end)
+            page_label = f"📋 Category Summary ({i}/{total_pages})"
+            page_embed.add_field(name=page_label, value="\n".join(chunk), inline=False)
+            if i == total_pages:
+                page_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+            await log_channel.send(embed=page_embed)
+
+        footer_line1 = f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
+        footer_line2 = f"  Warnings: {len(error_lines)} | Rate limits: {grand_rate_limits}"
+        log.info("╔══════════════════════════════════════════════════════════╗")
+        log.info(f"║{footer_line1:<58}║")
+        log.info(f"║{footer_line2:<58}║")
+        log.info("╚══════════════════════════════════════════════════════════╝")
+
+        if error_lines:
+            error_embed = discord.Embed(
+                title=f"⚠️ Run Errors — {len(error_lines)} issue(s) found",
+                description="\n".join(error_lines),
+                color=0xFF0000,
+                timestamp=run_end
+            )
+            error_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+            await log_channel.send(embed=error_embed)
+    except asyncio.CancelledError:
+        log.warning("Cleanup run cancelled before completion")
+        raise
+    except Exception:
+        log.exception(
+            "Cleanup run failed unexpectedly | guild=%s | triggered_by=%s | single_channel_id=%s | dry_run=%s",
+            guild.name,
+            triggered_by,
+            single_channel_id,
+            dry_run,
+        )
+        try:
+            error_embed = discord.Embed(
+                title="⛔ Cleanup Run Failed Unexpectedly",
+                description=(
+                    f"🏠 Server: **{guild.name}**\n"
+                    f"👤 Triggered by: **{triggered_by}**\n\n"
+                    f"An unexpected error interrupted the cleanup run. Check the container logs for the traceback."
+                ),
+                color=0xFF0000,
+                timestamp=datetime.now()
+            )
+            error_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+            await log_channel.send(embed=error_embed)
+        except Exception:
+            log.exception("Failed to send unexpected cleanup failure notification")
+    finally:
+        update_health()

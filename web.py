@@ -3,10 +3,11 @@ web.py — Flask app, page routes, and web server thread management.
 Registers the api Blueprint and starts the server on WEB_PORT (default 8080).
 """
 import os
+import secrets
 import threading
 import logging
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, abort, jsonify, render_template, request, session
 
 from config import (
     BOT_VERSION, CONFIG_DIR, LOG_DIR, LOG_MAX_FILES, log
@@ -15,18 +16,61 @@ from utils import (
     get_uptime_str, get_next_run_str, reload_channels,
     update_retention, update_log_level, update_warn_unconfigured,
     update_report_frequency, update_log_max_files, update_schedule,
-    get_bot
+    get_bot, is_run_in_progress
 )
 from stats import load_stats, load_last_run
 from api import api, _get_status_context
-import utils
+from validation import validate_channels_config
 
 # Flask app setup — templates and static files live alongside web.py
 app = Flask(__name__, template_folder="templates", static_folder="static")
-app.secret_key = os.urandom(24)
+app.secret_key = os.getenv("WEB_SECRET_KEY") or secrets.token_hex(32)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.register_blueprint(api)
 
+WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.getenv("WEB_PORT", 8080))
+WEB_AUTH_HEADER_NAME = os.getenv("WEB_AUTH_HEADER_NAME", "").strip()
+WEB_AUTH_HEADER_VALUE = os.getenv("WEB_AUTH_HEADER_VALUE", "")
+
+if bool(WEB_AUTH_HEADER_NAME) != bool(WEB_AUTH_HEADER_VALUE):
+    raise RuntimeError("WEB_AUTH_HEADER_NAME and WEB_AUTH_HEADER_VALUE must either both be set or both be empty")
+
+
+def _csrf_token() -> str:
+    """Returns the current session CSRF token, creating one when needed."""
+    token = session.get("csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["csrf_token"] = token
+    return token
+
+
+@app.context_processor
+def inject_csrf_token():
+    """Exposes the CSRF token to all templates."""
+    return {"csrf_token": _csrf_token()}
+
+
+@app.before_request
+def protect_web_ui():
+    """Applies optional proxy-header auth and CSRF checks for mutating requests."""
+    if request.endpoint == "static" or request.path == "/api/health":
+        return None
+
+    if WEB_AUTH_HEADER_NAME:
+        supplied = request.headers.get(WEB_AUTH_HEADER_NAME)
+        if supplied != WEB_AUTH_HEADER_VALUE:
+            log.warning("Rejected web request with missing or invalid proxy auth header | path=%s", request.path)
+            abort(403)
+
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        submitted = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token")
+        if submitted != _csrf_token():
+            log.warning("Rejected web request with invalid CSRF token | path=%s", request.path)
+            abort(403)
+    return None
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -40,7 +84,7 @@ def dashboard():
     context["stats"] = stats
     context["now"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     context["last_run"] = load_last_run()
-    context["run_in_progress"] = utils.run_in_progress
+    context["run_in_progress"] = is_run_in_progress()
 
     # Build sorted channel list for the single-channel run selector
     # Use guild.get_channel() to get the real Discord channel name
@@ -72,6 +116,7 @@ def config_page():
         with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
             context["channels_yml"] = f.read()
     except Exception:
+        log.exception("Could not load channels.yml for config page")
         context["channels_yml"] = ""
 
     return render_template("config.html", **context)
@@ -135,9 +180,14 @@ def save_channels():
     content = request.form.get("channels_yml", "")
     try:
         # Validate YAML before saving
-        yaml.safe_load(content)
+        yaml_data = yaml.safe_load(content) or {}
+        if not isinstance(yaml_data, dict):
+            raise ValueError("channels.yml root must be a mapping with a 'channels' key")
+        validate_channels_config(yaml_data.get("channels", []))
     except yaml.YAMLError as e:
         return jsonify({"success": False, "message": f"Invalid YAML — {e}"}), 400
+    except ValueError as e:
+        return jsonify({"success": False, "message": f"Invalid channels.yml — {e}"}), 400
 
     with config_lock:
         try:
@@ -292,11 +342,11 @@ def stats_page():
 
 def start_web_server():
     """Starts the Flask web server in a background thread."""
-    log.info(f"Web UI starting on port {WEB_PORT}")
+    log.info(f"Web UI starting on {WEB_HOST}:{WEB_PORT}")
     # Disable Flask's default logger to avoid duplicate log entries
     flask_log = logging.getLogger("werkzeug")
     flask_log.setLevel(logging.WARNING)
-    app.run(host="0.0.0.0", port=WEB_PORT, debug=False, use_reloader=False)
+    app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
 
 
 def start_web_thread():

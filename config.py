@@ -5,6 +5,13 @@ import threading
 import yaml
 from datetime import datetime
 from dotenv import load_dotenv
+from validation import (
+    parse_time_list,
+    validate_channels_config,
+    validate_int,
+    validate_report_frequency,
+    validate_time_string,
+)
 
 CONFIG_DIR = "/config"
 BOT_START_TIME = datetime.now()
@@ -48,6 +55,14 @@ def create_default_files():
                         "WARN_UNCONFIGURED=false\n\n"
                         "# Trigger a catchup run on startup if a scheduled run was missed (true/false)\n"
                         "CATCHUP_MISSED_RUNS=true\n\n"
+                        "# Web UI bind host and port\n"
+                        "WEB_HOST=0.0.0.0\n"
+                        "WEB_PORT=8080\n\n"
+                        "# Optional reverse-proxy auth header pair for the web UI\n"
+                        "# WEB_AUTH_HEADER_NAME=X-Forwarded-User\n"
+                        "# WEB_AUTH_HEADER_VALUE=your-expected-authentik-username\n\n"
+                        "# Optional fixed secret for web sessions and CSRF tokens\n"
+                        "# WEB_SECRET_KEY=\n\n"
                         "# GitHub personal access token for version update checks (required for private repos)\n"
                         "# GITHUB_TOKEN=\n")
             print(f"{CONFIG_DIR}/.env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
@@ -153,11 +168,17 @@ try:
 except ValueError:
     log.error("LOG_CHANNEL_ID and REPORT_CHANNEL_ID must be numeric Discord channel IDs.")
     sys.exit(1)
-CLEAN_TIMES = [t.strip() for t in os.getenv("CLEAN_TIME", "03:00").split(",") if t.strip()]
-LOG_MAX_FILES = int(os.getenv("LOG_MAX_FILES", 7))
-DEFAULT_RETENTION = int(os.getenv("DEFAULT_RETENTION", 7))
-STATUS_REPORT_TIME = os.getenv("STATUS_REPORT_TIME", "09:00")
-REPORT_FREQUENCY = os.getenv("REPORT_FREQUENCY", "monthly").lower()
+
+try:
+    CLEAN_TIMES = parse_time_list(os.getenv("CLEAN_TIME", "03:00"), "CLEAN_TIME")
+    LOG_MAX_FILES = validate_int(os.getenv("LOG_MAX_FILES", 7), "LOG_MAX_FILES", 1, 365)
+    DEFAULT_RETENTION = validate_int(os.getenv("DEFAULT_RETENTION", 7), "DEFAULT_RETENTION", 1, 365)
+    STATUS_REPORT_TIME = validate_time_string(os.getenv("STATUS_REPORT_TIME", "09:00"), "STATUS_REPORT_TIME")
+    REPORT_FREQUENCY = validate_report_frequency(os.getenv("REPORT_FREQUENCY", "monthly"))
+except ValueError as e:
+    log.error(f"Invalid configuration value — {e}")
+    sys.exit(1)
+
 WARN_UNCONFIGURED    = os.getenv("WARN_UNCONFIGURED", "false").lower() == "true"
 GITHUB_TOKEN         = os.getenv("GITHUB_TOKEN")
 # When true, a missed scheduled run is detected on startup and triggered automatically
@@ -177,8 +198,10 @@ RETRY_DELAY = 300
 # --- Channels ---
 try:
     with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
-        yaml_data = yaml.safe_load(f)
-        raw_channels = yaml_data.get("channels", [])
+        yaml_data = yaml.safe_load(f) or {}
+        if not isinstance(yaml_data, dict):
+            raise ValueError("channels.yml root must be a mapping with a 'channels' key")
+        raw_channels = validate_channels_config(yaml_data.get("channels", []))
 except FileNotFoundError:
     log.error(f"{CONFIG_DIR}/channels.yml not found — cannot start bot.")
     sys.exit(1)
@@ -188,4 +211,6 @@ except PermissionError:
 except yaml.YAMLError as e:
     log.error(f"channels.yml is malformed — {e}")
     sys.exit(1)
-
+except ValueError as e:
+    log.error(f"channels.yml validation failed — {e}")
+    sys.exit(1)

@@ -91,7 +91,11 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `REPORT_FREQUENCY` | ❌ | `monthly` | Report frequency: `monthly`, `weekly`, or `both` |
 | `WARN_UNCONFIGURED` | ❌ | `false` | Log a warning for any Discord channels not in channels.yml |
 | `GITHUB_TOKEN` | ❌ | — | GitHub personal access token for version update checks (required for private repos) |
+| `WEB_HOST` | ❌ | `0.0.0.0` | Host/interface the web UI binds to |
 | `WEB_PORT` | ❌ | `8080` | Port the web UI listens on |
+| `WEB_AUTH_HEADER_NAME` | ❌ | — | Optional reverse-proxy header name required for web UI access |
+| `WEB_AUTH_HEADER_VALUE` | ❌ | — | Expected value for `WEB_AUTH_HEADER_NAME` |
+| `WEB_SECRET_KEY` | ❌ | — | Optional fixed secret for web sessions and CSRF protection |
 
 ### Example `.env.discord_cleanup`
 
@@ -104,6 +108,8 @@ DEFAULT_RETENTION=7
 LOG_MAX_FILES=7
 LOG_LEVEL=INFO
 STATUS_REPORT_TIME=09:00
+WEB_HOST=0.0.0.0
+WEB_PORT=8080
 ```
 
 > All variables marked ❌ can also be changed at runtime via the web UI without restarting the container.
@@ -206,6 +212,8 @@ All commands require Administrator permissions. Responses are ephemeral (only vi
 ## Web UI
 
 The bot includes a built-in web interface accessible on port 8080. It provides full config management without needing Discord.
+
+If you publish the web UI through a reverse proxy, keep the container on an internal network and consider setting `WEB_AUTH_HEADER_NAME` and `WEB_AUTH_HEADER_VALUE` so the app only trusts requests that arrive through your proxy.
 
 **Pages:**
 

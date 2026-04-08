@@ -7,9 +7,17 @@ import asyncio
 from flask import Blueprint, jsonify, request
 
 from config import BOT_VERSION, LOG_DIR, log
-from utils import get_uptime_str, get_next_run_str, get_bot, get_bot_loop
+from utils import (
+    get_uptime_str,
+    get_next_run_str,
+    get_bot,
+    get_bot_loop,
+    get_run_owner,
+    is_run_in_progress,
+    release_run,
+    try_acquire_run,
+)
 from stats import load_stats, reset_stats, load_last_run
-import utils
 
 # All /api/* and /run/* routes live here, registered as a Blueprint in web.py
 api = Blueprint("api", __name__)
@@ -121,7 +129,7 @@ def api_logs_latest():
 @api.route("/api/run_status")
 def api_run_status():
     """Returns whether a cleanup run is currently in progress."""
-    return jsonify({"run_in_progress": utils.run_in_progress})
+    return jsonify({"run_in_progress": is_run_in_progress(), "run_owner": get_run_owner()})
 
 
 # ── Run triggers ──────────────────────────────────────────────────────────────
@@ -131,7 +139,7 @@ def trigger_full_run():
     """Trigger a full cleanup run via the web UI."""
     from cleanup import run_cleanup
 
-    if utils.run_in_progress:
+    if is_run_in_progress():
         return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
 
     bot  = get_bot()
@@ -143,15 +151,22 @@ def trigger_full_run():
         return jsonify({"success": False, "message": "Bot is not in any guilds"}), 503
 
     guild = bot.guilds[0]
+    owner = "web UI full run"
+    if not try_acquire_run(owner):
+        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
 
     async def _run():
-        utils.run_in_progress = True
         try:
             await run_cleanup(bot, guild, triggered_by="web UI")
         finally:
-            utils.run_in_progress = False
+            release_run()
 
-    asyncio.run_coroutine_threadsafe(_run(), loop)
+    try:
+        asyncio.run_coroutine_threadsafe(_run(), loop)
+    except Exception:
+        release_run()
+        log.exception("Failed to schedule full cleanup run from web UI")
+        return jsonify({"success": False, "message": "Could not schedule cleanup run"}), 500
     log.info("Full cleanup run triggered from web UI")
     return jsonify({"success": True, "message": "Full cleanup run started — check the log channel for results"})
 
@@ -161,7 +176,7 @@ def trigger_channel_run():
     """Trigger a cleanup run on a specific configured channel via the web UI."""
     from cleanup import run_cleanup, build_channel_map
 
-    if utils.run_in_progress:
+    if is_run_in_progress():
         return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
 
     bot  = get_bot()
@@ -185,15 +200,22 @@ def trigger_channel_run():
 
     discord_channel = guild.get_channel(channel_id)
     channel_name    = discord_channel.name if discord_channel else str(channel_id)
+    owner = f"web UI channel run #{channel_name}"
+    if not try_acquire_run(owner):
+        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
 
     async def _run():
-        utils.run_in_progress = True
         try:
             await run_cleanup(bot, guild, single_channel_id=channel_id, triggered_by="web UI")
         finally:
-            utils.run_in_progress = False
+            release_run()
 
-    asyncio.run_coroutine_threadsafe(_run(), loop)
+    try:
+        asyncio.run_coroutine_threadsafe(_run(), loop)
+    except Exception:
+        release_run()
+        log.exception("Failed to schedule channel cleanup run from web UI for #%s", channel_name)
+        return jsonify({"success": False, "message": "Could not schedule cleanup run"}), 500
     log.info(f"Channel cleanup run triggered from web UI for #{channel_name}")
     return jsonify({"success": True, "message": f"Cleanup started for #{channel_name} — check the log channel for results"})
 

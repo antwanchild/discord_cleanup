@@ -6,6 +6,7 @@ import asyncio
 import signal
 import warnings
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 from datetime import datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -28,7 +29,15 @@ from notifications import (
     post_missed_run_alert, post_status_report, post_catchup_notification,
 )
 from stats import migrate_stats_categories, load_last_run, record_catchup_run
-from utils import update_health, register_task, log_restart_separator, set_bot_loop
+from utils import (
+    update_health,
+    register_task,
+    log_restart_separator,
+    set_bot_loop,
+    is_run_in_progress,
+    release_run,
+    try_acquire_run,
+)
 from web import start_web_thread
 
 # --- Discord logging suppression ---
@@ -85,45 +94,59 @@ report_time = build_report_time(TASK_TZ)
 async def cleanup_task():
     """Runs scheduled cleanup for all guilds."""
     now = datetime.now(TASK_TZ)
+    if is_run_in_progress():
+        log.warning("Scheduled cleanup skipped because another cleanup operation is already running")
+        return
+    if not try_acquire_run("scheduler"):
+        log.warning("Scheduled cleanup skipped because another cleanup operation is already running")
+        return
 
-    # Missed run detection
-    for t in CLEAN_TIMES:
-        hour, minute = map(int, t.split(":"))
-        expected = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        delay = (now - expected).total_seconds() / 60
-        if 0 < delay < 60:
-            if delay > MISSED_RUN_THRESHOLD_MINUTES:
-                log.warning(f"Cleanup run for {t} is {delay:.1f} minutes late — posting alert")
-                for guild in bot.guilds:
-                    await post_missed_run_alert(bot, guild, t)
-            break
+    try:
+        # Missed run detection
+        for t in CLEAN_TIMES:
+            hour, minute = map(int, t.split(":"))
+            expected = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            delay = (now - expected).total_seconds() / 60
+            if 0 < delay < 60:
+                if delay > MISSED_RUN_THRESHOLD_MINUTES:
+                    log.warning(f"Cleanup run for {t} is {delay:.1f} minutes late — posting alert")
+                    for guild in bot.guilds:
+                        await post_missed_run_alert(bot, guild, t)
+                break
 
-    log.info(f"Scheduled cleanup run starting | Time: {now.strftime('%H:%M')} {TASK_TZ}")
-    for guild in bot.guilds:
-        await run_cleanup(bot, guild)
-    update_health()
+        log.info(f"Scheduled cleanup run starting | Time: {now.strftime('%H:%M')} {TASK_TZ}")
+        for guild in bot.guilds:
+            await run_cleanup(bot, guild)
+        update_health()
+    except Exception:
+        log.exception("Scheduled cleanup task failed unexpectedly")
+    finally:
+        release_run()
 
 
 @tasks.loop(time=report_time)
 async def monthly_report_task():
     """Posts scheduled reports based on REPORT_FREQUENCY setting."""
     import config
-    now = datetime.now(TASK_TZ)
-    is_first_of_month = now.day == 1
-    is_monday = now.weekday() == 0  # 0 = Monday
-    freq = config.REPORT_FREQUENCY
+    try:
+        now = datetime.now(TASK_TZ)
+        is_first_of_month = now.day == 1
+        is_monday = now.weekday() == 0  # 0 = Monday
+        freq = config.REPORT_FREQUENCY
 
-    should_post = (
-        (freq == "monthly" and is_first_of_month) or
-        (freq == "weekly" and is_monday) or
-        (freq == "both" and (is_first_of_month or is_monday))
-    )
+        should_post = (
+            (freq == "monthly" and is_first_of_month) or
+            (freq == "weekly" and is_monday) or
+            (freq == "both" and (is_first_of_month or is_monday))
+        )
 
-    if should_post:
-        label = "monthly" if is_first_of_month else "weekly"
-        log.info(f"{label.capitalize()} report triggered — posting now")
-        for guild in bot.guilds:
-            await post_status_report(bot, guild, label)
+        if should_post:
+            label = "monthly" if is_first_of_month else "weekly"
+            log.info(f"{label.capitalize()} report triggered — posting now")
+            for guild in bot.guilds:
+                await post_status_report(bot, guild, label)
+    except Exception:
+        log.exception("Monthly report task failed unexpectedly")
 
 
 @tasks.loop(minutes=1)
@@ -173,31 +196,44 @@ async def _check_and_catchup_missed_run(bot, guild):
     """Checks on startup whether a scheduled cleanup run was missed while the bot was offline.
     If CATCHUP_MISSED_RUNS is enabled and a missed run is detected, posts a notification
     and triggers a catchup run immediately."""
-    if not CATCHUP_MISSED_RUNS:
-        log.debug("CATCHUP_MISSED_RUNS is disabled — skipping missed run check")
-        return
-
-    last_run_data = load_last_run()
-    if not last_run_data:
-        log.debug("No previous run data found — skipping missed run check")
-        return
-
     try:
-        last_run_time = datetime.strptime(last_run_data["timestamp"], "%Y-%m-%d %H:%M:%S")
-    except (KeyError, ValueError) as e:
-        log.warning(f"Could not parse last run timestamp — skipping missed run check: {e}")
-        return
+        if not CATCHUP_MISSED_RUNS:
+            log.debug("CATCHUP_MISSED_RUNS is disabled — skipping missed run check")
+            return
 
-    missed_time = _find_missed_run_time(last_run_time, datetime.now(), CLEAN_TIMES)
-    if missed_time is None:
-        log.debug("No missed scheduled runs detected")
-        return
+        last_run_data = load_last_run()
+        if not last_run_data:
+            log.debug("No previous run data found — skipping missed run check")
+            return
 
-    missed_str = missed_time.strftime('%Y-%m-%d %I:%M %p')
-    log.info(f"Missed scheduled run detected for {missed_str} — triggering catchup run")
-    await post_catchup_notification(bot, guild, missed_str)
-    await run_cleanup(bot, guild, triggered_by=f"catchup (missed {missed_str})")
-    record_catchup_run()
+        try:
+            last_run_time = datetime.strptime(last_run_data["timestamp"], "%Y-%m-%d %H:%M:%S")
+        except (KeyError, ValueError) as e:
+            log.warning(f"Could not parse last run timestamp — skipping missed run check: {e}")
+            return
+
+        missed_time = _find_missed_run_time(last_run_time, datetime.now(), CLEAN_TIMES)
+        if missed_time is None:
+            log.debug("No missed scheduled runs detected")
+            return
+
+        if is_run_in_progress():
+            log.warning("Missed-run catchup skipped because another cleanup operation is already running")
+            return
+        if not try_acquire_run("catchup"):
+            log.warning("Missed-run catchup skipped because another cleanup operation is already running")
+            return
+
+        missed_str = missed_time.strftime('%Y-%m-%d %I:%M %p')
+        log.info(f"Missed scheduled run detected for {missed_str} — triggering catchup run")
+        try:
+            await post_catchup_notification(bot, guild, missed_str)
+            await run_cleanup(bot, guild, triggered_by=f"catchup (missed {missed_str})")
+            record_catchup_run()
+        finally:
+            release_run()
+    except Exception:
+        log.exception("Missed-run catchup check failed unexpectedly")
 
 
 # --- Events ---
@@ -245,6 +281,29 @@ async def on_ready():
 async def on_resumed():
     log.info("Bot resumed connection")
     update_health()
+
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    """Logs slash-command failures and sends a friendly ephemeral response."""
+    original = getattr(error, "original", error)
+
+    if isinstance(error, app_commands.errors.MissingPermissions):
+        message = "⛔ You need Administrator permissions to use this command."
+    else:
+        log.error(
+            "Slash command failed",
+            exc_info=(type(original), original, original.__traceback__),
+        )
+        message = "⛔ Command failed unexpectedly. Check the bot logs for details."
+
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(message, ephemeral=True)
+        else:
+            await interaction.response.send_message(message, ephemeral=True)
+    except Exception:
+        log.exception("Failed to send slash-command error response")
 
 
 # --- Graceful Shutdown ---
