@@ -57,7 +57,7 @@ def create_default_files():
                         "# Trigger a catchup run on startup if a scheduled run was missed (true/false)\n"
                         "CATCHUP_MISSED_RUNS=true\n\n"
                         "# Web UI bind host and port\n"
-                        "WEB_HOST=127.0.0.1\n"
+                        "WEB_HOST=0.0.0.0\n"
                         "WEB_PORT=8080\n\n"
                         "# Optional reverse-proxy auth header pair for the web UI\n"
                         "# WEB_AUTH_HEADER_NAME=X-Forwarded-User\n"

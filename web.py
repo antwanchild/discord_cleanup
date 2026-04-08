@@ -30,7 +30,7 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.register_blueprint(api)
 app.register_blueprint(admin)
 
-WEB_HOST = os.getenv("WEB_HOST", "127.0.0.1")
+WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.getenv("WEB_PORT", 8080))
 WEB_AUTH_HEADER_NAME = os.getenv("WEB_AUTH_HEADER_NAME", "").strip()
 WEB_AUTH_HEADER_VALUE = os.getenv("WEB_AUTH_HEADER_VALUE", "")

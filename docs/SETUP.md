@@ -91,7 +91,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `REPORT_FREQUENCY` | ❌ | `monthly` | Report frequency: `monthly`, `weekly`, or `both` |
 | `WARN_UNCONFIGURED` | ❌ | `false` | Log a warning for any Discord channels not in channels.yml |
 | `GITHUB_TOKEN` | ❌ | — | GitHub personal access token for version update checks (required for private repos) |
-| `WEB_HOST` | ❌ | `127.0.0.1` | Host/interface the web UI binds to |
+| `WEB_HOST` | ❌ | `0.0.0.0` | Host/interface the web UI binds to |
 | `WEB_PORT` | ❌ | `8080` | Port the web UI listens on |
 | `WEB_AUTH_HEADER_NAME` | ❌ | — | Optional reverse-proxy header name required for web UI access |
 | `WEB_AUTH_HEADER_VALUE` | ❌ | — | Expected value for `WEB_AUTH_HEADER_NAME` |
@@ -111,7 +111,7 @@ DEFAULT_RETENTION=7
 LOG_MAX_FILES=7
 LOG_LEVEL=INFO
 STATUS_REPORT_TIME=09:00
-WEB_HOST=127.0.0.1
+WEB_HOST=0.0.0.0
 WEB_PORT=8080
 ```
 
@@ -119,7 +119,7 @@ WEB_PORT=8080
 
 ### Web UI hardening
 
-- Keep `WEB_HOST=127.0.0.1` unless you have a strong reason to expose the app directly.
+- Keep `WEB_HOST=0.0.0.0` if you are publishing the port directly from Docker.
 - Put the UI behind a reverse proxy such as Authentik, Nginx Proxy Manager, Traefik, or Caddy.
 - Set `WEB_AUTH_HEADER_NAME` and `WEB_AUTH_HEADER_VALUE` so the app only trusts requests forwarded by that proxy.
 - Mutating UI/API routes live under `/admin/...` and are rate limited separately from read-only `/api/...` routes.
