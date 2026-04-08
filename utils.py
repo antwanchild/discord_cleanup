@@ -5,8 +5,10 @@ Config file updates → config_utils.py
 Schedule management → scheduler.py
 """
 import os
+import json
 import logging
 import threading
+import tempfile
 from datetime import datetime, timedelta
 
 from config import (
@@ -105,8 +107,7 @@ def get_run_owner() -> str | None:
 def update_health():
     """Updates the health file timestamp. Used by Docker HEALTHCHECK."""
     try:
-        with open(HEALTH_FILE, "w") as f:
-            f.write(datetime.now().isoformat())
+        atomic_write_text(HEALTH_FILE, datetime.now().isoformat())
     except Exception as e:
         log.warning(f"Could not update health file — {e}")
 
@@ -189,3 +190,79 @@ def log_restart_separator():
     now            = datetime.now().strftime("%Y-%m-%d %I:%M %p")
     separator_line = f" Bot Restarted | {now} | v{BOT_VERSION} "
     log.info(f"{'═' * 4}{separator_line:{'═'}<54}{'═' * 2}")
+
+
+def atomic_write_text(path: str, content: str) -> None:
+    """Atomically writes text content to a file using a same-directory temporary file."""
+    directory = os.path.dirname(path) or "."
+    os.makedirs(directory, exist_ok=True)
+
+    fd, temp_path = tempfile.mkstemp(dir=directory)
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(content)
+        os.replace(temp_path, path)
+    except Exception:
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        finally:
+            raise
+
+
+def atomic_write_json(path: str, payload: dict) -> None:
+    """Atomically writes JSON content to disk."""
+    atomic_write_text(path, json.dumps(payload, indent=2))
+
+
+def list_cleanup_logs() -> list[str]:
+    """Returns available cleanup log filenames sorted newest-first."""
+    return sorted([
+        f for f in os.listdir(LOG_DIR)
+        if f.startswith("cleanup-") and f.endswith(".log")
+    ], reverse=True)
+
+
+def read_cleanup_log(filename: str, lines_requested: int = 200) -> dict:
+    """Reads the requested cleanup log file and returns metadata and lines."""
+    log_files = list_cleanup_logs()
+    if filename not in log_files:
+        raise FileNotFoundError(filename)
+
+    path = os.path.join(LOG_DIR, filename)
+    with open(path, "r") as f:
+        lines = f.readlines()[-lines_requested:]
+
+    return {
+        "log_file": filename,
+        "available_logs": log_files,
+        "lines_returned": len(lines),
+        "lines": [line.rstrip() for line in lines],
+    }
+
+
+def read_latest_cleanup_log(lines_requested: int = 200) -> dict:
+    """Reads the most recent cleanup log file if one exists."""
+    log_files = list_cleanup_logs()
+    if not log_files:
+        return {
+            "log_file": None,
+            "available_logs": [],
+            "lines_returned": 0,
+            "lines": [],
+        }
+    return read_cleanup_log(log_files[0], lines_requested=lines_requested)
+
+
+def list_cleanup_logs_with_sizes() -> list[dict]:
+    """Returns cleanup log metadata for API and web UI consumers."""
+    files = []
+    for filename in list_cleanup_logs():
+        path = os.path.join(LOG_DIR, filename)
+        size = os.path.getsize(path)
+        files.append({
+            "filename": filename,
+            "date": filename.replace("cleanup-", "").replace(".log", ""),
+            "size_kb": round(size / 1024, 1),
+        })
+    return files

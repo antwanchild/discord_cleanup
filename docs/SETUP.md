@@ -234,6 +234,8 @@ On the Config page, `channels.yml` can be validated without saving, schema error
 
 The web UI runs in a background thread alongside the bot. Config changes made in the web UI take effect immediately and persist to `.env.discord_cleanup`, just like slash commands.
 
+The dashboard also shows the active cleanup run owner when a run is in progress, and startup notifications include a self-check summary covering channel visibility and configured target health.
+
 ---
 
 ## Deployment

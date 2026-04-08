@@ -15,7 +15,7 @@ from config import (
     log
 )
 from stats import load_stats
-from utils import get_next_run_str
+from utils import atomic_write_text, get_next_run_str
 
 
 def _version_gt(a: str, b: str) -> bool:
@@ -45,6 +45,9 @@ async def _fetch_latest_version() -> str | None:
 
 async def post_startup_notification(bot, guild):
     """Posts a startup notification to the log channel on every boot."""
+    from cleanup import build_channel_map
+    import config
+
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
     if not log_channel:
         log.warning("Could not post startup notification — log channel not found")
@@ -53,7 +56,6 @@ async def post_startup_notification(bot, guild):
     # Check for unconfigured channels if enabled
     unaccounted = []
     if WARN_UNCONFIGURED:
-        import config
         accounted_ids = {ch["id"] for ch in config.raw_channels}
         for discord_channel in guild.text_channels:
             if discord_channel.id not in accounted_ids:
@@ -61,12 +63,22 @@ async def post_startup_notification(bot, guild):
                     continue
                 unaccounted.append(discord_channel)
 
+    channel_map = build_channel_map(guild)
+    missing_configured = sum(1 for entry in config.raw_channels if guild.get_channel(entry["id"]) is None)
+    configured_channels = len(channel_map)
+    report_channel = bot.get_channel(REPORT_CHANNEL_ID)
+
     latest_version = await _fetch_latest_version()
     version_str = ""
     if latest_version and _version_gt(latest_version, BOT_VERSION):
         version_str = f"\n📦 Update available: vCurr: **{BOT_VERSION}** | vNext: **{latest_version}**"
 
-    description = f"🏠 Server: **{guild.name}**\n⏭️ Next run: **{get_next_run_str()}**{version_str}"
+    description = (
+        f"🏠 Server: **{guild.name}**\n"
+        f"⏭️ Next run: **{get_next_run_str()}**\n"
+        f"📋 Configured active channels: **{configured_channels}**"
+        f"{version_str}"
+    )
 
     if unaccounted:
         names = ", ".join([f"`#{ch.name}`" for ch in unaccounted[:10]])
@@ -79,6 +91,17 @@ async def post_startup_notification(bot, guild):
         description=description,
         color=0x2ECC71 if not unaccounted else 0xFFA500,
         timestamp=datetime.now()
+    )
+    embed.add_field(
+        name="Startup Self-Check",
+        value=(
+            f"Log channel: **{'OK' if log_channel else 'Missing'}**\n"
+            f"Report channel: **{'OK' if report_channel else 'Missing'}**\n"
+            f"Configured entries: **{len(config.raw_channels)}**\n"
+            f"Missing configured targets: **{missing_configured}**\n"
+            f"Unconfigured text channels: **{len(unaccounted)}**"
+        ),
+        inline=False
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await log_channel.send(embed=embed)
@@ -103,8 +126,7 @@ async def post_deploy_notification(bot, guild):
             return
 
     try:
-        with open(LAST_VERSION_FILE, "w") as f:
-            f.write(BOT_VERSION)
+        atomic_write_text(LAST_VERSION_FILE, BOT_VERSION)
     except PermissionError:
         log.error(f"Could not write {LAST_VERSION_FILE} — check directory permissions.")
         return

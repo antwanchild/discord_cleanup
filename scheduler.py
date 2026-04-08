@@ -5,7 +5,7 @@ Handles updating CLEAN_TIME in .env and rescheduling the discord.ext.tasks loop.
 from zoneinfo import ZoneInfo
 
 from config import config_lock, CONFIG_DIR, log
-from config_utils import update_env_value
+from utils import atomic_write_text
 from validation import validate_time_string
 
 # Task reference set by cleanup_bot.py via utils.register_task
@@ -83,8 +83,7 @@ def update_schedule(new_times: list) -> tuple[bool, str, str | None]:
             new_lines.append(f"CLEAN_TIME={new_value}\n")
 
         try:
-            with open(env_path, "w") as f:
-                f.writelines(new_lines)
+            atomic_write_text(env_path, "".join(new_lines))
         except PermissionError:
             return False, "Permission denied writing .env.discord_cleanup", None
 

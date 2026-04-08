@@ -9,6 +9,7 @@ from datetime import datetime
 
 from config import config_lock, CONFIG_DIR, log
 from validation import ChannelsConfigError, load_channels_config_file
+from utils import atomic_write_text
 
 logger = logging.getLogger("discord-cleanup")
 BACKUP_DIR = os.path.join(CONFIG_DIR, "backups")
@@ -76,15 +77,13 @@ def save_channels_content(content: str) -> tuple[bool, str, str | None]:
                 os.makedirs(BACKUP_DIR, exist_ok=True)
                 timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
                 backup_path = os.path.join(BACKUP_DIR, f"channels-{timestamp}.yml.bak")
-                with open(backup_path, "w") as f:
-                    f.write(previous_content)
+                atomic_write_text(backup_path, previous_content)
             except PermissionError:
                 log.error("Permission denied creating channels.yml backup")
                 return False, "Permission denied creating channels.yml backup", None
 
         try:
-            with open(channels_path, "w") as f:
-                f.write(content)
+            atomic_write_text(channels_path, content)
         except PermissionError:
             log.error("Permission denied writing channels.yml")
             return False, "Permission denied writing channels.yml", None
@@ -130,8 +129,7 @@ def update_env_value(key: str, value: str) -> tuple[bool, str]:
         last_error = None
         for attempt in range(3):
             try:
-                with open(env_path, "w") as f:
-                    f.writelines(new_lines)
+                atomic_write_text(env_path, "".join(new_lines))
                 return True, value
             except PermissionError as e:
                 last_error = e

@@ -17,7 +17,8 @@ from utils import (
     get_uptime_str, get_next_run_str,
     update_retention, update_log_level, update_warn_unconfigured,
     update_report_frequency, update_log_max_files, update_schedule,
-    get_bot, is_run_in_progress
+    get_bot, get_run_owner, is_run_in_progress,
+    read_cleanup_log, read_latest_cleanup_log,
 )
 from config_utils import save_channels_content, validate_channels_content
 from stats import load_stats, load_last_run
@@ -96,6 +97,7 @@ def dashboard():
     context["now"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     context["last_run"] = load_last_run()
     context["run_in_progress"] = is_run_in_progress()
+    context["run_owner"] = get_run_owner()
 
     # Build sorted channel list for the single-channel run selector
     # Use guild.get_channel() to get the real Discord channel name
@@ -254,24 +256,14 @@ def remove_schedule():
 def logs_page():
     """Log viewer — shows the most recent log file."""
     context = _get_status_context()
-    log_entries = []
     try:
-        log_files = sorted([
-            f for f in os.listdir(LOG_DIR)
-            if f.startswith("cleanup-") and f.endswith(".log")
-        ], reverse=True)
-        if log_files:
-            latest = os.path.join(LOG_DIR, log_files[0])
-            with open(latest, "r") as f:
-                # Show last 200 lines
-                lines = f.readlines()[-200:]
-                log_entries = [line.rstrip() for line in lines]
-            context["log_file"] = log_files[0]
-            context["available_logs"] = log_files
+        data = read_latest_cleanup_log(lines_requested=200)
+        context["log_file"] = data["log_file"]
+        context["available_logs"] = data["available_logs"]
+        context["log_entries"] = data["lines"]
     except Exception as e:
         log.warning(f"Could not read log file for web UI — {e}")
-
-    context["log_entries"] = log_entries
+        context["log_entries"] = []
     return render_template("logs.html", **context)
 
 
@@ -279,23 +271,17 @@ def logs_page():
 def view_log(filename):
     """View a specific log file by date."""
     context = _get_status_context()
-    log_entries = []
     try:
-        log_files = sorted([
-            f for f in os.listdir(LOG_DIR)
-            if f.startswith("cleanup-") and f.endswith(".log")
-        ], reverse=True)
-        context["available_logs"] = log_files
-        log_path = os.path.join(LOG_DIR, filename)
-        if os.path.exists(log_path) and filename in log_files:
-            with open(log_path, "r") as f:
-                lines = f.readlines()[-200:]
-                log_entries = [line.rstrip() for line in lines]
-            context["log_file"] = filename
+        data = read_cleanup_log(filename, lines_requested=200)
+        context["available_logs"] = data["available_logs"]
+        context["log_file"] = data["log_file"]
+        context["log_entries"] = data["lines"]
+    except FileNotFoundError:
+        context["available_logs"] = read_latest_cleanup_log(lines_requested=0)["available_logs"]
+        context["log_entries"] = []
     except Exception as e:
         log.warning(f"Could not read log file {filename} for web UI — {e}")
-
-    context["log_entries"] = log_entries
+        context["log_entries"] = []
     return render_template("logs.html", **context)
 
 

@@ -52,6 +52,13 @@
     <span class="card-title">Run Controls</span>
     <span id="run-status-pill" class="pill pill-success" style="margin-left:auto">Idle</span>
   </div>
+  <p id="run-owner-text" style="margin:0 0 0.85rem; color:var(--text-muted); font-size:0.8rem;">
+    {% if run_in_progress and run_owner %}
+      Active run owner: <span class="mono">{{ run_owner }}</span>
+    {% else %}
+      No cleanup run is currently active.
+    {% endif %}
+  </p>
 
   <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center">
     <div style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap">Full Run</div>
@@ -209,7 +216,7 @@
     <h3>Bot Status</h3>
     <p>Shows current uptime, next scheduled run time, default retention, log level, scheduled runs per day, and report frequency.</p>
     <h3>Run Controls</h3>
-    <p>Trigger a cleanup run directly from the web UI. Run All Channels runs the full scheduled cleanup. Single Channel runs cleanup on one channel — select it then click Run. Buttons are disabled during an active run.</p>
+    <p>Trigger a cleanup run directly from the web UI. Run All Channels runs the full scheduled cleanup. Single Channel runs cleanup on one channel — select it then click Run. Buttons are disabled during an active run, and the active run owner is shown above the controls.</p>
     <p>Note: Dry run and purge are only available as slash commands in Discord.</p>
     <h3>Last Run</h3>
     <p>Summary of the most recent full cleanup run — status, messages deleted, duration, timestamp, trigger source, and top categories.</p>
@@ -228,14 +235,19 @@
         const pill    = document.getElementById("run-status-pill");
         const btnFull = document.getElementById("btn-full-run");
         const btnCh   = document.getElementById("btn-channel-run");
+        const owner   = document.getElementById("run-owner-text");
         if (data.run_in_progress) {
           pill.className = "pill pill-warning";
           pill.textContent = "Running…";
+          owner.innerHTML = data.run_owner
+            ? `Active run owner: <span class="mono">${data.run_owner}</span>`
+            : "A cleanup run is currently active.";
           btnFull.disabled = true;
           btnCh.disabled   = true;
         } else {
           pill.className = "pill pill-success";
           pill.textContent = "Idle";
+          owner.textContent = "No cleanup run is currently active.";
           btnFull.disabled = false;
           btnCh.disabled   = false;
         }

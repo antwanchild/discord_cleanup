@@ -6,7 +6,7 @@ import os
 import asyncio
 from flask import Blueprint, jsonify, request
 
-from config import BOT_VERSION, LOG_DIR, log
+from config import BOT_VERSION, log
 from utils import (
     get_uptime_str,
     get_next_run_str,
@@ -14,6 +14,9 @@ from utils import (
     get_bot_loop,
     get_run_owner,
     is_run_in_progress,
+    list_cleanup_logs_with_sizes,
+    read_cleanup_log,
+    read_latest_cleanup_log,
     release_run,
     try_acquire_run,
 )
@@ -36,6 +39,8 @@ def _get_status_context() -> dict:
         "warn_unconfigured": cfg.WARN_UNCONFIGURED,
         "report_frequency": cfg.REPORT_FREQUENCY,
         "log_max_files":    cfg.LOG_MAX_FILES,
+        "run_in_progress":  is_run_in_progress(),
+        "run_owner":        get_run_owner(),
     }
 
 
@@ -107,20 +112,11 @@ def api_logs_latest():
         lines_requested = 50
 
     try:
-        log_files = sorted([
-            f for f in os.listdir(LOG_DIR)
-            if f.startswith("cleanup-") and f.endswith(".log")
-        ], reverse=True)
-        if not log_files:
-            return jsonify({"log_file": None, "lines": []})
-
-        latest = os.path.join(LOG_DIR, log_files[0])
-        with open(latest, "r") as f:
-            lines = f.readlines()[-lines_requested:]
+        data = read_latest_cleanup_log(lines_requested=lines_requested)
         return jsonify({
-            "log_file":      log_files[0],
-            "lines_returned": len(lines),
-            "lines":         [line.rstrip() for line in lines],
+            "log_file": data["log_file"],
+            "lines_returned": data["lines_returned"],
+            "lines": data["lines"],
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -283,21 +279,7 @@ def api_channels_unconfigured():
 def api_logs_list():
     """List all available log files with name, date and size."""
     try:
-        log_files = sorted([
-            f for f in os.listdir(LOG_DIR)
-            if f.startswith("cleanup-") and f.endswith(".log")
-        ], reverse=True)
-
-        files = []
-        for f in log_files:
-            path = os.path.join(LOG_DIR, f)
-            size = os.path.getsize(path)
-            files.append({
-                "filename": f,
-                "date":     f.replace("cleanup-", "").replace(".log", ""),
-                "size_kb":  round(size / 1024, 1),
-            })
-
+        files = list_cleanup_logs_with_sizes()
         return jsonify({"total": len(files), "files": files})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -312,20 +294,13 @@ def api_logs_file(filename):
         lines_requested = 200
 
     try:
-        log_files = [
-            f for f in os.listdir(LOG_DIR)
-            if f.startswith("cleanup-") and f.endswith(".log")
-        ]
-        if filename not in log_files:
-            return jsonify({"error": "Log file not found"}), 404
-
-        path = os.path.join(LOG_DIR, filename)
-        with open(path, "r") as f:
-            lines = f.readlines()[-lines_requested:]
+        data = read_cleanup_log(filename, lines_requested=lines_requested)
         return jsonify({
-            "log_file":       filename,
-            "lines_returned": len(lines),
-            "lines":          [line.rstrip() for line in lines],
+            "log_file": data["log_file"],
+            "lines_returned": data["lines_returned"],
+            "lines": data["lines"],
         })
+    except FileNotFoundError:
+        return jsonify({"error": "Log file not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500

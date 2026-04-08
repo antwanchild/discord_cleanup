@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 
 from config import DATA_DIR, STATS_FILE, log
+from utils import atomic_write_json
 
 logger = logging.getLogger("discord-cleanup")
 
@@ -48,8 +49,7 @@ def save_stats(stats: dict):
         log.error(f"Could not create {DATA_DIR} — check directory permissions.")
         return
     try:
-        with open(STATS_FILE, "w") as f:
-            json.dump(stats, f, indent=2)
+        atomic_write_json(STATS_FILE, stats)
     except Exception as e:
         log.warning(f"Could not save stats file — {e}")
 
@@ -155,8 +155,7 @@ def save_last_run(data: dict):
     path = os.path.join(DATA_DIR, "last_run.json")
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
-        with open(path, "w") as f:
-            json.dump(data, f, indent=2)
+        atomic_write_json(path, data)
     except Exception as e:
         log.warning(f"Could not save last run summary — {e}")
 
