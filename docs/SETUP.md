@@ -217,6 +217,8 @@ The bot includes a built-in web interface accessible on port 8080. It provides f
 
 If you publish the web UI through a reverse proxy, keep the container on an internal network and consider setting `WEB_AUTH_HEADER_NAME` and `WEB_AUTH_HEADER_VALUE` so the app only trusts requests that arrive through your proxy.
 
+On the Config page, `channels.yml` can be validated without saving, schema errors include exact line and column numbers where possible, and saving creates a backup of the previous file before applying changes.
+
 **Pages:**
 
 | Page | URL | Description |

@@ -6,7 +6,7 @@ import os
 import secrets
 import threading
 import logging
-import yaml
+import re
 from datetime import datetime
 from flask import Flask, abort, jsonify, render_template, request, session
 
@@ -14,14 +14,14 @@ from config import (
     BOT_VERSION, CONFIG_DIR, LOG_DIR, LOG_MAX_FILES, log
 )
 from utils import (
-    get_uptime_str, get_next_run_str, reload_channels,
+    get_uptime_str, get_next_run_str,
     update_retention, update_log_level, update_warn_unconfigured,
     update_report_frequency, update_log_max_files, update_schedule,
     get_bot, is_run_in_progress
 )
+from config_utils import save_channels_content, validate_channels_content
 from stats import load_stats, load_last_run
 from api import api, _get_status_context
-from validation import ChannelsConfigError, load_channels_config
 
 # Flask app setup — templates and static files live alongside web.py
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -52,6 +52,16 @@ def _csrf_token() -> str:
 def inject_csrf_token():
     """Exposes the CSRF token to all templates."""
     return {"csrf_token": _csrf_token()}
+
+
+def _with_error_location(message: str, success: bool = False, **extra):
+    """Adds parsed line/column fields when present in an error message."""
+    payload = {"success": success, "message": message, **extra}
+    match = re.search(r"line (\d+), column (\d+)", message)
+    if match:
+        payload["line"] = int(match.group(1))
+        payload["column"] = int(match.group(2))
+    return jsonify(payload)
 
 
 @app.before_request
@@ -108,8 +118,6 @@ def dashboard():
 @app.route("/config", methods=["GET"])
 def config_page():
     """Config editor — retention, log level, warn unconfigured, report frequency."""
-    import config as cfg
-    import yaml
     context = _get_status_context()
 
     # Load raw channels.yml content for the editor
@@ -176,25 +184,34 @@ def set_log_max_files():
 @app.route("/config/channels", methods=["POST"])
 def save_channels():
     """Save updated channels.yml content."""
-    from config import config_lock
     content = request.form.get("channels_yml", "")
-    try:
-        # Validate YAML and schema before saving
-        load_channels_config(content)
-    except ChannelsConfigError as e:
-        return jsonify({"success": False, "message": f"Invalid channels.yml — {e}"}), 400
-    except yaml.YAMLError as e:
-        return jsonify({"success": False, "message": f"Invalid YAML — {e}"}), 400
+    success, message, backup_path = save_channels_content(content)
+    if not success:
+        status_code = 500 if "Permission denied" in message else 400
+        return _with_error_location(message, success=False, details=message), status_code
 
-    with config_lock:
-        try:
-            with open(f"{CONFIG_DIR}/channels.yml", "w") as f:
-                f.write(content)
-        except PermissionError:
-            return jsonify({"success": False, "message": "Permission denied writing channels.yml"}), 500
+    response = {
+        "success": True,
+        "message": message,
+        "details": message,
+        "backup_path": backup_path,
+    }
+    return jsonify(response)
 
-    success, message = reload_channels()
-    return jsonify({"success": success, "message": message})
+
+@app.route("/config/channels/validate", methods=["POST"])
+def validate_channels_route():
+    """Validate channels.yml content without saving it."""
+    content = request.form.get("channels_yml", "")
+    success, message, channels = validate_channels_content(content)
+    if not success:
+        return _with_error_location(message, success=False, details=message), 400
+    return jsonify({
+        "success": True,
+        "message": message,
+        "details": message,
+        "channel_count": len(channels or []),
+    })
 
 
 @app.route("/schedule", methods=["GET"])

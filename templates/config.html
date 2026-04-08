@@ -89,21 +89,70 @@
 <div class="card">
   <div class="card-header">
     <span class="card-title">channels.yml</span>
-    <span style="color:var(--text-muted); font-size:0.75rem; margin-left:0.5rem">Reloads immediately on save</span>
-    <button class="btn btn-primary" onclick="saveChannels()" style="margin-left:auto">Save & Reload</button>
+    <span style="color:var(--text-muted); font-size:0.75rem; margin-left:0.5rem">Validate before saving, with automatic backup on write</span>
+    <button class="btn btn-ghost" onclick="validateChannels()" style="margin-left:auto">Validate</button>
+    <button class="btn btn-primary" onclick="saveChannels()">Save & Reload</button>
   </div>
-  <textarea id="channels-editor" rows="24" style="
-    width: 100%;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    background: var(--surface);
-    color: var(--text-base);
-    border: 1px solid var(--brand);
-    border-radius: 6px;
-    padding: 1rem;
-    resize: vertical;
-    line-height: 1.6;
-  ">{{ channels_yml }}</textarea>
+  <div style="display:grid; grid-template-columns:auto 1fr; border:1px solid var(--brand); border-radius:6px; overflow:hidden; background:var(--surface);">
+    <div id="channels-line-numbers" style="
+      min-width: 3.5rem;
+      padding: 1rem 0.75rem;
+      background: var(--surface-alt);
+      border-right: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      line-height: 1.6;
+      text-align: right;
+      user-select: none;
+      overflow: hidden;
+      white-space: pre;
+    "></div>
+    <textarea id="channels-editor" rows="24" spellcheck="false" style="
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: var(--surface);
+      color: var(--text-base);
+      border: 0;
+      border-radius: 0;
+      padding: 1rem;
+      resize: vertical;
+      line-height: 1.6;
+      margin: 0;
+      box-shadow: none;
+    ">{{ channels_yml }}</textarea>
+  </div>
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; margin-top:0.5rem; color:var(--text-muted); font-size:0.75rem;">
+    <span id="channels-editor-meta">Line 1, Column 1</span>
+    <span>Schema errors report exact line and column when possible.</span>
+  </div>
+  <div id="channels-feedback" style="
+    display:none;
+    margin-top:0.85rem;
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:0.85rem 1rem;
+    background: var(--surface-alt);
+  ">
+    <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+      <strong id="channels-feedback-title">Validation result</strong>
+      <span id="channels-feedback-location" class="mono" style="color:var(--text-muted)"></span>
+      <button class="btn btn-ghost" type="button" id="channels-copy-btn" onclick="copyChannelsFeedback()">Copy Details</button>
+      <button class="btn btn-ghost" type="button" id="channels-jump-btn" onclick="jumpToChannelsLocation()" disabled>Jump To Error</button>
+    </div>
+    <pre id="channels-feedback-details" style="
+      margin:0.75rem 0 0;
+      padding:0.85rem;
+      border-radius:6px;
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--text-base);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    "></pre>
+  </div>
 </div>
 
 <template id="help-config">
@@ -119,12 +168,16 @@
   <h3>Log Files Retained</h3>
   <p>Number of daily log files to keep. Files older than this are deleted automatically.</p>
   <h3>channels.yml Editor</h3>
-  <p>Direct editor for the channel configuration file. Must be valid YAML. Click Save and Reload to apply immediately without restarting.</p>
+  <p>Direct editor for the channel configuration file. Must be valid YAML. Use Validate to check syntax and schema without saving. Save and Reload creates a backup before applying changes.</p>
 </template>
 {% endblock %}
 
 {% block scripts %}
 <script>
+  let channelsFeedbackText = "";
+  let channelsFeedbackLine = null;
+  let channelsFeedbackColumn = null;
+
   // ── Config custom dropdowns ─────────────────────────────────────────────────
   function toggleCfgDropdown(id) {
     const menu = document.getElementById(`dd-${id}-menu`);
@@ -149,6 +202,94 @@
       }
     });
   });
+
+  const channelsEditor = document.getElementById("channels-editor");
+  const channelsLineNumbers = document.getElementById("channels-line-numbers");
+  const channelsEditorMeta = document.getElementById("channels-editor-meta");
+
+  function renderChannelsLineNumbers() {
+    const lineCount = channelsEditor.value.split("\n").length;
+    channelsLineNumbers.textContent = Array.from({ length: lineCount }, (_, i) => i + 1).join("\n");
+  }
+
+  function syncChannelsLineNumberScroll() {
+    channelsLineNumbers.scrollTop = channelsEditor.scrollTop;
+  }
+
+  function updateChannelsCursorMeta() {
+    const value = channelsEditor.value;
+    const cursor = channelsEditor.selectionStart;
+    const upToCursor = value.slice(0, cursor);
+    const lines = upToCursor.split("\n");
+    const line = lines.length;
+    const column = lines[lines.length - 1].length + 1;
+    channelsEditorMeta.textContent = `Line ${line}, Column ${column}`;
+  }
+
+  function setChannelsFeedback(success, data) {
+    const panel = document.getElementById("channels-feedback");
+    const title = document.getElementById("channels-feedback-title");
+    const location = document.getElementById("channels-feedback-location");
+    const details = document.getElementById("channels-feedback-details");
+    const jumpBtn = document.getElementById("channels-jump-btn");
+
+    channelsFeedbackText = data.details || data.message || "";
+    channelsFeedbackLine = data.line || null;
+    channelsFeedbackColumn = data.column || null;
+
+    panel.style.display = "block";
+    panel.style.borderColor = success ? "rgba(46, 204, 113, 0.35)" : "rgba(231, 76, 60, 0.35)";
+    panel.style.background = success ? "rgba(46, 204, 113, 0.08)" : "rgba(231, 76, 60, 0.08)";
+    title.textContent = success ? "Validation Passed" : "Validation Error";
+    title.style.color = success ? "var(--success)" : "var(--danger)";
+    location.textContent = channelsFeedbackLine ? `Line ${channelsFeedbackLine}, Column ${channelsFeedbackColumn}` : "";
+    details.textContent = channelsFeedbackText || "No details available.";
+    jumpBtn.disabled = !channelsFeedbackLine;
+  }
+
+  function clearChannelsFeedback() {
+    const panel = document.getElementById("channels-feedback");
+    panel.style.display = "none";
+    channelsFeedbackText = "";
+    channelsFeedbackLine = null;
+    channelsFeedbackColumn = null;
+  }
+
+  async function copyChannelsFeedback() {
+    if (!channelsFeedbackText) {
+      showToast("No validation details to copy", "error");
+      return;
+    }
+    await navigator.clipboard.writeText(channelsFeedbackText);
+    showToast("Validation details copied", "success");
+  }
+
+  function jumpToChannelsLocation() {
+    if (!channelsFeedbackLine) return;
+    const lines = channelsEditor.value.split("\n");
+    let index = 0;
+    for (let i = 0; i < channelsFeedbackLine - 1 && i < lines.length; i++) {
+      index += lines[i].length + 1;
+    }
+    index += Math.max((channelsFeedbackColumn || 1) - 1, 0);
+    channelsEditor.focus();
+    channelsEditor.setSelectionRange(index, index);
+    updateChannelsCursorMeta();
+  }
+
+  channelsEditor.addEventListener("input", () => {
+    renderChannelsLineNumbers();
+    updateChannelsCursorMeta();
+    clearChannelsFeedback();
+  });
+  channelsEditor.addEventListener("scroll", syncChannelsLineNumberScroll);
+  channelsEditor.addEventListener("click", updateChannelsCursorMeta);
+  channelsEditor.addEventListener("keyup", updateChannelsCursorMeta);
+  channelsEditor.addEventListener("focus", updateChannelsCursorMeta);
+
+  renderChannelsLineNumbers();
+  syncChannelsLineNumberScroll();
+  updateChannelsCursorMeta();
 
   async function saveRetention() {
     const fd = new FormData();
@@ -182,8 +323,16 @@
 
   async function saveChannels() {
     const fd = new FormData();
-    fd.append("channels_yml", document.getElementById("channels-editor").value);
-    await postForm("/config/channels", fd);
+    fd.append("channels_yml", channelsEditor.value);
+    const data = await postForm("/config/channels", fd);
+    setChannelsFeedback(Boolean(data.success), data);
+  }
+
+  async function validateChannels() {
+    const fd = new FormData();
+    fd.append("channels_yml", channelsEditor.value);
+    const data = await postForm("/config/channels/validate", fd);
+    setChannelsFeedback(Boolean(data.success), data);
   }
 </script>
 {% endblock %}

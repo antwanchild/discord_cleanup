@@ -5,11 +5,13 @@ All writes are protected by config_lock from config.py.
 import os
 import logging
 import yaml
+from datetime import datetime
 
 from config import config_lock, CONFIG_DIR, log
 from validation import ChannelsConfigError, load_channels_config_file
 
 logger = logging.getLogger("discord-cleanup")
+BACKUP_DIR = os.path.join(CONFIG_DIR, "backups")
 
 
 def reload_channels() -> tuple[bool, str]:
@@ -32,6 +34,69 @@ def reload_channels() -> tuple[bool, str]:
         except yaml.YAMLError as e:
             log.error(f"channels.yml is malformed during reload — {e}")
             return False, f"channels.yml is malformed — {e}"
+
+
+def validate_channels_content(content: str) -> tuple[bool, str, list[dict] | None]:
+    """Validates raw channels.yml content without saving it."""
+    from validation import load_channels_config
+
+    try:
+        channels = load_channels_config(content)
+        label = "entry" if len(channels) == 1 else "entries"
+        return True, f"channels.yml is valid — {len(channels)} channel {label}", channels
+    except ChannelsConfigError as e:
+        return False, f"Invalid channels.yml — {e}", None
+    except yaml.YAMLError as e:
+        return False, f"Invalid YAML — {e}", None
+
+
+def save_channels_content(content: str) -> tuple[bool, str, str | None]:
+    """Validates, backs up, and saves channels.yml content."""
+    import config
+
+    valid, message, channels = validate_channels_content(content)
+    if not valid or channels is None:
+        return False, message, None
+
+    channels_path = os.path.join(CONFIG_DIR, "channels.yml")
+    backup_path = None
+
+    with config_lock:
+        previous_content = ""
+        try:
+            if os.path.exists(channels_path):
+                with open(channels_path, "r") as f:
+                    previous_content = f.read()
+        except PermissionError:
+            log.error("Permission denied reading channels.yml before save")
+            return False, "Permission denied reading channels.yml", None
+
+        if previous_content and previous_content != content:
+            try:
+                os.makedirs(BACKUP_DIR, exist_ok=True)
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                backup_path = os.path.join(BACKUP_DIR, f"channels-{timestamp}.yml.bak")
+                with open(backup_path, "w") as f:
+                    f.write(previous_content)
+            except PermissionError:
+                log.error("Permission denied creating channels.yml backup")
+                return False, "Permission denied creating channels.yml backup", None
+
+        try:
+            with open(channels_path, "w") as f:
+                f.write(content)
+        except PermissionError:
+            log.error("Permission denied writing channels.yml")
+            return False, "Permission denied writing channels.yml", None
+
+        config.raw_channels = channels
+
+    label = "entry" if len(channels) == 1 else "entries"
+    message = f"Saved and reloaded channels.yml — {len(channels)} channel {label}"
+    if backup_path:
+        message = f"{message} | Backup: {backup_path}"
+    log.info("channels.yml saved successfully%s", f" | backup={backup_path}" if backup_path else "")
+    return True, message, backup_path
 
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:
