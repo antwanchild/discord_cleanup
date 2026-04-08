@@ -5,11 +5,10 @@ Config file updates → config_utils.py
 Schedule management → scheduler.py
 """
 import os
-import json
 import logging
 import threading
-import tempfile
 from datetime import datetime, timedelta
+from file_utils import atomic_write_json, atomic_write_text
 
 from config import (
     config_lock,
@@ -190,31 +189,6 @@ def log_restart_separator():
     now            = datetime.now().strftime("%Y-%m-%d %I:%M %p")
     separator_line = f" Bot Restarted | {now} | v{BOT_VERSION} "
     log.info(f"{'═' * 4}{separator_line:{'═'}<54}{'═' * 2}")
-
-
-def atomic_write_text(path: str, content: str) -> None:
-    """Atomically writes text content to a file using a same-directory temporary file."""
-    directory = os.path.dirname(path) or "."
-    os.makedirs(directory, exist_ok=True)
-
-    fd, temp_path = tempfile.mkstemp(dir=directory)
-    try:
-        with os.fdopen(fd, "w") as f:
-            f.write(content)
-        os.replace(temp_path, path)
-    except Exception:
-        try:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-        finally:
-            raise
-
-
-def atomic_write_json(path: str, payload: dict) -> None:
-    """Atomically writes JSON content to disk."""
-    atomic_write_text(path, json.dumps(payload, indent=2))
-
-
 def list_cleanup_logs() -> list[str]:
     """Returns available cleanup log filenames sorted newest-first."""
     return sorted([

@@ -5,7 +5,7 @@ Handles updating CLEAN_TIME in .env and rescheduling the discord.ext.tasks loop.
 from zoneinfo import ZoneInfo
 
 from config import config_lock, CONFIG_DIR, log
-from utils import atomic_write_text
+from file_utils import atomic_write_text
 from validation import validate_time_string
 
 # Task reference set by cleanup_bot.py via utils.register_task

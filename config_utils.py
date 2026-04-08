@@ -8,8 +8,8 @@ import yaml
 from datetime import datetime
 
 from config import config_lock, CONFIG_DIR, log
+from file_utils import atomic_write_text
 from validation import ChannelsConfigError, load_channels_config_file
-from utils import atomic_write_text
 
 logger = logging.getLogger("discord-cleanup")
 BACKUP_DIR = os.path.join(CONFIG_DIR, "backups")

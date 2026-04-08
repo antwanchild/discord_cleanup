@@ -9,7 +9,7 @@ import logging
 from datetime import datetime
 
 from config import DATA_DIR, STATS_FILE, log
-from utils import atomic_write_json
+from file_utils import atomic_write_json
 
 logger = logging.getLogger("discord-cleanup")
 

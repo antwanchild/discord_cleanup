@@ -14,8 +14,9 @@ from config import (
     MISSED_RUN_THRESHOLD_MINUTES, REPORT_CHANNEL_ID, WARN_UNCONFIGURED,
     log
 )
+from file_utils import atomic_write_text
 from stats import load_stats
-from utils import atomic_write_text, get_next_run_str
+from utils import get_next_run_str
 
 
 def _version_gt(a: str, b: str) -> bool:
