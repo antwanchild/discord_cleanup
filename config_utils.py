@@ -5,7 +5,7 @@ All writes are protected by config_lock from config.py.
 import os
 import logging
 import yaml
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from config import config_lock, CONFIG_DIR, log
 from file_utils import atomic_write_text
@@ -13,6 +13,41 @@ from validation import ChannelsConfigError, load_channels_config_file
 
 logger = logging.getLogger("discord-cleanup")
 BACKUP_DIR = os.path.join(CONFIG_DIR, "backups")
+
+
+def _prune_old_channel_backups() -> None:
+    """Deletes channels.yml backups older than the configured retention window."""
+    import config
+
+    retention_days = getattr(config, "CHANNELS_BACKUP_RETENTION_DAYS", 10)
+    cutoff = datetime.now() - timedelta(days=retention_days)
+
+    try:
+        entries = os.listdir(BACKUP_DIR)
+    except FileNotFoundError:
+        return
+    except PermissionError:
+        log.warning("Permission denied listing channels.yml backups for cleanup")
+        return
+
+    removed = 0
+    for filename in entries:
+        if not (filename.startswith("channels-") and filename.endswith(".yml.bak")):
+            continue
+
+        path = os.path.join(BACKUP_DIR, filename)
+        try:
+            modified = datetime.fromtimestamp(os.path.getmtime(path))
+            if modified < cutoff:
+                os.remove(path)
+                removed += 1
+        except FileNotFoundError:
+            continue
+        except PermissionError:
+            log.warning("Permission denied deleting old channels.yml backup: %s", filename)
+
+    if removed:
+        log.info("Pruned %s old channels.yml backup(s)", removed)
 
 
 def reload_channels() -> tuple[bool, str]:
@@ -87,6 +122,8 @@ def save_channels_content(content: str) -> tuple[bool, str, str | None]:
         except PermissionError:
             log.error("Permission denied writing channels.yml")
             return False, "Permission denied writing channels.yml", None
+
+        _prune_old_channel_backups()
 
         config.raw_channels = channels
 

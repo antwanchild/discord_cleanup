@@ -86,6 +86,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `CLEAN_TIME` | ✅ | `03:00` | Comma-separated run times in 24hr format e.g. `03:00` or `03:00,12:00` |
 | `DEFAULT_RETENTION` | ❌ | `7` | Default message retention in days |
 | `LOG_MAX_FILES` | ❌ | `7` | Number of daily log files to retain |
+| `CHANNELS_BACKUP_RETENTION_DAYS` | ❌ | `10` | Number of days to keep `channels.yml` backup files |
 | `LOG_LEVEL` | ❌ | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post stats report (24hr format) |
 | `REPORT_FREQUENCY` | ❌ | `monthly` | Report frequency: `monthly`, `weekly`, or `both` |
@@ -109,6 +110,7 @@ REPORT_CHANNEL_ID=123456789098765432
 CLEAN_TIME=03:00
 DEFAULT_RETENTION=7
 LOG_MAX_FILES=7
+CHANNELS_BACKUP_RETENTION_DAYS=10
 LOG_LEVEL=INFO
 STATUS_REPORT_TIME=09:00
 WEB_HOST=0.0.0.0

@@ -46,6 +46,8 @@ def create_default_files():
                         "DEFAULT_RETENTION=7\n\n"
                         "# Number of daily log files to retain\n"
                         "LOG_MAX_FILES=7\n\n"
+                        "# Number of days to keep channels.yml backups\n"
+                        "CHANNELS_BACKUP_RETENTION_DAYS=10\n\n"
                         "# Log level: DEBUG, INFO, WARNING, ERROR\n"
                         "LOG_LEVEL=INFO\n\n"
                         "# Time to post monthly report on the 1st (24hr format)\n"
@@ -177,6 +179,12 @@ except ValueError:
 try:
     CLEAN_TIMES = parse_time_list(os.getenv("CLEAN_TIME", "03:00"), "CLEAN_TIME")
     LOG_MAX_FILES = validate_int(os.getenv("LOG_MAX_FILES", 7), "LOG_MAX_FILES", 1, 365)
+    CHANNELS_BACKUP_RETENTION_DAYS = validate_int(
+        os.getenv("CHANNELS_BACKUP_RETENTION_DAYS", 10),
+        "CHANNELS_BACKUP_RETENTION_DAYS",
+        1,
+        365,
+    )
     DEFAULT_RETENTION = validate_int(os.getenv("DEFAULT_RETENTION", 7), "DEFAULT_RETENTION", 1, 365)
     STATUS_REPORT_TIME = validate_time_string(os.getenv("STATUS_REPORT_TIME", "09:00"), "STATUS_REPORT_TIME")
     REPORT_FREQUENCY = validate_report_frequency(os.getenv("REPORT_FREQUENCY", "monthly"))

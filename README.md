@@ -120,7 +120,7 @@ Five separate workflows post to a Discord webhook (`DISCORD_WEBHOOK_URL` secret)
 
 ## Web UI and API
 
-The web UI can sit behind a reverse proxy such as Authentik, but it still defaults to binding on `0.0.0.0` so the published Docker port works out of the box. Mutating admin routes live under `/admin/*` while read-only routes live under `/api/*`.
+The web UI can sit behind a reverse proxy such as Authentik, but it still defaults to binding on `0.0.0.0` so the published Docker port works out of the box. Mutating admin routes live under `/admin/*` while read-only routes live under `/api/*`. `channels.yml` backups are pruned automatically after the configured retention window, which defaults to 10 days.
 
 The Config page supports validate-before-save for `channels.yml`, and schema errors include line and column details when possible. Saving `channels.yml` creates a backup before replacing the live file.
 
