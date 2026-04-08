@@ -260,7 +260,7 @@
 
   async function triggerFullRun() {
     const fd = new FormData();
-    const data = await postForm("/run/full", fd);
+    const data = await postForm("/admin/run/full", fd);
     if (data.success) updateRunStatus();
   }
 
@@ -286,7 +286,7 @@
   async function triggerChannelRun() {
     const fd = new FormData();
     fd.append("channel_id", document.getElementById("channel-select").value);
-    const data = await postForm("/run/channel", fd);
+    const data = await postForm("/admin/run/channel", fd);
     if (data.success) updateRunStatus();
   }
 </script>

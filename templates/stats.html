@@ -247,7 +247,7 @@
     closeResetModal();
     const fd = new FormData();
     fd.append("scope", pendingResetScope);
-    const data = await postForm("/api/stats/reset", fd);
+    const data = await postForm("/admin/api/stats/reset", fd);
     if (data.success) setTimeout(() => window.location.reload(), 1000);
   }
 

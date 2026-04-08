@@ -73,7 +73,7 @@
     if (!time) { showToast("Please enter a time", "error"); return; }
     const fd = new FormData();
     fd.append("time", time);
-    const data = await postForm("/schedule/add", fd);
+    const data = await postForm("/admin/schedule/add", fd);
     if (data.success) {
       // Add row to table
       const tbody = document.getElementById("schedule-table");
@@ -91,7 +91,7 @@
   async function removeTime(time) {
     const fd = new FormData();
     fd.append("time", time);
-    const data = await postForm("/schedule/remove", fd);
+    const data = await postForm("/admin/schedule/remove", fd);
     if (data.success) {
       const row = document.getElementById(`row-${time.replace(":", "-")}`);
       if (row) row.remove();

@@ -294,44 +294,44 @@
   async function saveRetention() {
     const fd = new FormData();
     fd.append("days", document.getElementById("retention-input").value);
-    await postForm("/config/retention", fd);
+    await postForm("/admin/config/retention", fd);
   }
 
   async function saveLogLevel() {
     const fd = new FormData();
     fd.append("level", document.getElementById("loglevel-select").value);
-    await postForm("/config/loglevel", fd);
+    await postForm("/admin/config/loglevel", fd);
   }
 
   async function saveWarnUnconfigured() {
     const fd = new FormData();
     fd.append("enabled", document.getElementById("warn-select").value);
-    await postForm("/config/warnunconfigured", fd);
+    await postForm("/admin/config/warnunconfigured", fd);
   }
 
   async function saveReportFrequency() {
     const fd = new FormData();
     fd.append("frequency", document.getElementById("freq-select").value);
-    await postForm("/config/reportfrequency", fd);
+    await postForm("/admin/config/reportfrequency", fd);
   }
 
   async function saveLogMaxFiles() {
     const fd = new FormData();
     fd.append("days", document.getElementById("logmaxfiles-input").value);
-    await postForm("/config/logmaxfiles", fd);
+    await postForm("/admin/config/logmaxfiles", fd);
   }
 
   async function saveChannels() {
     const fd = new FormData();
     fd.append("channels_yml", channelsEditor.value);
-    const data = await postForm("/config/channels", fd);
+    const data = await postForm("/admin/config/channels", fd);
     setChannelsFeedback(Boolean(data.success), data);
   }
 
   async function validateChannels() {
     const fd = new FormData();
     fd.append("channels_yml", channelsEditor.value);
-    const data = await postForm("/config/channels/validate", fd);
+    const data = await postForm("/admin/config/channels/validate", fd);
     setChannelsFeedback(Boolean(data.success), data);
   }
 </script>

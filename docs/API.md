@@ -199,7 +199,7 @@ Returns whether a cleanup run is currently in progress.
 
 ---
 
-### `POST /run/full`
+### `POST /admin/run/full`
 
 Trigger a full cleanup run on all configured channels.
 
@@ -221,7 +221,7 @@ Trigger a full cleanup run on all configured channels.
 
 ---
 
-### `POST /run/channel`
+### `POST /admin/run/channel`
 
 Trigger a cleanup run on a single configured channel.
 
@@ -233,7 +233,7 @@ Trigger a cleanup run on a single configured channel.
 
 **Example**
 ```bash
-curl -X POST http://192.168.1.4:8080/run/channel \
+curl -X POST http://192.168.1.4:8080/admin/run/channel \
   -d "channel_id=1234567890123456789"
 ```
 
@@ -279,13 +279,14 @@ curl -X POST http://192.168.1.4:8080/run/channel \
 
 ## Notes
 
+- Read-only endpoints live under `/api/...`; mutating admin endpoints live under `/admin/...`
 - All `POST` endpoints accept `application/x-www-form-urlencoded` (standard HTML form encoding)
 - Run triggers are async — the response returns immediately and the run executes in the background
-- The API has no authentication — secure access at the network level if needed
+- Admin routes are intended to sit behind a reverse proxy and may return `429` when rate limited
 
 ---
 
-### `POST /api/stats/reset`
+### `POST /admin/api/stats/reset`
 
 Reset stats for a given scope.
 
