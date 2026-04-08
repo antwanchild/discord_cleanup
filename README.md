@@ -20,7 +20,10 @@ An automated Discord bot that cleans up old messages from configured channels on
 ├── commands.py                     # Core slash commands — run, status, reload, logs, etc.
 ├── commands_stats.py               # Stats slash commands — view, reset
 ├── web.py                          # Flask web UI — page routes and server thread
-├── api.py                          # Flask Blueprint — all /api/* and /run/* endpoints
+├── api.py                          # Flask Blueprint — read-only /api/* endpoints
+├── admin.py                        # Flask Blueprint — mutating /admin/* endpoints
+├── file_utils.py                   # Atomic text/JSON file helpers
+├── validation.py                   # Shared validation for env values and channels.yml
 ├── templates/                      # Jinja2 HTML templates for web UI
 │   ├── base.html                   # Base layout — nav, theme system, toast
 │   ├── index.html                  # Dashboard — status, stats, run controls
@@ -28,6 +31,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 │   ├── schedule.html               # Schedule management
 │   ├── stats.html                  # Statistics — summary, detail, grouped views
 │   └── logs.html                   # Log viewer
+├── tests/                          # Regression coverage for config, schedule, and locks
 ├── healthcheck.py                  # Docker health check script
 ├── entrypoint.sh                   # PUID/PGID entrypoint script
 ├── requirements.txt                # Python dependencies
@@ -111,6 +115,18 @@ Five separate workflows post to a Discord webhook (`DISCORD_WEBHOOK_URL` secret)
 | Secret | Description |
 |--------|-------------|
 | `DISCORD_WEBHOOK_URL` | Discord webhook URL for build and PR notifications |
+
+---
+
+## Web UI and API
+
+The web UI is intended to sit behind a reverse proxy such as Authentik. By default it binds to `127.0.0.1`, and mutating admin routes live under `/admin/*` while read-only routes live under `/api/*`.
+
+The Config page supports validate-before-save for `channels.yml`, and schema errors include line and column details when possible. Saving `channels.yml` creates a backup before replacing the live file.
+
+The dashboard also shows the active cleanup run owner when a run is in progress, which makes it easier to tell whether a scheduler, slash command, or web action is holding the cleanup lock.
+
+Regression tests cover validation, schedule persistence, config reloads, and run-lock behavior. See the `tests/` directory for the current suite.
 
 ---
 

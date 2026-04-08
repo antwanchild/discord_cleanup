@@ -193,9 +193,260 @@ Returns whether a cleanup run is currently in progress.
 **Response**
 ```json
 {
-  "run_in_progress": false
+  "run_in_progress": false,
+  "run_owner": null
 }
 ```
+
+---
+
+### `POST /admin/config/retention`
+
+Update `DEFAULT_RETENTION`.
+
+**Form parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `days` | ✅ | Retention in days, from `1` to `365` |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "14"
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `400` | `"Retention must be between 1 and 365 days"` | Value outside supported range |
+| `400` | `"Invalid value"` | Non-integer input |
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
+
+---
+
+### `POST /admin/config/loglevel`
+
+Update `LOG_LEVEL`.
+
+**Form parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `level` | ✅ | One of `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "INFO"
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
+
+---
+
+### `POST /admin/config/warnunconfigured`
+
+Update `WARN_UNCONFIGURED`.
+
+**Form parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `enabled` | ✅ | `true` or `false` |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "true"
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
+
+---
+
+### `POST /admin/config/reportfrequency`
+
+Update `REPORT_FREQUENCY`.
+
+**Form parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `frequency` | ✅ | One of `monthly`, `weekly`, `both` |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "weekly"
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
+
+---
+
+### `POST /admin/config/logmaxfiles`
+
+Update `LOG_MAX_FILES`.
+
+**Form parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `days` | ✅ | Log retention count from `1` to `365` |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "14"
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `400` | `"Log retention must be between 1 and 365 days"` | Value outside supported range |
+| `400` | `"Invalid value"` | Non-integer input |
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
+
+---
+
+### `POST /admin/config/channels/validate`
+
+Validate `channels.yml` content without saving it.
+
+**Form parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `channels_yml` | ✅ | Full proposed YAML document |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "channels.yml is valid — 4 channel entries",
+  "details": "channels.yml is valid — 4 channel entries",
+  "channel_count": 4
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `400` | Validation error with optional `line` and `column` fields | YAML/schema validation failed |
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
+
+---
+
+### `POST /admin/config/channels`
+
+Validate, back up, and save `channels.yml`.
+
+**Form parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `channels_yml` | ✅ | Full YAML document to save |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "Saved and reloaded channels.yml — 4 channel entries | Backup: /config/backups/channels-20260408-120000.yml.bak",
+  "details": "Saved and reloaded channels.yml — 4 channel entries | Backup: /config/backups/channels-20260408-120000.yml.bak",
+  "backup_path": "/config/backups/channels-20260408-120000.yml.bak"
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `400` | Validation error with optional `line` and `column` fields | YAML/schema validation failed |
+| `500` | Permission-related save error | Could not read, back up, or write config file |
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
+
+---
+
+### `POST /admin/schedule/add`
+
+Add a scheduled cleanup time.
+
+**Form parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `time` | ✅ | 24-hour time in `HH:MM` format |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "03:00,15:00",
+  "reschedule_error": null
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `400` | `"03:00 is already in the schedule"` | Duplicate time |
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
+
+---
+
+### `POST /admin/schedule/remove`
+
+Remove a scheduled cleanup time.
+
+**Form parameters**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `time` | ✅ | Existing scheduled time in `HH:MM` format |
+
+**Response**
+```json
+{
+  "success": true,
+  "message": "15:00",
+  "reschedule_error": null
+}
+```
+
+**Error responses**
+
+| Status | Body | Meaning |
+|--------|------|---------|
+| `400` | `"03:00 is not in the schedule"` | Unknown time |
+| `400` | `"Cannot remove the last scheduled run time"` | Would leave the schedule empty |
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
 
 ---
 
@@ -218,6 +469,7 @@ Trigger a full cleanup run on all configured channels.
 | `409` | `"A cleanup run is already in progress"` | Run already running |
 | `503` | `"Bot is not ready yet"` | Bot still starting up |
 | `503` | `"Bot is not in any guilds"` | Bot not connected to a server |
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
 
 ---
 
@@ -253,6 +505,7 @@ curl -X POST http://192.168.1.4:8080/admin/run/channel \
 | `404` | `"Channel not found in configured channels"` | Channel not in channels.yml |
 | `409` | `"A cleanup run is already in progress"` | Run already running |
 | `503` | `"Bot is not ready yet"` | Bot still starting up |
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
 
 ---
 
@@ -309,6 +562,7 @@ Reset stats for a given scope.
 | Status | Body | Meaning |
 |--------|------|---------|
 | `400` | `"Invalid scope"` | scope not one of rolling, monthly, all |
+| `429` | `"Rate limit exceeded — retry in Xs"` | Admin rate limit exceeded |
 
 ---
 
