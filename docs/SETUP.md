@@ -161,6 +161,8 @@ channels:
     deep_clean: true
 ```
 
+When `channels.yml` is invalid, the bot now reports schema errors with exact line and column numbers where possible, for example `channels[1].exclude must be true or false at line 3, column 14`.
+
 ---
 
 ## Deep Clean

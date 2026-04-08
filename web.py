@@ -6,6 +6,7 @@ import os
 import secrets
 import threading
 import logging
+import yaml
 from datetime import datetime
 from flask import Flask, abort, jsonify, render_template, request, session
 
@@ -20,7 +21,7 @@ from utils import (
 )
 from stats import load_stats, load_last_run
 from api import api, _get_status_context
-from validation import validate_channels_config
+from validation import ChannelsConfigError, load_channels_config
 
 # Flask app setup — templates and static files live alongside web.py
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -175,19 +176,15 @@ def set_log_max_files():
 @app.route("/config/channels", methods=["POST"])
 def save_channels():
     """Save updated channels.yml content."""
-    import yaml
     from config import config_lock
     content = request.form.get("channels_yml", "")
     try:
-        # Validate YAML before saving
-        yaml_data = yaml.safe_load(content) or {}
-        if not isinstance(yaml_data, dict):
-            raise ValueError("channels.yml root must be a mapping with a 'channels' key")
-        validate_channels_config(yaml_data.get("channels", []))
+        # Validate YAML and schema before saving
+        load_channels_config(content)
+    except ChannelsConfigError as e:
+        return jsonify({"success": False, "message": f"Invalid channels.yml — {e}"}), 400
     except yaml.YAMLError as e:
         return jsonify({"success": False, "message": f"Invalid YAML — {e}"}), 400
-    except ValueError as e:
-        return jsonify({"success": False, "message": f"Invalid channels.yml — {e}"}), 400
 
     with config_lock:
         try:

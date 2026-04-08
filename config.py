@@ -6,8 +6,9 @@ import yaml
 from datetime import datetime
 from dotenv import load_dotenv
 from validation import (
+    ChannelsConfigError,
+    load_channels_config_file,
     parse_time_list,
-    validate_channels_config,
     validate_int,
     validate_report_frequency,
     validate_time_string,
@@ -197,20 +198,16 @@ RETRY_DELAY = 300
 
 # --- Channels ---
 try:
-    with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
-        yaml_data = yaml.safe_load(f) or {}
-        if not isinstance(yaml_data, dict):
-            raise ValueError("channels.yml root must be a mapping with a 'channels' key")
-        raw_channels = validate_channels_config(yaml_data.get("channels", []))
+    raw_channels = load_channels_config_file(f"{CONFIG_DIR}/channels.yml")
 except FileNotFoundError:
     log.error(f"{CONFIG_DIR}/channels.yml not found — cannot start bot.")
     sys.exit(1)
 except PermissionError:
     log.error(f"Could not read {CONFIG_DIR}/channels.yml — check directory permissions.")
     sys.exit(1)
+except ChannelsConfigError as e:
+    log.error(f"channels.yml validation failed — {e}")
+    sys.exit(1)
 except yaml.YAMLError as e:
     log.error(f"channels.yml is malformed — {e}")
-    sys.exit(1)
-except ValueError as e:
-    log.error(f"channels.yml validation failed — {e}")
     sys.exit(1)

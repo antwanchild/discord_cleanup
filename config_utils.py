@@ -7,7 +7,7 @@ import logging
 import yaml
 
 from config import config_lock, CONFIG_DIR, log
-from validation import validate_channels_config
+from validation import ChannelsConfigError, load_channels_config_file
 
 logger = logging.getLogger("discord-cleanup")
 
@@ -17,11 +17,7 @@ def reload_channels() -> tuple[bool, str]:
     import config
     with config_lock:
         try:
-            with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
-                yaml_data = yaml.safe_load(f) or {}
-                if not isinstance(yaml_data, dict):
-                    raise ValueError("channels.yml root must be a mapping with a 'channels' key")
-                config.raw_channels = validate_channels_config(yaml_data.get("channels", []))
+            config.raw_channels = load_channels_config_file(f"{CONFIG_DIR}/channels.yml")
             log.info("channels.yml reloaded successfully")
             return True, f"Loaded {len(config.raw_channels)} channel entries"
         except FileNotFoundError:
@@ -30,12 +26,12 @@ def reload_channels() -> tuple[bool, str]:
         except PermissionError:
             log.error("Permission denied reading channels.yml during reload")
             return False, "Permission denied reading channels.yml"
+        except ChannelsConfigError as e:
+            log.error(f"channels.yml validation failed during reload — {e}")
+            return False, f"channels.yml validation failed — {e}"
         except yaml.YAMLError as e:
             log.error(f"channels.yml is malformed during reload — {e}")
             return False, f"channels.yml is malformed — {e}"
-        except ValueError as e:
-            log.error(f"channels.yml validation failed during reload — {e}")
-            return False, f"channels.yml validation failed — {e}"
 
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:
