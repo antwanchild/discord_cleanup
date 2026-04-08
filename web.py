@@ -7,6 +7,7 @@ import secrets
 import threading
 import logging
 import time
+import flask.cli
 from datetime import datetime
 from flask import Flask, abort, jsonify, render_template, request, session
 
@@ -268,6 +269,7 @@ def start_web_server():
     log.info(f"Web UI starting on {WEB_HOST}:{WEB_PORT}")
     if WEB_HOST == "0.0.0.0" and not WEB_AUTH_HEADER_NAME:
         log.warning("Web UI is listening on 0.0.0.0 without proxy-header auth configured. Prefer WEB_HOST=127.0.0.1 behind a reverse proxy.")
+    flask.cli.show_server_banner = lambda *args, **kwargs: None
     # Disable Flask's default logger to avoid duplicate log entries
     flask_log = logging.getLogger("werkzeug")
     flask_log.setLevel(logging.WARNING)
