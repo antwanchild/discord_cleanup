@@ -58,25 +58,37 @@ jobs:
           SHORT_SHA=$(echo "${HEAD_SHA}" | cut -c1-7)
           COMMIT_URL="https://github.com/${REPO}/commit/${HEAD_SHA}"
           SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
-
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"✅ Discord Cleanup Bot — Build Succeeded\",
-                \"color\": 3066993,
-                \"timestamp\": \"${RUN_UPDATED}\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot v${VERSION} • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"🏷️ Version\", \"value\": \"\`${VERSION}\`\", \"inline\": true},
-                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${BRANCH}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"${COMMIT_MSG}\", \"inline\": false},
-                  {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Run\", \"value\": \"[View run](https://github.com/${REPO}/actions/runs/${RUN_ID})\", \"inline\": true},
-                  {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "✅ Discord Cleanup Bot — Build Succeeded" \
+            --arg color "3066993" \
+            --arg timestamp "$RUN_UPDATED" \
+            --arg footer "Discord Cleanup Bot v${VERSION} • github.com/antwanchild/discord_cleanup" \
+            --arg version "$VERSION" \
+            --arg actor "$ACTOR" \
+            --arg branch "$BRANCH" \
+            --arg commit "$COMMIT_MSG" \
+            --arg duration "$DURATION_STR" \
+            --arg run_url "https://github.com/${REPO}/actions/runs/${RUN_ID}" \
+            --arg sha_field "$SHA_FIELD" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "🏷️ Version", value: ("`" + $version + "`"), inline: true},
+                  {name: "👤 Triggered by", value: ("`" + $actor + "`"), inline: true},
+                  {name: "🌿 Branch", value: ("`" + $branch + "`"), inline: true},
+                  {name: "💬 Commit", value: $commit, inline: false},
+                  {name: "⏱️ Duration", value: ("`" + $duration + "`"), inline: true},
+                  {name: "🔗 Run", value: ("[View run](" + $run_url + ")"), inline: true},
+                  {name: "SHA", value: $sha_field, inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"
 
       - name: Notify Discord — Failure
@@ -102,23 +114,35 @@ jobs:
           SHORT_SHA=$(echo "${HEAD_SHA}" | cut -c1-7)
           COMMIT_URL="https://github.com/${REPO}/commit/${HEAD_SHA}"
           SHA_FIELD="[${SHORT_SHA}](${COMMIT_URL})"
-
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"❌ Discord Cleanup Bot — Build Failed\",
-                \"color\": 15158332,
-                \"timestamp\": \"${RUN_UPDATED}\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot v${VERSION} • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"🏷️ Version\", \"value\": \"\`${VERSION}\`\", \"inline\": true},
-                  {\"name\": \"👤 Triggered by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${BRANCH}\`\", \"inline\": true},
-                  {\"name\": \"💬 Commit\", \"value\": \"${COMMIT_MSG}\", \"inline\": false},
-                  {\"name\": \"⏱️ Duration\", \"value\": \"\`${DURATION_STR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Logs\", \"value\": \"[View logs](https://github.com/${REPO}/actions/runs/${RUN_ID})\", \"inline\": true},
-                  {\"name\": \"SHA\", \"value\": \"${SHA_FIELD}\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "❌ Discord Cleanup Bot — Build Failed" \
+            --arg color "15158332" \
+            --arg timestamp "$RUN_UPDATED" \
+            --arg footer "Discord Cleanup Bot v${VERSION} • github.com/antwanchild/discord_cleanup" \
+            --arg version "$VERSION" \
+            --arg actor "$ACTOR" \
+            --arg branch "$BRANCH" \
+            --arg commit "$COMMIT_MSG" \
+            --arg duration "$DURATION_STR" \
+            --arg logs_url "https://github.com/${REPO}/actions/runs/${RUN_ID}" \
+            --arg sha_field "$SHA_FIELD" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "🏷️ Version", value: ("`" + $version + "`"), inline: true},
+                  {name: "👤 Triggered by", value: ("`" + $actor + "`"), inline: true},
+                  {name: "🌿 Branch", value: ("`" + $branch + "`"), inline: true},
+                  {name: "💬 Commit", value: $commit, inline: false},
+                  {name: "⏱️ Duration", value: ("`" + $duration + "`"), inline: true},
+                  {name: "🔗 Logs", value: ("[View logs](" + $logs_url + ")"), inline: true},
+                  {name: "SHA", value: $sha_field, inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"

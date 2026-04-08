@@ -20,19 +20,26 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
           ACTOR: ${{ github.actor }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"⭐ New Star\",
-                \"color\": 16766720,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"👤 User\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Profile\", \"value\": \"[View profile](https://github.com/${ACTOR})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "⭐ New Star" \
+            --arg color "16766720" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg actor "$ACTOR" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "👤 User", value: ("`" + $actor + "`"), inline: true},
+                  {name: "🔗 Profile", value: ("[View profile](https://github.com/" + $actor + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"
 
   notify-fork:
@@ -45,19 +52,27 @@ jobs:
           ACTOR: ${{ github.actor }}
           FORK_NAME: ${{ github.event.forkee.full_name }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"🍴 New Fork\",
-                \"color\": 3447003,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"👤 User\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Fork\", \"value\": \"[View fork](https://github.com/${FORK_NAME})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "🍴 New Fork" \
+            --arg color "3447003" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg actor "$ACTOR" \
+            --arg fork_name "$FORK_NAME" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "👤 User", value: ("`" + $actor + "`"), inline: true},
+                  {name: "🔗 Fork", value: ("[View fork](https://github.com/" + $fork_name + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"
 
   notify-issue-opened:
@@ -72,20 +87,30 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"🐛 New Issue Opened\",
-                \"color\": 15158332,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${ISSUE_TITLE}\", \"inline\": false},
-                  {\"name\": \"👤 Opened by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Issue\", \"value\": \"[View issue](https://github.com/${REPO}/issues/${ISSUE_NUMBER})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "🐛 New Issue Opened" \
+            --arg color "15158332" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg issue_title "$ISSUE_TITLE" \
+            --arg actor "$ACTOR" \
+            --arg issue_number "$ISSUE_NUMBER" \
+            --arg repo "$REPO" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "📋 Title", value: $issue_title, inline: false},
+                  {name: "👤 Opened by", value: ("`" + $actor + "`"), inline: true},
+                  {name: "🔗 Issue", value: ("[View issue](https://github.com/" + $repo + "/issues/" + $issue_number + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"
 
   notify-issue-commented:
@@ -100,18 +125,28 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"💬 New Issue Comment\",
-                \"color\": 9807270,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"📋 Issue\", \"value\": \"${ISSUE_TITLE}\", \"inline\": false},
-                  {\"name\": \"👤 Commented by\", \"value\": \"\`${ACTOR}\`\", \"inline\": true},
-                  {\"name\": \"🔗 Comment\", \"value\": \"[View comment](https://github.com/${REPO}/issues/${ISSUE_NUMBER})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "💬 New Issue Comment" \
+            --arg color "9807270" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg issue_title "$ISSUE_TITLE" \
+            --arg actor "$ACTOR" \
+            --arg issue_number "$ISSUE_NUMBER" \
+            --arg repo "$REPO" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "📋 Issue", value: $issue_title, inline: false},
+                  {name: "👤 Commented by", value: ("`" + $actor + "`"), inline: true},
+                  {name: "🔗 Comment", value: ("[View comment](https://github.com/" + $repo + "/issues/" + $issue_number + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"

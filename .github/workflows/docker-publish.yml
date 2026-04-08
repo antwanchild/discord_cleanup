@@ -101,7 +101,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION
-          git commit -m "Auto bump version to ${{ steps.bump.outputs.version }}"
+          git commit -m "Auto bump version to ${{ steps.bump.outputs.version }} [skip ci]"
           git push
 
       # ── Changelog ───────────────────────────────────────────────────────────
@@ -217,9 +217,29 @@ jobs:
 
       # ── Cleanup old images ───────────────────────────────────────────────────
       - name: Delete old GHCR images
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: discord_cleanup
-          package-type: container
-          min-versions-to-keep: 10
-          delete-only-untagged-versions: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.repository }}
+          PACKAGE_NAME: discord_cleanup
+        run: |
+          owner_type=$(gh api "repos/${REPO_NAME}" --jq '.owner.type')
+          if [ "$owner_type" = "User" ]; then
+            owner_path="users/${REPO_OWNER}"
+          else
+            owner_path="orgs/${REPO_OWNER}"
+          fi
+
+          mapfile -t version_ids < <(gh api --paginate "${owner_path}/packages/container/${PACKAGE_NAME}/versions?per_page=100" --jq '.[].id')
+          keep=10
+
+          if [ "${#version_ids[@]}" -le "$keep" ]; then
+            echo "Keeping ${#version_ids[@]} GHCR versions"
+            exit 0
+          fi
+
+          for ((i=keep; i<${#version_ids[@]}; i++)); do
+            version_id="${version_ids[$i]}"
+            echo "Deleting old GHCR version: ${version_id}"
+            gh api --method DELETE "${owner_path}/packages/container/${PACKAGE_NAME}/versions/${version_id}"
+          done

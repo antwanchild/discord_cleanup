@@ -21,21 +21,32 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"🔔 PR Opened\",
-                \"color\": 3447003,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${PR_TITLE}\", \"inline\": false},
-                  {\"name\": \"👤 Author\", \"value\": \"\`${PR_AUTHOR}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${PR_BRANCH}\`\", \"inline\": true},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "🔔 PR Opened" \
+            --arg color "3447003" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg pr_title "$PR_TITLE" \
+            --arg pr_author "$PR_AUTHOR" \
+            --arg pr_branch "$PR_BRANCH" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg repo "$REPO" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "📋 Title", value: $pr_title, inline: false},
+                  {name: "👤 Author", value: ("`" + $pr_author + "`"), inline: true},
+                  {name: "🌿 Branch", value: ("`" + $pr_branch + "`"), inline: true},
+                  {name: "🔗 PR", value: ("[View PR](https://github.com/" + $repo + "/pull/" + $pr_number + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"
 
   notify-reopened:
@@ -53,21 +64,32 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"🔄 PR Reopened\",
-                \"color\": 16753920,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${PR_TITLE}\", \"inline\": false},
-                  {\"name\": \"👤 Author\", \"value\": \"\`${PR_AUTHOR}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${PR_BRANCH}\`\", \"inline\": true},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "🔄 PR Reopened" \
+            --arg color "16753920" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg pr_title "$PR_TITLE" \
+            --arg pr_author "$PR_AUTHOR" \
+            --arg pr_branch "$PR_BRANCH" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg repo "$REPO" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "📋 Title", value: $pr_title, inline: false},
+                  {name: "👤 Author", value: ("`" + $pr_author + "`"), inline: true},
+                  {name: "🌿 Branch", value: ("`" + $pr_branch + "`"), inline: true},
+                  {name: "🔗 PR", value: ("[View PR](https://github.com/" + $repo + "/pull/" + $pr_number + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"
 
   notify-merged:
@@ -85,21 +107,32 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"✅ PR Merged\",
-                \"color\": 3066993,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${PR_TITLE}\", \"inline\": false},
-                  {\"name\": \"👤 Author\", \"value\": \"\`${PR_AUTHOR}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${PR_BRANCH}\`\", \"inline\": true},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "✅ PR Merged" \
+            --arg color "3066993" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg pr_title "$PR_TITLE" \
+            --arg pr_author "$PR_AUTHOR" \
+            --arg pr_branch "$PR_BRANCH" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg repo "$REPO" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "📋 Title", value: $pr_title, inline: false},
+                  {name: "👤 Author", value: ("`" + $pr_author + "`"), inline: true},
+                  {name: "🌿 Branch", value: ("`" + $pr_branch + "`"), inline: true},
+                  {name: "🔗 PR", value: ("[View PR](https://github.com/" + $repo + "/pull/" + $pr_number + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"
 
   notify-closed:
@@ -117,19 +150,30 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"🚫 PR Closed Without Merging\",
-                \"color\": 15158332,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"📋 Title\", \"value\": \"${PR_TITLE}\", \"inline\": false},
-                  {\"name\": \"👤 Author\", \"value\": \"\`${PR_AUTHOR}\`\", \"inline\": true},
-                  {\"name\": \"🌿 Branch\", \"value\": \"\`${PR_BRANCH}\`\", \"inline\": true},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "🚫 PR Closed Without Merging" \
+            --arg color "15158332" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg pr_title "$PR_TITLE" \
+            --arg pr_author "$PR_AUTHOR" \
+            --arg pr_branch "$PR_BRANCH" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg repo "$REPO" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "📋 Title", value: $pr_title, inline: false},
+                  {name: "👤 Author", value: ("`" + $pr_author + "`"), inline: true},
+                  {name: "🌿 Branch", value: ("`" + $pr_branch + "`"), inline: true},
+                  {name: "🔗 PR", value: ("[View PR](https://github.com/" + $repo + "/pull/" + $pr_number + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"

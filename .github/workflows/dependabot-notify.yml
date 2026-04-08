@@ -19,19 +19,28 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"🔔 Dependabot PR Opened\",
-                \"color\": 16753920,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"📦 Update\", \"value\": \"${PR_TITLE}\", \"inline\": false},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "🔔 Dependabot PR Opened" \
+            --arg color "16753920" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg pr_title "$PR_TITLE" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg repo "$REPO" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "📦 Update", value: $pr_title, inline: false},
+                  {name: "🔗 PR", value: ("[View PR](https://github.com/" + $repo + "/pull/" + $pr_number + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"
 
   notify-merged:
@@ -47,17 +56,26 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"✅ Dependabot PR Merged\",
-                \"color\": 3066993,
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-                \"footer\": {\"text\": \"Discord Cleanup Bot • github.com/antwanchild/discord_cleanup\"},
-                \"fields\": [
-                  {\"name\": \"📦 Update\", \"value\": \"${PR_TITLE}\", \"inline\": false},
-                  {\"name\": \"🔗 PR\", \"value\": \"[View PR](https://github.com/${REPO}/pull/${PR_NUMBER})\", \"inline\": true}
+          payload=$(jq -n \
+            --arg title "✅ Dependabot PR Merged" \
+            --arg color "3066993" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
+            --arg pr_title "$PR_TITLE" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg repo "$REPO" \
+            '{
+              embeds: [{
+                title: $title,
+                color: ($color | tonumber),
+                timestamp: $timestamp,
+                footer: {text: $footer},
+                fields: [
+                  {name: "📦 Update", value: $pr_title, inline: false},
+                  {name: "🔗 PR", value: ("[View PR](https://github.com/" + $repo + "/pull/" + $pr_number + ")"), inline: true}
                 ]
               }]
-            }" \
+            }')
+          curl -H "Content-Type: application/json" \
+            --data-binary "$payload" \
             "$DISCORD_WEBHOOK"
