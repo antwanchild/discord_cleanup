@@ -100,6 +100,8 @@ def create_default_files():
                         "    name: my-channel-override\n"
                         "    days: 3\n\n"
                         "  # --- EXCLUSIONS ---\n"
+                        "  # Excluded channels are skipped by full runs and cannot be targeted\n"
+                        "  # by /cleanup channel or the web UI single-channel run\n"
                         "  - id: 456789012345678901\n"
                         "    name: my-excluded-channel\n"
                         "    exclude: true\n\n"

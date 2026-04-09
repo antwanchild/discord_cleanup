@@ -21,6 +21,7 @@ channels:
   # --- EXCLUSIONS ---
   # Exclude a specific channel from cleanup entirely
   # Silently skipped in notification, logged in log file
+  # Also cannot be targeted by single-channel cleanup runs
   - id: 789012345678901234
     name: radarr-important
     exclude: true
@@ -31,7 +32,8 @@ channels:
   - id: 567890123456789012
     name: crowdsec
 
-  # Individual channel with retention override
+  # Individual channel with retention override and deep clean enabled
   - id: 678901234567890123
     name: notifications
     days: 14
+    deep_clean: true

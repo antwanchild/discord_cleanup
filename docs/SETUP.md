@@ -158,6 +158,7 @@ channels:
 
   # Exclude a channel from cleanup entirely
   # Silently skipped in notification, logged in log file
+  # Excluded channels are also blocked from /cleanup channel and web UI single-channel runs
   - id: 789012345678901234
     name: radarr-important
     exclude: true
@@ -189,6 +190,20 @@ By default the bot only deletes messages using Discord's bulk delete API, which 
 ```
 
 Deep clean runs after the bulk delete pass and deletes old messages one at a time. This is significantly slower and more likely to hit rate limits, so only enable it on channels where you need it.
+
+Example: if retention is `14` days and a run happens on `2026-04-08`, a message from `2026-03-01` is older than both the retention cutoff and Discord's 14-day bulk-delete limit, so it will only be removed when `deep_clean: true` is enabled for that channel or its parent category.
+
+---
+
+## Exclusions
+
+Set `exclude: true` on a channel to completely opt it out of cleanup.
+
+- Full scheduled and manual runs skip it.
+- `/cleanup channel` will treat it as not configured.
+- The web UI single-channel run will also reject it as not configured.
+
+Use exclusions for channels you never want touched, even by targeted runs.
 
 ---
 
