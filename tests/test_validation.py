@@ -44,6 +44,7 @@ class ValidationTests(unittest.TestCase):
             "    name: logs\n"
             "    days: 7\n"
             "    exclude: false\n"
+            "    notification_group: Build Channels\n"
             "  - id: 456\n"
             "    type: category\n"
             "    deep_clean: true\n"
@@ -53,8 +54,22 @@ class ValidationTests(unittest.TestCase):
 
         self.assertEqual(channels[0]["id"], 123)
         self.assertFalse(channels[0]["exclude"])
+        self.assertEqual(channels[0]["notification_group"], "Build Channels")
         self.assertEqual(channels[1]["type"], "category")
         self.assertTrue(channels[1]["deep_clean"])
+
+    def test_load_channels_config_rejects_non_string_notification_group(self):
+        content = (
+            "channels:\n"
+            "  - id: 123\n"
+            "    notification_group: true\n"
+        )
+
+        with self.assertRaisesRegex(
+            ChannelsConfigError,
+            r"channels\[1\]\.notification_group must be a string at line 3, column 25",
+        ):
+            load_channels_config(content)
 
 
 if __name__ == "__main__":

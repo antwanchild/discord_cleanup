@@ -27,6 +27,49 @@ def _version_gt(a: str, b: str) -> bool:
         return False
 
 
+def _build_notification_leaderboard(channels: dict, channel_map: dict, limit: int = 10) -> list[dict]:
+    """Aggregates report entries by notification_group while preserving standalone channels."""
+    grouped = {}
+
+    for ch_id, ch_data in channels.items():
+        if isinstance(ch_data, dict):
+            count = ch_data.get("count", 0)
+            name = ch_data.get("name", str(ch_id))
+        else:
+            count = ch_data
+            name = str(ch_id)
+
+        if count <= 0:
+            continue
+
+        live_config = channel_map.get(int(ch_id)) or channel_map.get(str(ch_id)) or {}
+        notification_group = live_config.get("notification_group")
+
+        if notification_group:
+            key = f"group:{notification_group}"
+            if key not in grouped:
+                grouped[key] = {
+                    "label": notification_group,
+                    "count": 0,
+                    "channels": set(),
+                    "grouped": True,
+                }
+            grouped[key]["count"] += count
+            grouped[key]["channels"].add(name)
+            continue
+
+        key = f"channel:{ch_id}"
+        grouped[key] = {
+            "label": f"#{name}",
+            "count": count,
+            "channels": {name},
+            "grouped": False,
+        }
+
+    leaderboard = sorted(grouped.values(), key=lambda item: item["count"], reverse=True)
+    return leaderboard[:limit]
+
+
 async def _fetch_latest_version() -> str | None:
     """Fetches the latest version from the VERSION file on main branch. Returns None on failure."""
     def _get():
@@ -191,6 +234,8 @@ async def post_deploy_notification(bot, guild):
 
 async def post_status_report(bot, guild, label: str = "monthly"):
     """Posts a scheduled stats report to the report channel."""
+    from cleanup import build_channel_map
+
     report_channel = bot.get_channel(REPORT_CHANNEL_ID)
     if not report_channel:
         log.warning("Could not post status report — report channel not found")
@@ -208,11 +253,8 @@ async def post_status_report(bot, guild, label: str = "monthly"):
         display = last_month
 
     channels = display.get("channels", {})
-    top_channels = sorted(
-        channels.items(),
-        key=lambda x: x[1]["count"] if isinstance(x[1], dict) else x[1],
-        reverse=True
-    )[:10]
+    channel_map = build_channel_map(guild)
+    leaderboard = _build_notification_leaderboard(channels, channel_map, limit=10)
 
     # Build diff string — only meaningful when showing current month vs prior month
     diff_str = ""
@@ -242,18 +284,18 @@ async def post_status_report(bot, guild, label: str = "monthly"):
         timestamp=datetime.now()
     )
 
-    if top_channels:
-        def ch_display(ch_id, ch_data):
-            if isinstance(ch_data, dict):
-                return f"`#{ch_data['name']}` — **{ch_data['count']}** deleted"
-            return f"`#{ch_id}` — **{ch_data}** deleted"
+    if leaderboard:
+        def ch_display(item):
+            if item["grouped"]:
+                return f"`{item['label']}` — **{item['count']}** deleted across **{len(item['channels'])}** channels"
+            return f"`{item['label']}` — **{item['count']}** deleted"
         embed.add_field(
-            name="🏆 Top Channels",
-            value="\n".join([ch_display(ch_id, ch_data) for ch_id, ch_data in top_channels]),
+            name="🏆 Top Groups",
+            value="\n".join([ch_display(item) for item in leaderboard]),
             inline=False
         )
     else:
-        embed.add_field(name="🏆 Top Channels", value="No messages deleted this period", inline=False)
+        embed.add_field(name="🏆 Top Groups", value="No messages deleted this period", inline=False)
 
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await report_channel.send(embed=embed)

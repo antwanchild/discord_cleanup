@@ -32,14 +32,16 @@ def build_channel_map(guild):
             category_map[ch_id] = {
                 "name": ch.get("name", str(ch_id)),
                 "days": ch.get("days", DEFAULT_RETENTION),
-                "deep_clean": ch.get("deep_clean", False)
+                "deep_clean": ch.get("deep_clean", False),
+                "notification_group": ch.get("notification_group")
             }
         elif ch.get("exclude", False):
             exclude_set.add(ch_id)
         else:
             override_map[ch_id] = {
                 "days": ch.get("days", DEFAULT_RETENTION),
-                "deep_clean": ch.get("deep_clean", False)
+                "deep_clean": ch.get("deep_clean", False),
+                "notification_group": ch.get("notification_group")
             }
 
     channel_map = {}
@@ -52,6 +54,7 @@ def build_channel_map(guild):
         cat_days = ch_config.get("days", DEFAULT_RETENTION)
         cat_name = ch_config.get("name", str(cat_id))
         cat_deep_clean = ch_config.get("deep_clean", False)
+        cat_notification_group = ch_config.get("notification_group")
 
         category = guild.get_channel(cat_id)
         if not category:
@@ -68,7 +71,8 @@ def build_channel_map(guild):
                     "category_name": cat_name,
                     "category_default": cat_days,
                     "is_override": True,
-                    "deep_clean": ch_override["deep_clean"] or cat_deep_clean
+                    "deep_clean": ch_override["deep_clean"] or cat_deep_clean,
+                    "notification_group": ch_override.get("notification_group") or cat_notification_group
                 }
             else:
                 channel_map[sub.id] = {
@@ -76,7 +80,8 @@ def build_channel_map(guild):
                     "category_name": cat_name,
                     "category_default": cat_days,
                     "is_override": False,
-                    "deep_clean": cat_deep_clean
+                    "deep_clean": cat_deep_clean,
+                    "notification_group": cat_notification_group
                 }
 
     # Pass 3: add standalone channels not already in the map or excluded
@@ -105,7 +110,8 @@ def build_channel_map(guild):
             "category_name": cat_name,
             "category_default": cat_default,
             "is_override": days != DEFAULT_RETENTION,
-            "deep_clean": deep_clean
+            "deep_clean": deep_clean,
+            "notification_group": ch_config.get("notification_group")
         }
 
     return channel_map

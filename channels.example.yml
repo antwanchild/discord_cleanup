@@ -17,6 +17,7 @@ channels:
   - id: 123456789012345678
     name: radarr-movies
     days: 3
+    notification_group: Arr Build Channels
 
   # --- EXCLUSIONS ---
   # Exclude a specific channel from cleanup entirely
@@ -31,6 +32,8 @@ channels:
   # Uses DEFAULT_RETENTION from .env
   - id: 567890123456789012
     name: crowdsec
+    # Optional: group channels together in monthly/weekly Discord reports
+    # notification_group: Build Channels
 
   # Individual channel with retention override and deep clean enabled
   - id: 678901234567890123

@@ -149,6 +149,8 @@ def _parse_channel_entry(node, index: int) -> dict:
         item["exclude"] = _scalar_bool(mapping["exclude"][1], f"{label}.exclude")
     if "deep_clean" in mapping:
         item["deep_clean"] = _scalar_bool(mapping["deep_clean"][1], f"{label}.deep_clean")
+    if "notification_group" in mapping:
+        item["notification_group"] = _scalar_string(mapping["notification_group"][1], f"{label}.notification_group")
 
     for key, (_, value_node) in mapping.items():
         if key not in item:

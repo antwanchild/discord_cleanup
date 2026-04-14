@@ -155,6 +155,7 @@ channels:
   - id: 123456789012345678
     name: radarr-movies
     days: 3
+    notification_group: Arr Build Channels
 
   # Exclude a channel from cleanup entirely
   # Silently skipped in notification, logged in log file
@@ -172,9 +173,17 @@ channels:
     name: notifications
     days: 14
     deep_clean: true
+
+  # Optional notification-only grouping for monthly/weekly Discord reports
+  # Stats stay separate per channel in stats.json and the web UI
+  - id: 789012345678901235
+    name: repo-a-builds
+    notification_group: Build Channels
 ```
 
 When `channels.yml` is invalid, the bot now reports schema errors with exact line and column numbers where possible, for example `channels[1].exclude must be true or false at line 3, column 14`.
+
+`notification_group` is optional and only affects the Discord monthly/weekly report embed. If multiple channels share the same value, the report combines them into a single line such as `Build Channels — 312 deleted across 3 channels`, while `stats.json`, `/cleanup stats channel`, and the web UI continue to track each channel separately.
 
 ---
 
