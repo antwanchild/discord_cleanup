@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.6.2 - 2026-04-15
+
+### Changes
+- Split backup storage by config and runtime data
+
+
 ## 5.6.1 - 2026-04-15
 
 ### Changes
