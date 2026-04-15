@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.6.0 - 2026-04-15
+
+### Changes
+- Fix changelog references after markdown migration
+
+
 ## 5.5.15 - 2026-04-15
 
 ### Changes
