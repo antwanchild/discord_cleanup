@@ -6,6 +6,7 @@ on:
       - main
     paths-ignore:
       - 'README.md'
+      - 'CHANGELOG.md'
       - 'docs/**'
       - '.github/dependabot.yml'
       - '.gitignore'
@@ -78,76 +79,87 @@ jobs:
           fi
 
           echo "$new_version" > VERSION
+          release_title=$(head -n 1 /tmp/commit_body.txt | sed -E 's/(^|[[:space:]])#(major|minor)\b//g' | sed -E 's/[[:space:]]+/ /g' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
+          if [ -z "$release_title" ]; then
+            release_title="Release ${new_version}"
+          fi
 
-          # Strip bump type tags from commit message for release notes
-          commit_msg=$(tr '\n' ' ' < /tmp/commit_body.txt | sed 's/#//g')
-          echo "$commit_msg" > commit_msg.txt
+          echo "$release_title" > release_title.txt
 
           {
             echo "version=$new_version"
             echo "bump_type=$bump_type"
-            echo "commit_msg=$commit_msg"
+            echo "release_title=$release_title"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Upload commit message artifact
+      - name: Upload release title artifact
         uses: actions/upload-artifact@v7
         with:
-          name: commit-msg
-          path: commit_msg.txt
+          name: release-title
+          path: release_title.txt
           retention-days: 1
 
-      - name: Commit bumped version
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add VERSION
-          git commit -m "Auto bump version to ${{ steps.bump.outputs.version }} [skip ci]"
-          git push
-
-      # ── Changelog ───────────────────────────────────────────────────────────
-      - name: Generate changelog
+      - name: Update changelog
         env:
           CURRENT_VERSION: ${{ steps.bump.outputs.version }}
         run: |
           current_version="${CURRENT_VERSION}"
-          last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          release_date=$(date -u +"%Y-%m-%d")
 
-          # Collect commits since the last release tag (or last 100 if no tag)
-          if [ -n "$last_tag" ]; then
-            git log "${last_tag}..HEAD~1" --format="%H %s" --no-merges > commits.txt
-          else
-            git log "HEAD~1" --format="%H %s" --no-merges -n 100 > commits.txt
-          fi
+          cleaned_body_file=$(mktemp)
+          sed -E 's/(^|[[:space:]])#(major|minor)\b//g' /tmp/commit_body.txt | sed -E 's/[[:space:]]+$//' > "$cleaned_body_file"
 
-          true > changelog.tmp
+          {
+            echo "## ${current_version} - ${release_date}"
+            echo
+            echo "### Changes"
 
-          # Walk each auto-bump commit and pair it with the commit that preceded it
-          while IFS= read -r line; do
-            commit_sha=$(echo "$line" | cut -d' ' -f1)
-            commit_msg=$(echo "$line" | cut -d' ' -f2-)
-            if echo "$commit_msg" | grep -q "^Auto bump version to "; then
-              bumped_version="${commit_msg#Auto bump version to }"
-              prev_msg=$(git log -1 --format="%s" "${commit_sha}~1")
-              echo "${bumped_version}|${prev_msg}" >> changelog.tmp
+            found_line=0
+            while IFS= read -r line || [ -n "$line" ]; do
+              trimmed=$(echo "$line" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
+              if [ -n "$trimmed" ]; then
+                found_line=1
+                case "$trimmed" in
+                  -\ *|\*\ *)
+                    trimmed="${trimmed#??}"
+                    ;;
+                esac
+                echo "- $trimmed"
+              fi
+            done < "$cleaned_body_file"
+
+            if [ "$found_line" -eq 0 ]; then
+              echo "- Release ${current_version}"
             fi
-          done < commits.txt
 
-          # The triggering commit hasn't been auto-bumped yet — add it manually
-          trigger_msg=$(git log -1 --format="%s" HEAD~1 | sed 's/#[^ ]*//g' | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//')
-          echo "${current_version}|${trigger_msg}" > changelog.current
-          cat changelog.tmp >> changelog.current 2>/dev/null || true
-          mv changelog.current changelog.tmp
+            echo
+          } > changelog_entry.md
+          rm -f "$cleaned_body_file"
 
-          # Write newest-first for display
-          if [ -s changelog.tmp ]; then
-            tac changelog.tmp > CHANGELOG
+          if [ -f CHANGELOG.md ]; then
+            {
+              head -n 1 CHANGELOG.md
+              echo
+              cat changelog_entry.md
+              tail -n +2 CHANGELOG.md
+            } > CHANGELOG.md.tmp
           else
-            echo "${current_version}|No changes recorded" > CHANGELOG
+            {
+              echo "# Changelog"
+              echo
+              cat changelog_entry.md
+            } > CHANGELOG.md.tmp
           fi
-          rm -f changelog.tmp commits.txt
 
-          echo "Changelog:"
-          cat CHANGELOG
+          mv CHANGELOG.md.tmp CHANGELOG.md
+
+      - name: Commit bumped version and changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION CHANGELOG.md
+          git commit -m "Auto bump version to ${{ steps.bump.outputs.version }} [skip ci]"
+          git push
 
       # ── Docker build ────────────────────────────────────────────────────────
       - name: Log in to GHCR
@@ -196,7 +208,7 @@ jobs:
         with:
           tag_name: v${{ steps.bump.outputs.version }}
           name: v${{ steps.bump.outputs.version }}
-          body: ${{ steps.bump.outputs.commit_msg }}
+          body: ${{ steps.bump.outputs.release_title }}
           generate_release_notes: true
 
       - name: Delete old GitHub Releases

@@ -1,0 +1,121 @@
+# Changelog
+
+## Unreleased
+
+### Features
+- Group daily cleanup notifications by `notification_group`.
+- Add automatic stats backups with retention and backup visibility in the API/UI.
+- Add dashboard/API visibility for startup path health, channel backups, and notification fallback events.
+- Improve slash-command response resilience for large or rejected Discord embeds.
+
+### Fixes
+- Correct false retention override labels in cleanup reports.
+- Prevent one guild error from stopping scheduled runs for others.
+- Harden stats loading to avoid silent data loss on corrupt files.
+- Stop leaking raw server exceptions in API responses.
+- Improve fallback behavior when Discord rejects embeds.
+
+## 5.5.12 - 2026-04-15
+
+### Changes
+- Improve stats recovery and notification resilience.
+
+## 5.5.11 - 2026-04-15
+
+### Changes
+- Harden exception handling across cleanup flows.
+
+## 5.5.10 - 2026-04-15
+
+### Changes
+- Group daily cleanup notifications by `notification_group`.
+
+## 5.5.9 - 2026-04-14
+
+### Changes
+- Add notification grouping for cleanup reports.
+
+## 5.5.8 - 2026-04-13
+
+### Changes
+- Dependabot update for `dependabot/fetch-metadata`.
+
+## 5.5.7 - 2026-04-13
+
+### Changes
+- Dependabot update for `softprops/action-gh-release`.
+
+## 5.5.6 - 2026-04-09
+
+### Changes
+- Clarify deep clean and exclusion behavior.
+
+## 5.5.5 - 2026-04-08
+
+### Changes
+- Prune old channel backups.
+
+## 5.5.4 - 2026-04-08
+
+### Changes
+- Restore the default Docker web bind behavior.
+
+## 5.5.3 - 2026-04-08
+
+### Changes
+- Suppress the Flask startup banner.
+
+## 5.5.2 - 2026-04-08
+
+### Changes
+- Harden workflows and webhook payloads.
+
+## 5.5.1 - 2026-04-08
+
+### Changes
+- Refresh docs for admin routes and security notes.
+
+## 5.5.0 - 2026-04-08
+
+### Changes
+- Add regression coverage for config and lock handling.
+
+## 5.4.1 - 2026-04-08
+
+### Changes
+- Fix the atomic write import cycle.
+
+## 5.4.0 - 2026-04-08
+
+### Changes
+- Harden admin web routes and proxy defaults.
+
+## 5.3.0 - 2026-04-08
+
+### Changes
+- Improve observability and atomic persistence.
+
+## 5.2.0 - 2026-04-08
+
+### Changes
+- Add the config editor validation workflow.
+
+## 5.1.0 - 2026-03-19
+
+### Changes
+- Add missed-run detection on startup with catch-up support.
+
+## 5.0.0 - 2026-03-13
+
+### Changes
+- Major release cut for the 5.x series.
+
+## 4.9.0 - 2026-03-09
+
+### Changes
+- Clean up changelog handling and add Ruff security scanning.
+
+## 4.8.0 - 2026-03-06
+
+### Changes
+- Add reporting, config view, stats channel, purge, and config export/import commands.

@@ -73,12 +73,13 @@ Every push to `main` triggers `docker-publish.yml` which:
    - Default — patch bump (e.g. `3.1.1` → `3.1.2`)
    - `#minor` in commit message — minor bump (e.g. `3.1.1` → `3.2.0`) — also creates a GitHub Release
    - `#major` in commit message — major bump (e.g. `3.1.1` → `4.0.0`) — also creates a GitHub Release
+5. Prepends a new `CHANGELOG.md` entry using the triggering commit message/body
 6. Builds and pushes Docker image to GHCR with `:latest` and `:version` tags
 7. Creates a GitHub Release (minor and major only)
 8. Cleans up old GHCR images keeping the last 10
 9. Posts a success or failure notification to Discord
 
-Pushes that only modify `README.md`, `docs/**`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped entirely — no build, no version bump, no release.
+Pushes that only modify `README.md`, `CHANGELOG.md`, `docs/**`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped entirely — no build, no version bump, no release.
 
 All workflow files are linted on every push using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
 
@@ -96,6 +97,8 @@ All workflow files are linted on every push using `actionlint`, which validates 
 - **Patch** — bug fixes, log improvements, formatting tweaks
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
+
+The changelog entry is generated from the triggering commit message/body. A short subject line plus 1-5 body lines works well because each non-empty line becomes a bullet in `CHANGELOG.md`. The workflow strips `#minor` and `#major` tags automatically.
 
 ---
 
