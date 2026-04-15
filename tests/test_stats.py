@@ -111,6 +111,31 @@ class StatsTests(unittest.TestCase):
             self.assertEqual(payload["channels_checked"], 0)
             self.assertEqual(payload["categories"], [{"name": "Github", "count": 18}])
 
+    def test_load_last_run_preserves_category_object_shape(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            last_run_path = os.path.join(tempdir, "last_run.json")
+            with open(last_run_path, "w") as f:
+                json.dump(
+                    {
+                        "categories": [
+                            {"name": "general", "count": 12},
+                            {"name": "#build-bot", "count": 7},
+                        ]
+                    },
+                    f,
+                )
+
+            with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
+                payload = stats.load_last_run()
+
+            self.assertEqual(
+                payload["categories"],
+                [
+                    {"name": "general", "count": 12},
+                    {"name": "#build-bot", "count": 7},
+                ],
+            )
+
     def test_save_stats_creates_backup_when_replacing_existing_file(self):
         with tempfile.TemporaryDirectory() as tempdir:
             stats_path = os.path.join(tempdir, "stats.json")
