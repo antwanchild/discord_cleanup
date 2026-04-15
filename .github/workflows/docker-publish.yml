@@ -10,7 +10,6 @@ on:
       - 'docs/**'
       - '.github/dependabot.yml'
       - '.gitignore'
-      - '.dockerignore'
   workflow_dispatch:
 
 jobs:
