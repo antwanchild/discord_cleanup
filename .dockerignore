@@ -8,6 +8,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.md
+!CHANGELOG.md
 .gitignore
 .dockerignore
 *.log
