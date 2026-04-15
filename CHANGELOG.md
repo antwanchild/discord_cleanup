@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.5.14 - 2026-04-15
+
+### Changes
+- Automate changelog updates for releases
+
+
 ## Unreleased
 
 ### Features
