@@ -352,7 +352,7 @@ After each cleanup run the bot updates a `stats.json` file in `/config/data` tra
 
 Stats are available on demand via `/cleanup stats view` and as an automated monthly report posted to the report channel on the 1st of each month.
 
-The bot also creates timestamped backups of `stats.json` and `last_run.json` before replacing existing files. These backups are kept in `/config/data/backups` and pruned automatically after `STATS_BACKUP_RETENTION_DAYS`.
+The bot also creates timestamped backups of `stats.json` and `last_run.json` before replacing existing files. These backups are kept in `/config/data/backups/stats` and `/config/data/backups/last-run`, and are pruned automatically after `STATS_BACKUP_RETENTION_DAYS`.
 
 ---
 

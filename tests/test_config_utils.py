@@ -57,7 +57,7 @@ class ConfigUtilsTests(unittest.TestCase):
     def test_save_channels_content_prunes_old_backups(self):
         with tempfile.TemporaryDirectory() as tempdir:
             channels_path = os.path.join(tempdir, "channels.yml")
-            backups_dir = os.path.join(tempdir, "backups")
+            backups_dir = os.path.join(tempdir, "backups", "channels")
             os.makedirs(backups_dir, exist_ok=True)
 
             with open(channels_path, "w") as f:

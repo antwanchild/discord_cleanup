@@ -119,14 +119,14 @@ List available `stats.json` and `last_run.json` backup files.
     {
       "type": "stats",
       "filename": "stats-20260415-054500.json.bak",
-      "path": "/config/data/backups/stats-20260415-054500.json.bak",
+      "path": "/config/data/backups/stats/stats-20260415-054500.json.bak",
       "modified": "2026-04-15 05:45:00",
       "size_bytes": 1524
     },
     {
       "type": "last_run",
       "filename": "last-run-20260415-054500.json.bak",
-      "path": "/config/data/backups/last-run-20260415-054500.json.bak",
+      "path": "/config/data/backups/last-run/last-run-20260415-054500.json.bak",
       "modified": "2026-04-15 05:45:00",
       "size_bytes": 412
     }
@@ -149,7 +149,7 @@ List available `channels.yml` backup files.
     {
       "type": "channels",
       "filename": "channels-20260415-054500.yml.bak",
-      "path": "/config/backups/channels-20260415-054500.yml.bak",
+      "path": "/config/backups/channels/channels-20260415-054500.yml.bak",
       "modified": "2026-04-15 05:45:00",
       "size_bytes": 882
     }
@@ -457,9 +457,9 @@ Validate, back up, and save `channels.yml`.
 ```json
 {
   "success": true,
-  "message": "Saved and reloaded channels.yml — 4 channel entries | Backup: /config/backups/channels-20260408-120000.yml.bak",
-  "details": "Saved and reloaded channels.yml — 4 channel entries | Backup: /config/backups/channels-20260408-120000.yml.bak",
-  "backup_path": "/config/backups/channels-20260408-120000.yml.bak"
+  "message": "Saved and reloaded channels.yml — 4 channel entries | Backup: /config/backups/channels/channels-20260408-120000.yml.bak",
+  "details": "Saved and reloaded channels.yml — 4 channel entries | Backup: /config/backups/channels/channels-20260408-120000.yml.bak",
+  "backup_path": "/config/backups/channels/channels-20260408-120000.yml.bak"
 }
 ```
 

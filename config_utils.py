@@ -12,7 +12,13 @@ from file_utils import atomic_write_text
 from validation import ChannelsConfigError, load_channels_config_file
 
 logger = logging.getLogger("discord-cleanup")
-BACKUP_DIR = os.path.join(CONFIG_DIR, "backups")
+BACKUP_ROOT = os.path.join(CONFIG_DIR, "backups")
+CHANNEL_BACKUP_DIR = os.path.join(BACKUP_ROOT, "channels")
+
+
+def _channel_backup_dirs() -> list[str]:
+    """Returns channel backup directories, including the legacy flat folder."""
+    return [CHANNEL_BACKUP_DIR, BACKUP_ROOT]
 
 
 def _prune_old_channel_backups() -> None:
@@ -22,29 +28,30 @@ def _prune_old_channel_backups() -> None:
     retention_days = getattr(config, "CHANNELS_BACKUP_RETENTION_DAYS", 10)
     cutoff = datetime.now() - timedelta(days=retention_days)
 
-    try:
-        entries = os.listdir(BACKUP_DIR)
-    except FileNotFoundError:
-        return
-    except PermissionError:
-        log.warning("Permission denied listing channels.yml backups for cleanup")
-        return
-
     removed = 0
-    for filename in entries:
-        if not (filename.startswith("channels-") and filename.endswith(".yml.bak")):
-            continue
-
-        path = os.path.join(BACKUP_DIR, filename)
+    for backup_dir in _channel_backup_dirs():
         try:
-            modified = datetime.fromtimestamp(os.path.getmtime(path))
-            if modified < cutoff:
-                os.remove(path)
-                removed += 1
+            entries = os.listdir(backup_dir)
         except FileNotFoundError:
             continue
         except PermissionError:
-            log.warning("Permission denied deleting old channels.yml backup: %s", filename)
+            log.warning("Permission denied listing channels.yml backups for cleanup")
+            continue
+
+        for filename in entries:
+            if not (filename.startswith("channels-") and filename.endswith(".yml.bak")):
+                continue
+
+            path = os.path.join(backup_dir, filename)
+            try:
+                modified = datetime.fromtimestamp(os.path.getmtime(path))
+                if modified < cutoff:
+                    os.remove(path)
+                    removed += 1
+            except FileNotFoundError:
+                continue
+            except PermissionError:
+                log.warning("Permission denied deleting old channels.yml backup: %s", filename)
 
     if removed:
         log.info("Pruned %s old channels.yml backup(s)", removed)
@@ -52,30 +59,35 @@ def _prune_old_channel_backups() -> None:
 
 def list_channel_backups() -> list[dict]:
     """Lists available channels.yml backup files newest-first."""
-    try:
-        entries = os.listdir(BACKUP_DIR)
-    except FileNotFoundError:
-        return []
-    except PermissionError:
-        log.warning("Permission denied listing channels.yml backups")
-        return []
-
     backups = []
-    for filename in entries:
-        if not (filename.startswith("channels-") and filename.endswith(".yml.bak")):
-            continue
-        path = os.path.join(BACKUP_DIR, filename)
+    seen_paths = set()
+    for backup_dir in _channel_backup_dirs():
         try:
-            stat = os.stat(path)
-        except OSError:
+            entries = os.listdir(backup_dir)
+        except FileNotFoundError:
             continue
-        backups.append({
-            "type": "channels",
-            "filename": filename,
-            "path": path,
-            "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-            "size_bytes": stat.st_size,
-        })
+        except PermissionError:
+            log.warning("Permission denied listing channels.yml backups")
+            continue
+
+        for filename in entries:
+            if not (filename.startswith("channels-") and filename.endswith(".yml.bak")):
+                continue
+            path = os.path.join(backup_dir, filename)
+            if path in seen_paths:
+                continue
+            seen_paths.add(path)
+            try:
+                stat = os.stat(path)
+            except OSError:
+                continue
+            backups.append({
+                "type": "channels",
+                "filename": filename,
+                "path": path,
+                "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                "size_bytes": stat.st_size,
+            })
 
     backups.sort(key=lambda item: item["modified"], reverse=True)
     return backups
@@ -140,9 +152,9 @@ def save_channels_content(content: str) -> tuple[bool, str, str | None]:
 
         if previous_content and previous_content != content:
             try:
-                os.makedirs(BACKUP_DIR, exist_ok=True)
+                os.makedirs(CHANNEL_BACKUP_DIR, exist_ok=True)
                 timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-                backup_path = os.path.join(BACKUP_DIR, f"channels-{timestamp}.yml.bak")
+                backup_path = os.path.join(CHANNEL_BACKUP_DIR, f"channels-{timestamp}.yml.bak")
                 atomic_write_text(backup_path, previous_content)
             except PermissionError:
                 log.error("Permission denied creating channels.yml backup")

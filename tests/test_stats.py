@@ -145,7 +145,7 @@ class StatsTests(unittest.TestCase):
             with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
                 stats.save_stats(stats._empty_stats())
 
-            backups_dir = os.path.join(tempdir, "backups")
+            backups_dir = os.path.join(tempdir, "backups", "stats")
             backups = os.listdir(backups_dir)
             self.assertEqual(len(backups), 1)
             backup_path = os.path.join(backups_dir, backups[0])
@@ -155,7 +155,7 @@ class StatsTests(unittest.TestCase):
     def test_save_stats_prunes_old_backups(self):
         with tempfile.TemporaryDirectory() as tempdir:
             stats_path = os.path.join(tempdir, "stats.json")
-            backups_dir = os.path.join(tempdir, "backups")
+            backups_dir = os.path.join(tempdir, "backups", "stats")
             os.makedirs(backups_dir, exist_ok=True)
 
             with open(stats_path, "w") as f:
@@ -183,7 +183,7 @@ class StatsTests(unittest.TestCase):
     def test_load_stats_strict_error_mentions_latest_backup(self):
         with tempfile.TemporaryDirectory() as tempdir:
             stats_path = os.path.join(tempdir, "stats.json")
-            backups_dir = os.path.join(tempdir, "backups")
+            backups_dir = os.path.join(tempdir, "backups", "stats")
             os.makedirs(backups_dir, exist_ok=True)
             backup_path = os.path.join(backups_dir, "stats-20260415-054500.json.bak")
 
@@ -208,7 +208,7 @@ class StatsTests(unittest.TestCase):
             with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
                 stats.save_last_run({"timestamp": "new", "total_deleted": 8})
 
-            backups_dir = os.path.join(tempdir, "backups")
+            backups_dir = os.path.join(tempdir, "backups", "last-run")
             backups = [name for name in os.listdir(backups_dir) if name.startswith("last-run-")]
             self.assertEqual(len(backups), 1)
             with open(os.path.join(backups_dir, backups[0]), "r") as f:

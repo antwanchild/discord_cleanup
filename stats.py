@@ -14,15 +14,36 @@ from file_utils import atomic_write_json, atomic_write_text
 
 logger = logging.getLogger("discord-cleanup")
 STATS_BACKUP_DIRNAME = "backups"
+STATS_BACKUP_SUBDIR = "stats"
+LAST_RUN_BACKUP_SUBDIR = "last-run"
 
 
 class StatsLoadError(RuntimeError):
     """Raised when persisted stats exist but cannot be read safely."""
 
 
-def _backup_dir() -> str:
-    """Returns the directory used for stats-related backups."""
+def _backup_root() -> str:
+    """Returns the root directory used for stats-related backups."""
     return os.path.join(DATA_DIR, STATS_BACKUP_DIRNAME)
+
+
+def _stats_backup_dir() -> str:
+    """Returns the directory used for stats.json backups."""
+    return os.path.join(_backup_root(), STATS_BACKUP_SUBDIR)
+
+
+def _last_run_backup_dir() -> str:
+    """Returns the directory used for last_run.json backups."""
+    return os.path.join(_backup_root(), LAST_RUN_BACKUP_SUBDIR)
+
+
+def _stats_backup_dirs(backup_type: str) -> list[str]:
+    """Returns backup directories for the given type, including legacy flat storage."""
+    if backup_type == "stats":
+        return [_stats_backup_dir(), _backup_root()]
+    if backup_type == "last_run":
+        return [_last_run_backup_dir(), _backup_root()]
+    return [_stats_backup_dir(), _last_run_backup_dir(), _backup_root()]
 
 
 def _empty_stats():
@@ -150,58 +171,63 @@ def _normalize_last_run_payload(payload) -> dict | None:
     }
 
 
-def _latest_backup_path(prefix: str) -> str | None:
-    """Returns the newest backup path for the given prefix, if any."""
-    backup_dir = _backup_dir()
-    try:
-        entries = os.listdir(backup_dir)
-    except (FileNotFoundError, PermissionError):
-        return None
-
+def _latest_backup_path(backup_type: str) -> str | None:
+    """Returns the newest backup path for the given type, if any."""
     newest = None
     newest_mtime = None
-    for filename in entries:
-        if not filename.startswith(prefix):
-            continue
-        path = os.path.join(backup_dir, filename)
+    prefixes = {"stats": "stats-", "last_run": "last-run-"}
+    prefix = prefixes.get(backup_type)
+    if not prefix:
+        return None
+
+    for backup_dir in _stats_backup_dirs(backup_type):
         try:
-            modified = os.path.getmtime(path)
-        except OSError:
+            entries = os.listdir(backup_dir)
+        except (FileNotFoundError, PermissionError):
             continue
-        if newest is None or modified > newest_mtime:
-            newest = path
-            newest_mtime = modified
+
+        for filename in entries:
+            if not filename.startswith(prefix):
+                continue
+            path = os.path.join(backup_dir, filename)
+            try:
+                modified = os.path.getmtime(path)
+            except OSError:
+                continue
+            if newest is None or modified > newest_mtime:
+                newest = path
+                newest_mtime = modified
     return newest
 
 
 def _prune_old_stats_backups() -> None:
     """Deletes stats backups older than the retention window."""
-    backup_dir = _backup_dir()
     retention_days = getattr(cfg, "STATS_BACKUP_RETENTION_DAYS", 10)
     cutoff = datetime.now() - timedelta(days=retention_days)
 
-    try:
-        entries = os.listdir(backup_dir)
-    except FileNotFoundError:
-        return
-    except PermissionError:
-        log.warning("Permission denied listing stats backups for cleanup")
-        return
-
     removed = 0
-    for filename in entries:
-        if not filename.endswith(".json.bak"):
-            continue
-        path = os.path.join(backup_dir, filename)
+    for backup_dir in _stats_backup_dirs("all"):
         try:
-            modified = datetime.fromtimestamp(os.path.getmtime(path))
-            if modified < cutoff:
-                os.remove(path)
-                removed += 1
+            entries = os.listdir(backup_dir)
         except FileNotFoundError:
             continue
         except PermissionError:
-            log.warning("Permission denied deleting old stats backup: %s", filename)
+            log.warning("Permission denied listing stats backups for cleanup")
+            continue
+
+        for filename in entries:
+            if not filename.endswith(".json.bak"):
+                continue
+            path = os.path.join(backup_dir, filename)
+            try:
+                modified = datetime.fromtimestamp(os.path.getmtime(path))
+                if modified < cutoff:
+                    os.remove(path)
+                    removed += 1
+            except FileNotFoundError:
+                continue
+            except PermissionError:
+                log.warning("Permission denied deleting old stats backup: %s", filename)
 
     if removed:
         log.info("Pruned %s old stats backup(s)", removed)
@@ -209,42 +235,46 @@ def _prune_old_stats_backups() -> None:
 
 def list_stats_backups() -> list[dict]:
     """Lists available stats and last-run backup files newest-first."""
-    backup_dir = _backup_dir()
-    try:
-        entries = os.listdir(backup_dir)
-    except FileNotFoundError:
-        return []
-    except PermissionError:
-        log.warning("Permission denied listing stats backups")
-        return []
-
     backups = []
-    for filename in entries:
-        if filename.startswith("stats-"):
-            backup_type = "stats"
-        elif filename.startswith("last-run-"):
-            backup_type = "last_run"
-        else:
+    seen_paths = set()
+    for backup_dir in _stats_backup_dirs("all"):
+        try:
+            entries = os.listdir(backup_dir)
+        except FileNotFoundError:
+            continue
+        except PermissionError:
+            log.warning("Permission denied listing stats backups")
             continue
 
-        path = os.path.join(backup_dir, filename)
-        try:
-            stat = os.stat(path)
-        except OSError:
-            continue
-        backups.append({
-            "type": backup_type,
-            "filename": filename,
-            "path": path,
-            "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-            "size_bytes": stat.st_size,
-        })
+        for filename in entries:
+            if filename.startswith("stats-"):
+                backup_type = "stats"
+            elif filename.startswith("last-run-"):
+                backup_type = "last_run"
+            else:
+                continue
+
+            path = os.path.join(backup_dir, filename)
+            if path in seen_paths:
+                continue
+            seen_paths.add(path)
+            try:
+                stat = os.stat(path)
+            except OSError:
+                continue
+            backups.append({
+                "type": backup_type,
+                "filename": filename,
+                "path": path,
+                "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                "size_bytes": stat.st_size,
+            })
 
     backups.sort(key=lambda item: item["modified"], reverse=True)
     return backups
 
 
-def _backup_existing_file(path: str, prefix: str, new_content: str | None = None) -> str | None:
+def _backup_existing_file(path: str, prefix: str, backup_type: str, new_content: str | None = None) -> str | None:
     """Backs up an existing JSON file before overwriting it."""
     if not os.path.exists(path):
         return None
@@ -259,7 +289,7 @@ def _backup_existing_file(path: str, prefix: str, new_content: str | None = None
     if new_content is not None and current_content == new_content:
         return None
 
-    backup_dir = _backup_dir()
+    backup_dir = _stats_backup_dir() if backup_type == "stats" else _last_run_backup_dir()
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     backup_path = os.path.join(backup_dir, f"{prefix}-{timestamp}.json.bak")
     try:
@@ -311,7 +341,7 @@ def save_stats(stats: dict):
     try:
         normalized = _normalize_stats_payload(stats)
         new_content = json.dumps(normalized, indent=2)
-        backup_path = _backup_existing_file(STATS_FILE, "stats", new_content=new_content)
+        backup_path = _backup_existing_file(STATS_FILE, "stats", "stats", new_content=new_content)
         atomic_write_text(STATS_FILE, new_content)
         _prune_old_stats_backups()
         if backup_path:
@@ -439,7 +469,7 @@ def save_last_run(data: dict):
         os.makedirs(DATA_DIR, exist_ok=True)
         normalized = _normalize_last_run_payload(data)
         new_content = json.dumps(normalized, indent=2)
-        backup_path = _backup_existing_file(path, "last-run", new_content=new_content)
+        backup_path = _backup_existing_file(path, "last-run", "last_run", new_content=new_content)
         atomic_write_text(path, new_content)
         _prune_old_stats_backups()
         if backup_path:
@@ -457,7 +487,7 @@ def load_last_run() -> dict:
         with open(path, "r") as f:
             return _normalize_last_run_payload(json.load(f))
     except Exception as e:
-        backup_hint = _latest_backup_path("last-run")
+        backup_hint = _latest_backup_path("last_run")
         message = f"Could not load last run summary — {e}"
         if backup_hint:
             message = f"{message} | Latest backup: {backup_hint}"
