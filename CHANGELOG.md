@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.5.15 - 2026-04-15
+
+### Changes
+- Fix last-run category rendering on dashboard
+
+
 ## 5.5.14 - 2026-04-15
 
 ### Changes
