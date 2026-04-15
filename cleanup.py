@@ -70,7 +70,10 @@ def build_channel_map(guild):
                     "days": ch_override["days"],
                     "category_name": cat_name,
                     "category_default": cat_days,
-                    "is_override": True,
+                    # Only label retention as an override when the effective days differ
+                    # from the parent category default. Other per-channel config like
+                    # notification_group or deep_clean should not show a retention override.
+                    "is_override": ch_override["days"] != cat_days,
                     "deep_clean": ch_override["deep_clean"] or cat_deep_clean,
                     "notification_group": ch_override.get("notification_group") or cat_notification_group
                 }
@@ -115,6 +118,51 @@ def build_channel_map(guild):
         }
 
     return channel_map
+
+
+def _build_grouped_breakdown_lines(channel_items: list[tuple[str, dict]], dry_run: bool = False) -> list[str]:
+    """Builds notification lines, collapsing channels that share a notification_group."""
+    grouped_entries = {}
+
+    for ch_name, stats in channel_items:
+        if stats["count"] == -1:
+            grouped_entries[f"error:{ch_name}"] = f"\u3000🚫 `#{ch_name}` — skipped (missing permissions)"
+            continue
+        if stats["count"] <= 0:
+            continue
+
+        notification_group = stats.get("notification_group")
+        if notification_group:
+            key = f"group:{notification_group}"
+            if key not in grouped_entries:
+                grouped_entries[key] = {
+                    "label": notification_group,
+                    "count": 0,
+                    "channels": [],
+                }
+            grouped_entries[key]["count"] += stats["count"]
+            grouped_entries[key]["channels"].append(ch_name)
+            continue
+
+        label = "would delete" if dry_run else "deleted"
+        deep_tag = " 🧹deep" if stats.get("deep_clean") else ""
+        override_tag = f" ({stats['days']}d ⚡override)" if stats["is_override"] else ""
+        grouped_entries[f"channel:{ch_name}"] = (
+            f"\u3000🗑️ `#{ch_name}` — **{stats['count']}** {label}{override_tag}{deep_tag}"
+        )
+
+    lines = []
+    for item in grouped_entries.values():
+        if isinstance(item, str):
+            lines.append(item)
+            continue
+
+        label = "would delete" if dry_run else "deleted"
+        channel_count = len(item["channels"])
+        across = f" across **{channel_count}** channels" if channel_count > 1 else ""
+        lines.append(f"\u3000🗑️ `{item['label']}` — **{item['count']}** {label}{across}")
+
+    return lines
 
 
 def validate_channels(guild):
@@ -419,6 +467,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
                 dry_run=dry_run, deep_clean=ch_config.get("deep_clean", False)
             )
             stats["is_override"] = ch_config["is_override"]
+            stats["notification_group"] = ch_config.get("notification_group")
 
             if stats["count"] > 0:
                 grand_total += stats["count"]
@@ -519,27 +568,13 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
         # Build breakdown
         breakdown_lines = []
         for cat_name, cat_data in category_results.items():
-            active_lines = []
-            for ch_name, stats in cat_data["channels"].items():
-                if stats["count"] == -1:
-                    active_lines.append(f"\u3000🚫 `#{ch_name}` — skipped (missing permissions)")
-                elif stats["count"] > 0:
-                    label = "would delete" if dry_run else "deleted"
-                    deep_tag = " 🧹deep" if stats.get("deep_clean") else ""
-                    override_tag = f" ({stats['days']}d ⚡override)" if stats["is_override"] else ""
-                    active_lines.append(f"\u3000🗑️ `#{ch_name}` — **{stats['count']}** {label}{override_tag}{deep_tag}")
+            active_lines = _build_grouped_breakdown_lines(list(cat_data["channels"].items()), dry_run=dry_run)
             if active_lines:
                 breakdown_lines.append(f"📁 **{cat_name}** ({cat_data['default_days']}d default)")
                 breakdown_lines.extend(active_lines)
 
-        for ch_name, ch_stats in standalone_results.items():
-            if ch_stats["count"] == -1:
-                breakdown_lines.append(f"🚫 `#{ch_name}` — skipped (missing permissions)")
-            elif ch_stats["count"] > 0:
-                label = "would delete" if dry_run else "deleted"
-                deep_tag = " 🧹deep" if ch_stats.get("deep_clean") else ""
-                override_tag = f" ({ch_stats['days']}d ⚡override)" if ch_stats["is_override"] else ""
-                breakdown_lines.append(f"🗑️ `#{ch_name}` — **{ch_stats['count']}** {label}{override_tag}{deep_tag}")
+        standalone_lines = _build_grouped_breakdown_lines(list(standalone_results.items()), dry_run=dry_run)
+        breakdown_lines.extend([line.lstrip("\u3000") for line in standalone_lines])
 
         if not breakdown_lines:
             breakdown_lines.append("✅ No messages to clean")
