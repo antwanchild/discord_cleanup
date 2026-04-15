@@ -22,17 +22,17 @@ jobs:
         id: version
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
-      - name: Download commit message artifact
+      - name: Download release title artifact
         uses: actions/download-artifact@v8
         with:
-          name: commit-msg
+          name: release-title
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Read commit message
+      - name: Read release title
         id: commit
         run: |
-          MSG=$(sed "s/'/\`/g" commit_msg.txt)
+          MSG=$(sed "s/'/\`/g" release_title.txt)
           echo "msg=${MSG}" >> "$GITHUB_OUTPUT"
 
       - name: Notify Discord — Success
