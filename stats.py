@@ -14,6 +14,10 @@ from file_utils import atomic_write_json
 logger = logging.getLogger("discord-cleanup")
 
 
+class StatsLoadError(RuntimeError):
+    """Raised when persisted stats exist but cannot be read safely."""
+
+
 def _empty_stats():
     now = datetime.now().strftime("%Y-%m-%d")
     return {
@@ -24,12 +28,19 @@ def _empty_stats():
     }
 
 
-def load_stats() -> dict:
-    """Loads stats from the stats file, returns empty structure if not found."""
+def load_stats(strict: bool = False) -> dict:
+    """Loads stats from disk.
+
+    Missing files return an empty structure. When ``strict`` is true, existing but
+    unreadable/corrupt files raise ``StatsLoadError`` instead of silently resetting.
+    """
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
     except PermissionError:
-        log.error(f"Could not create {DATA_DIR} — check directory permissions.")
+        message = f"Could not create {DATA_DIR} — check directory permissions."
+        log.error(message)
+        if strict:
+            raise StatsLoadError(message)
         return _empty_stats()
     if not os.path.exists(STATS_FILE):
         return _empty_stats()
@@ -38,6 +49,8 @@ def load_stats() -> dict:
             return json.load(f)
     except Exception as e:
         log.warning(f"Could not load stats file — {e}")
+        if strict:
+            raise StatsLoadError(f"Could not load stats file — {e}") from e
         return _empty_stats()
 
 
@@ -56,7 +69,11 @@ def save_stats(stats: dict):
 
 def update_stats(channel_results: dict):
     """Updates stats after a cleanup run."""
-    stats = load_stats()
+    try:
+        stats = load_stats(strict=True)
+    except StatsLoadError as e:
+        log.error(f"Skipping stats update to avoid overwriting unreadable stats data — {e}")
+        return
     now = datetime.now()
 
     rolling_reset = datetime.strptime(stats["rolling_30"]["reset"], "%Y-%m-%d")
@@ -95,7 +112,11 @@ def update_stats(channel_results: dict):
 
 def reset_stats(scope: str) -> bool:
     """Resets stats for the given scope: 'rolling', 'monthly', or 'all'."""
-    stats = load_stats()
+    try:
+        stats = load_stats(strict=True)
+    except StatsLoadError as e:
+        log.error(f"Refusing to reset stats while stats storage is unreadable — {e}")
+        return False
     now = datetime.now().strftime("%Y-%m-%d")
 
     if scope == "rolling":
@@ -116,7 +137,11 @@ def reset_stats(scope: str) -> bool:
 
 def record_catchup_run():
     """Increments the catchup_runs counter in all three stat buckets."""
-    stats = load_stats()
+    try:
+        stats = load_stats(strict=True)
+    except StatsLoadError as e:
+        log.error(f"Skipping catchup stat update to avoid overwriting unreadable stats data — {e}")
+        return
     for bucket in ["all_time", "rolling_30", "monthly"]:
         stats[bucket]["catchup_runs"] = stats[bucket].get("catchup_runs", 0) + 1
     save_stats(stats)
@@ -127,7 +152,11 @@ def migrate_stats_categories(guild):
     """One-time migration to backfill missing category fields in existing stats entries.
     Runs on startup — skips entries that already have a category set."""
     from cleanup import build_channel_map
-    stats = load_stats()
+    try:
+        stats = load_stats(strict=True)
+    except StatsLoadError as e:
+        log.error(f"Skipping stats migration because stats storage is unreadable — {e}")
+        return
     changed = False
 
     channel_map = build_channel_map(guild)

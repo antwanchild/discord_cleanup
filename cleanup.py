@@ -376,8 +376,14 @@ async def purge_all_channel(channel) -> dict:
             rate_limit_count += 1
             log.warning(f"Rate limited on #{channel.name} — waiting {e.retry_after:.1f}s")
             await asyncio.sleep(e.retry_after)
+        except discord.Forbidden:
+            log.error(f"Forbidden during bulk purge on #{channel.name} — check bot permissions")
+            return {"count": total_deleted, "error": "Forbidden — check bot permissions"}
+        except discord.errors.HTTPException as e:
+            log.error(f"HTTP error during bulk purge on #{channel.name} — {e}")
+            return {"count": total_deleted, "error": f"HTTP error during bulk purge: {e}"}
         except Exception as e:
-            log.error(f"Error during bulk purge on #{channel.name} — {e}")
+            log.exception(f"Unexpected error during bulk purge on #{channel.name}")
             return {"count": total_deleted, "error": str(e)}
 
     # Individual delete for messages older than 14 days
@@ -397,10 +403,22 @@ async def purge_all_channel(channel) -> dict:
                     rate_limit_count += 1
                     log.warning(f"Rate limited on #{channel.name} — waiting {e.retry_after:.1f}s")
                     await asyncio.sleep(e.retry_after)
+                except discord.Forbidden:
+                    log.error(f"Forbidden during individual purge on #{channel.name} — check bot permissions")
+                    return {"count": total_deleted, "error": "Forbidden — check bot permissions"}
+                except discord.errors.HTTPException as e:
+                    log.warning(f"HTTP error deleting message in #{channel.name} — {e}")
                 except Exception as e:
-                    log.warning(f"Could not delete message in #{channel.name} — {e}")
+                    log.exception(f"Unexpected error deleting message in #{channel.name}")
+                    return {"count": total_deleted, "error": str(e)}
+        except discord.Forbidden:
+            log.error(f"Forbidden fetching messages during individual purge on #{channel.name} — check bot permissions")
+            return {"count": total_deleted, "error": "Forbidden — check bot permissions"}
+        except discord.errors.HTTPException as e:
+            log.error(f"HTTP error during individual purge on #{channel.name} — {e}")
+            return {"count": total_deleted, "error": f"HTTP error during individual purge: {e}"}
         except Exception as e:
-            log.error(f"Error during individual purge on #{channel.name} — {e}")
+            log.exception(f"Unexpected error during individual purge on #{channel.name}")
             return {"count": total_deleted, "error": str(e)}
 
     log.info(f"Full purge complete on #{channel.name} — deleted {total_deleted} messages")

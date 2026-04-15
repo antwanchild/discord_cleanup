@@ -1,11 +1,31 @@
 import types
 import unittest
+import asyncio
 
 from tests.support import isolated_module_import
 
 
 class BuildChannelMapTests(unittest.TestCase):
-    def test_category_subchannel_with_same_days_is_not_marked_as_retention_override(self):
+    def _discord_stub(self):
+        class RateLimited(Exception):
+            def __init__(self, retry_after=1.0):
+                self.retry_after = retry_after
+
+        class HTTPException(Exception):
+            def __init__(self, status=500, message="http error"):
+                super().__init__(message)
+                self.status = status
+
+        class Forbidden(Exception):
+            pass
+
+        return types.SimpleNamespace(
+            Embed=object,
+            Forbidden=Forbidden,
+            errors=types.SimpleNamespace(RateLimited=RateLimited, HTTPException=HTTPException),
+        )
+
+    def _cleanup_stubs(self, raw_channels):
         config_stub = types.SimpleNamespace(
             BOT_VERSION="1.0.0",
             CLEAN_TIMES=["05:45"],
@@ -13,12 +33,13 @@ class BuildChannelMapTests(unittest.TestCase):
             LOG_CHANNEL_ID=1,
             RETRY_DELAY=1,
             WARN_UNCONFIGURED=False,
-            log=types.SimpleNamespace(info=lambda *a, **k: None, warning=lambda *a, **k: None),
-            raw_channels=[
-                {"id": 10, "name": "Github", "type": "category", "days": 7},
-                {"id": 20, "name": "build-bot", "days": 7, "notification_group": "Build Channels"},
-                {"id": 21, "name": "build-fast", "days": 3},
-            ],
+            log=types.SimpleNamespace(
+                info=lambda *a, **k: None,
+                warning=lambda *a, **k: None,
+                error=lambda *a, **k: None,
+                exception=lambda *a, **k: None,
+            ),
+            raw_channels=raw_channels,
         )
         stats_stub = types.SimpleNamespace(
             load_stats=lambda: {},
@@ -30,7 +51,14 @@ class BuildChannelMapTests(unittest.TestCase):
             setup_run_log=lambda *_a, **_k: None,
             update_health=lambda *_a, **_k: None,
         )
-        discord_stub = types.SimpleNamespace(Embed=object)
+        return config_stub, stats_stub, utils_stub, self._discord_stub()
+
+    def test_category_subchannel_with_same_days_is_not_marked_as_retention_override(self):
+        config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([
+            {"id": 10, "name": "Github", "type": "category", "days": 7},
+            {"id": 20, "name": "build-bot", "days": 7, "notification_group": "Build Channels"},
+            {"id": 21, "name": "build-fast", "days": 3},
+        ])
 
         with isolated_module_import(
             "cleanup",
@@ -55,27 +83,7 @@ class BuildChannelMapTests(unittest.TestCase):
         self.assertEqual(channel_map[21]["days"], 3)
 
     def test_daily_breakdown_groups_channels_by_notification_group(self):
-        config_stub = types.SimpleNamespace(
-            BOT_VERSION="1.0.0",
-            CLEAN_TIMES=["05:45"],
-            DEFAULT_RETENTION=7,
-            LOG_CHANNEL_ID=1,
-            RETRY_DELAY=1,
-            WARN_UNCONFIGURED=False,
-            log=types.SimpleNamespace(info=lambda *a, **k: None, warning=lambda *a, **k: None),
-            raw_channels=[],
-        )
-        stats_stub = types.SimpleNamespace(
-            load_stats=lambda: {},
-            save_last_run=lambda *_a, **_k: None,
-            update_stats=lambda *_a, **_k: None,
-        )
-        utils_stub = types.SimpleNamespace(
-            get_next_run_str=lambda: "tomorrow",
-            setup_run_log=lambda *_a, **_k: None,
-            update_health=lambda *_a, **_k: None,
-        )
-        discord_stub = types.SimpleNamespace(Embed=object)
+        config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([])
 
         with isolated_module_import(
             "cleanup",
@@ -96,6 +104,39 @@ class BuildChannelMapTests(unittest.TestCase):
 
         self.assertEqual(lines[0], "\u3000🗑️ `Build Channels` — **20** deleted across **2** channels")
         self.assertEqual(lines[1], "\u3000🗑️ `#discord-cleanup-gh` — **5** deleted")
+
+    def test_purge_all_channel_returns_specific_forbidden_error(self):
+        config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([])
+
+        with isolated_module_import(
+            "cleanup",
+            {
+                "config": config_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "discord": discord_stub,
+            },
+        ) as cleanup:
+            class FailingHistory:
+                def __aiter__(self):
+                    return self
+
+                async def __anext__(self):
+                    raise discord_stub.Forbidden()
+
+            permissions = types.SimpleNamespace(read_message_history=True, manage_messages=True)
+            guild = types.SimpleNamespace(me=object())
+            channel = types.SimpleNamespace(
+                name="build-bot",
+                guild=guild,
+                permissions_for=lambda _member: permissions,
+                history=lambda **_kwargs: FailingHistory(),
+            )
+
+            result = asyncio.run(cleanup.purge_all_channel(channel))
+
+        self.assertEqual(result["count"], 0)
+        self.assertEqual(result["error"], "Forbidden — check bot permissions")
 
 
 if __name__ == "__main__":

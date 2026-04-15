@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import tempfile
@@ -51,6 +52,163 @@ class SchedulerTests(unittest.TestCase):
             self.assertEqual(config_stub.CLEAN_TIMES, ["03:00"])
             with open(env_path, "r") as f:
                 self.assertEqual(f.read(), original)
+
+
+class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
+    def _discord_stubs(self):
+        class DummyIntents:
+            @staticmethod
+            def default():
+                return types.SimpleNamespace(message_content=False, guilds=False, messages=False)
+
+        class DummyTree:
+            def clear_commands(self, guild=None):
+                return None
+
+            def add_command(self, command):
+                return None
+
+            async def sync(self):
+                return None
+
+            def error(self, func):
+                return func
+
+        class DummyBot:
+            def __init__(self, *args, **kwargs):
+                self.guilds = []
+                self.tree = DummyTree()
+                self.user = "bot"
+
+            def get_channel(self, _channel_id):
+                return None
+
+            def event(self, func):
+                return func
+
+            async def wait_until_ready(self):
+                return None
+
+            async def start(self, _token):
+                return None
+
+        class DummyLoop:
+            def __init__(self, func):
+                self.func = func
+                self.next_iteration = None
+
+            def __call__(self, *args, **kwargs):
+                return self.func(*args, **kwargs)
+
+            def before_loop(self, func):
+                return func
+
+            def is_running(self):
+                return False
+
+            def start(self):
+                return None
+
+            def cancel(self):
+                return None
+
+            def change_interval(self, **kwargs):
+                return None
+
+        def loop(*_args, **_kwargs):
+            def decorator(func):
+                return DummyLoop(func)
+            return decorator
+
+        app_commands = types.SimpleNamespace(
+            AppCommandError=Exception,
+            errors=types.SimpleNamespace(MissingPermissions=type("MissingPermissions", (Exception,), {})),
+        )
+        commands = types.SimpleNamespace(Bot=DummyBot)
+        tasks = types.SimpleNamespace(loop=loop)
+        discord_module = types.SimpleNamespace(
+            Intents=DummyIntents,
+            utils=types.SimpleNamespace(setup_logging=lambda *a, **k: None),
+            HTTPException=type("HTTPException", (Exception,), {}),
+            Interaction=object,
+            app_commands=app_commands,
+        )
+        return discord_module, commands, tasks
+
+    async def test_run_per_guild_continues_after_failure(self):
+        discord_module, commands, tasks = self._discord_stubs()
+        logger = logging.getLogger("test-cleanup-bot")
+        logger.setLevel(logging.INFO)
+
+        config_stub = types.SimpleNamespace(
+            BOT_VERSION="1.0.0",
+            CATCHUP_MISSED_RUNS=True,
+            CLEAN_TIMES=["03:00"],
+            MISSED_RUN_THRESHOLD_MINUTES=15,
+            STATUS_REPORT_TIME="09:00",
+            TOKEN="token",
+            LOG_LEVEL="INFO",
+            REPORT_FREQUENCY="monthly",
+            DEFAULT_RETENTION=7,
+            log=logger,
+        )
+        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        commands_stub = types.SimpleNamespace(cleanup_group=object())
+        notifications_stub = types.SimpleNamespace(
+            post_deploy_notification=lambda *a, **k: None,
+            post_startup_notification=lambda *a, **k: None,
+            post_missed_run_alert=lambda *a, **k: None,
+            post_status_report=lambda *a, **k: None,
+            post_catchup_notification=lambda *a, **k: None,
+        )
+        stats_stub = types.SimpleNamespace(
+            migrate_stats_categories=lambda *_a, **_k: None,
+            load_last_run=lambda: None,
+            record_catchup_run=lambda: None,
+        )
+        utils_stub = types.SimpleNamespace(
+            update_health=lambda: None,
+            register_task=lambda *_a, **_k: None,
+            log_restart_separator=lambda: None,
+            set_bot_loop=lambda *_a, **_k: None,
+            is_run_in_progress=lambda: False,
+            release_run=lambda: None,
+            try_acquire_run=lambda *_a, **_k: True,
+        )
+        web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
+        commands_stats_stub = types.SimpleNamespace()
+
+        with isolated_module_import(
+            "cleanup_bot",
+            {
+                "config": config_stub,
+                "cleanup": cleanup_stub,
+                "commands": commands_stub,
+                "commands_stats": commands_stats_stub,
+                "notifications": notifications_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "web": web_stub,
+                "discord": discord_module,
+                "discord.ext": types.SimpleNamespace(commands=commands, tasks=tasks),
+                "discord.ext.commands": commands,
+                "discord.ext.tasks": tasks,
+            },
+        ) as cleanup_bot:
+            seen = []
+
+            async def action(guild):
+                seen.append(guild.name)
+                if guild.name == "first":
+                    raise RuntimeError("boom")
+
+            await cleanup_bot._run_per_guild(
+                [types.SimpleNamespace(name="first"), types.SimpleNamespace(name="second")],
+                action,
+                "Test action",
+            )
+
+        self.assertEqual(seen, ["first", "second"])
 
 
 if __name__ == "__main__":

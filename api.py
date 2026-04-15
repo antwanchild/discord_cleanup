@@ -15,10 +15,16 @@ from utils import (
     read_cleanup_log,
     read_latest_cleanup_log,
 )
-from stats import load_stats, load_last_run
+from stats import StatsLoadError, load_stats, load_last_run
 
 # All read-only /api/* routes live here, registered as a Blueprint in web.py
 api = Blueprint("api", __name__)
+
+
+def _internal_error_response(message: str, exc: Exception):
+    """Logs the exception and returns a generic 500 response."""
+    log.exception(message, exc_info=(type(exc), exc, exc.__traceback__))
+    return jsonify({"error": "Internal server error"}), 500
 
 
 def _get_status_context() -> dict:
@@ -50,7 +56,10 @@ def api_status():
 @api.route("/api/stats")
 def api_stats():
     """Full stats payload — all-time, rolling 30-day, monthly, and per-channel breakdown."""
-    return jsonify(load_stats())
+    try:
+        return jsonify(load_stats(strict=True))
+    except StatsLoadError as e:
+        return _internal_error_response("Could not serve stats API", e)
 
 
 @api.route("/api/last_run")
@@ -114,7 +123,7 @@ def api_logs_latest():
             "lines": data["lines"],
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _internal_error_response("Could not serve latest log API", e)
 
 
 @api.route("/api/run_status")
@@ -174,7 +183,7 @@ def api_logs_list():
         files = list_cleanup_logs_with_sizes()
         return jsonify({"total": len(files), "files": files})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _internal_error_response("Could not list logs API", e)
 
 
 @api.route("/api/logs/<filename>")
@@ -195,4 +204,4 @@ def api_logs_file(filename):
     except FileNotFoundError:
         return jsonify({"error": "Log file not found"}), 404
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return _internal_error_response("Could not serve log file API", e)

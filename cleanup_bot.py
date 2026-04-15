@@ -90,6 +90,15 @@ task_times, TASK_TZ = build_task_times()
 report_time = build_report_time(TASK_TZ)
 
 
+async def _run_per_guild(guilds, action, action_name: str):
+    """Runs an async action for each guild without letting one failure stop the rest."""
+    for guild in guilds:
+        try:
+            await action(guild)
+        except Exception:
+            log.exception("%s failed for guild=%s", action_name, getattr(guild, "name", guild))
+
+
 @tasks.loop(time=task_times)
 async def cleanup_task():
     """Runs scheduled cleanup for all guilds."""
@@ -110,13 +119,19 @@ async def cleanup_task():
             if 0 < delay < 60:
                 if delay > MISSED_RUN_THRESHOLD_MINUTES:
                     log.warning(f"Cleanup run for {t} is {delay:.1f} minutes late — posting alert")
-                    for guild in bot.guilds:
-                        await post_missed_run_alert(bot, guild, t)
+                    await _run_per_guild(
+                        bot.guilds,
+                        lambda guild: post_missed_run_alert(bot, guild, t),
+                        "Missed-run alert",
+                    )
                 break
 
         log.info(f"Scheduled cleanup run starting | Time: {now.strftime('%H:%M')} {TASK_TZ}")
-        for guild in bot.guilds:
-            await run_cleanup(bot, guild)
+        await _run_per_guild(
+            bot.guilds,
+            lambda guild: run_cleanup(bot, guild),
+            "Scheduled cleanup",
+        )
         update_health()
     except Exception:
         log.exception("Scheduled cleanup task failed unexpectedly")
@@ -143,8 +158,11 @@ async def monthly_report_task():
         if should_post:
             label = "monthly" if is_first_of_month else "weekly"
             log.info(f"{label.capitalize()} report triggered — posting now")
-            for guild in bot.guilds:
-                await post_status_report(bot, guild, label)
+            await _run_per_guild(
+                bot.guilds,
+                lambda guild: post_status_report(bot, guild, label),
+                f"{label.capitalize()} report",
+            )
     except Exception:
         log.exception("Monthly report task failed unexpectedly")
 
@@ -302,7 +320,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
             await interaction.followup.send(message, ephemeral=True)
         else:
             await interaction.response.send_message(message, ephemeral=True)
-    except Exception:
+    except discord.HTTPException:
         log.exception("Failed to send slash-command error response")
 
 
@@ -325,4 +343,5 @@ def main():
     asyncio.run(bot.start(TOKEN))
 
 
-main()
+if __name__ == "__main__":
+    main()
