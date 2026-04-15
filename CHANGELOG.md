@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.6.1 - 2026-04-15
+
+### Changes
+- Trigger builds on dockerignore changes
+
+
 ## 5.6.0 - 2026-04-15
 
 ### Changes
