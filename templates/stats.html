@@ -161,6 +161,66 @@
   </div>
 </div>
 
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Stats Backups</span>
+  </div>
+  {% if stats_backups %}
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>File</th>
+        <th>Modified</th>
+        <th>Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for backup in stats_backups %}
+      <tr>
+        <td class="mono">{{ backup.type }}</td>
+        <td class="mono">{{ backup.filename }}</td>
+        <td class="mono">{{ backup.modified }}</td>
+        <td class="mono">{{ backup.size_bytes }} B</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p style="color:var(--text-muted); font-size:0.875rem; margin-top:0.75rem">Showing the 10 most recent stats-related backups.</p>
+  {% else %}
+  <p style="color:var(--text-muted); font-size:0.875rem">No stats backups yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Channels Backups</span>
+  </div>
+  {% if channel_backups %}
+  <table>
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Modified</th>
+        <th>Size</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for backup in channel_backups %}
+      <tr>
+        <td class="mono">{{ backup.filename }}</td>
+        <td class="mono">{{ backup.modified }}</td>
+        <td class="mono">{{ backup.size_bytes }} B</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p style="color:var(--text-muted); font-size:0.875rem; margin-top:0.75rem">Showing the 10 most recent channels.yml backups.</p>
+  {% else %}
+  <p style="color:var(--text-muted); font-size:0.875rem">No channels.yml backups yet.</p>
+  {% endif %}
+</div>
+
 <!-- Confirm reset modal -->
 <div id="reset-modal" style="
   display: none;

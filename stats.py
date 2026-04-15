@@ -8,11 +8,11 @@ import os
 import logging
 from datetime import datetime, timedelta
 
+import config as cfg
 from config import DATA_DIR, STATS_FILE, log
 from file_utils import atomic_write_json, atomic_write_text
 
 logger = logging.getLogger("discord-cleanup")
-STATS_BACKUP_RETENTION_DAYS = 10
 STATS_BACKUP_DIRNAME = "backups"
 
 
@@ -177,7 +177,8 @@ def _latest_backup_path(prefix: str) -> str | None:
 def _prune_old_stats_backups() -> None:
     """Deletes stats backups older than the retention window."""
     backup_dir = _backup_dir()
-    cutoff = datetime.now() - timedelta(days=STATS_BACKUP_RETENTION_DAYS)
+    retention_days = getattr(cfg, "STATS_BACKUP_RETENTION_DAYS", 10)
+    cutoff = datetime.now() - timedelta(days=retention_days)
 
     try:
         entries = os.listdir(backup_dir)
@@ -204,6 +205,43 @@ def _prune_old_stats_backups() -> None:
 
     if removed:
         log.info("Pruned %s old stats backup(s)", removed)
+
+
+def list_stats_backups() -> list[dict]:
+    """Lists available stats and last-run backup files newest-first."""
+    backup_dir = _backup_dir()
+    try:
+        entries = os.listdir(backup_dir)
+    except FileNotFoundError:
+        return []
+    except PermissionError:
+        log.warning("Permission denied listing stats backups")
+        return []
+
+    backups = []
+    for filename in entries:
+        if filename.startswith("stats-"):
+            backup_type = "stats"
+        elif filename.startswith("last-run-"):
+            backup_type = "last_run"
+        else:
+            continue
+
+        path = os.path.join(backup_dir, filename)
+        try:
+            stat = os.stat(path)
+        except OSError:
+            continue
+        backups.append({
+            "type": backup_type,
+            "filename": filename,
+            "path": path,
+            "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+            "size_bytes": stat.st_size,
+        })
+
+    backups.sort(key=lambda item: item["modified"], reverse=True)
+    return backups
 
 
 def _backup_existing_file(path: str, prefix: str, new_content: str | None = None) -> str | None:

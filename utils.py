@@ -39,6 +39,7 @@ _cleanup_task = None
 _task_tz      = None
 _bot          = None
 _bot_loop     = None
+_startup_path_status = {}
 
 # Prevents simultaneous cleanup runs across the bot and web UI
 _run_lock = threading.Lock()
@@ -70,6 +71,17 @@ def set_bot_loop(loop):
 def get_bot_loop():
     """Returns the bot's event loop for use by the web UI thread."""
     return _bot_loop
+
+
+def set_startup_path_status(status: dict) -> None:
+    """Stores the most recent startup writable-path check results."""
+    global _startup_path_status
+    _startup_path_status = dict(status)
+
+
+def get_startup_path_status() -> dict:
+    """Returns the most recent startup writable-path check results."""
+    return dict(_startup_path_status)
 
 
 def try_acquire_run(owner: str) -> bool:

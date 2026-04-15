@@ -211,6 +211,32 @@
   </table>
 </div>
 
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Runtime Health</span>
+  </div>
+  <table>
+    <tbody>
+      {% for path, status in startup_path_check.items() %}
+      <tr>
+        <td class="mono">{{ path }}</td>
+        <td class="mono" style="color:{{ 'var(--success)' if status.ok else 'var(--danger)' }}">{{ "OK" if status.ok else "FAIL" }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+        <td>Notification Fallbacks</td>
+        <td class="mono">{{ notification_fallbacks_recent }}</td>
+      </tr>
+      {% if last_notification_fallback %}
+      <tr>
+        <td>Last Fallback</td>
+        <td class="mono">{{ last_notification_fallback.timestamp }} — {{ last_notification_fallback.context }}</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
 <template id="help-dashboard">
   <h2>Dashboard Help</h2>
     <h3>Bot Status</h3>
@@ -222,6 +248,8 @@
     <p>Summary of the most recent full cleanup run — status, messages deleted, duration, timestamp, trigger source, and top categories.</p>
     <h3>Stats Summary</h3>
     <p>Quick view of all-time, rolling 30-day, and monthly deletion counts. Click Full Stats for the complete breakdown.</p>
+    <h3>Runtime Health</h3>
+    <p>Shows the most recent startup writable-path checks and whether any Discord notifications recently had to fall back from embeds to plain text.</p>
 </template>
 {% endblock %}
 

@@ -10,12 +10,15 @@ from utils import (
     get_next_run_str,
     get_bot,
     get_run_owner,
+    get_startup_path_status,
     is_run_in_progress,
     list_cleanup_logs_with_sizes,
     read_cleanup_log,
     read_latest_cleanup_log,
 )
-from stats import StatsLoadError, load_stats, load_last_run
+from config_utils import list_channel_backups
+from notifications import get_recent_notification_fallbacks
+from stats import StatsLoadError, list_stats_backups, load_stats, load_last_run
 
 # All read-only /api/* routes live here, registered as a Blueprint in web.py
 api = Blueprint("api", __name__)
@@ -27,9 +30,18 @@ def _internal_error_response(message: str, exc: Exception):
     return jsonify({"error": "Internal server error"}), 500
 
 
+def _format_startup_path_check() -> dict:
+    """Formats startup path checks for JSON/UI consumers."""
+    return {
+        path: {"ok": status, "detail": detail}
+        for path, (status, detail) in get_startup_path_status().items()
+    }
+
+
 def _get_status_context() -> dict:
     """Shared status context — imported by web.py for template rendering and exposed here as JSON."""
     import config as cfg
+    fallbacks = get_recent_notification_fallbacks()
     return {
         "version":          BOT_VERSION,
         "uptime":           get_uptime_str(),
@@ -40,6 +52,10 @@ def _get_status_context() -> dict:
         "warn_unconfigured": cfg.WARN_UNCONFIGURED,
         "report_frequency": cfg.REPORT_FREQUENCY,
         "log_max_files":    cfg.LOG_MAX_FILES,
+        "stats_backup_retention_days": cfg.STATS_BACKUP_RETENTION_DAYS,
+        "startup_path_check": _format_startup_path_check(),
+        "notification_fallbacks_recent": len(fallbacks),
+        "last_notification_fallback": fallbacks[0] if fallbacks else None,
         "run_in_progress":  is_run_in_progress(),
         "run_owner":        get_run_owner(),
     }
@@ -69,6 +85,37 @@ def api_last_run():
     if not data:
         return jsonify({"error": "No runs recorded yet"}), 404
     return jsonify(data)
+
+
+@api.route("/api/backups/stats")
+def api_stats_backups():
+    """Lists available stats.json and last_run.json backup files."""
+    import config as cfg
+    backups = list_stats_backups()
+    return jsonify({
+        "retention_days": cfg.STATS_BACKUP_RETENTION_DAYS,
+        "total": len(backups),
+        "backups": backups,
+    })
+
+
+@api.route("/api/backups/channels")
+def api_channels_backups():
+    """Lists available channels.yml backup files."""
+    import config as cfg
+    backups = list_channel_backups()
+    return jsonify({
+        "retention_days": cfg.CHANNELS_BACKUP_RETENTION_DAYS,
+        "total": len(backups),
+        "backups": backups,
+    })
+
+
+@api.route("/api/notifications/fallbacks")
+def api_notification_fallbacks():
+    """Lists recent notification fallback events."""
+    fallbacks = get_recent_notification_fallbacks()
+    return jsonify({"total": len(fallbacks), "fallbacks": fallbacks})
 
 
 @api.route("/api/schedule")

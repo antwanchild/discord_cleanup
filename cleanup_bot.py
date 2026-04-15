@@ -37,6 +37,7 @@ from utils import (
     register_task,
     log_restart_separator,
     set_bot_loop,
+    set_startup_path_status,
     is_run_in_progress,
     release_run,
     try_acquire_run,
@@ -138,6 +139,7 @@ def log_startup_path_check() -> dict[str, tuple[bool, str]]:
     for path, (status, detail) in checks.items():
         if not status:
             log.warning("Startup path check failed | path=%s | error=%s", path, detail)
+    set_startup_path_status(checks)
     return checks
 
 

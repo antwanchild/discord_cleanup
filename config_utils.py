@@ -50,6 +50,37 @@ def _prune_old_channel_backups() -> None:
         log.info("Pruned %s old channels.yml backup(s)", removed)
 
 
+def list_channel_backups() -> list[dict]:
+    """Lists available channels.yml backup files newest-first."""
+    try:
+        entries = os.listdir(BACKUP_DIR)
+    except FileNotFoundError:
+        return []
+    except PermissionError:
+        log.warning("Permission denied listing channels.yml backups")
+        return []
+
+    backups = []
+    for filename in entries:
+        if not (filename.startswith("channels-") and filename.endswith(".yml.bak")):
+            continue
+        path = os.path.join(BACKUP_DIR, filename)
+        try:
+            stat = os.stat(path)
+        except OSError:
+            continue
+        backups.append({
+            "type": "channels",
+            "filename": filename,
+            "path": path,
+            "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+            "size_bytes": stat.st_size,
+        })
+
+    backups.sort(key=lambda item: item["modified"], reverse=True)
+    return backups
+
+
 def reload_channels() -> tuple[bool, str]:
     """Reloads channels.yml and updates raw_channels. Returns (success, message)."""
     import config

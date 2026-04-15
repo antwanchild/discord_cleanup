@@ -48,6 +48,8 @@ def create_default_files():
                         "LOG_MAX_FILES=7\n\n"
                         "# Number of days to keep channels.yml backups\n"
                         "CHANNELS_BACKUP_RETENTION_DAYS=10\n\n"
+                        "# Number of days to keep stats.json and last_run.json backups\n"
+                        "STATS_BACKUP_RETENTION_DAYS=10\n\n"
                         "# Log level: DEBUG, INFO, WARNING, ERROR\n"
                         "LOG_LEVEL=INFO\n\n"
                         "# Time to post monthly report on the 1st (24hr format)\n"
@@ -186,6 +188,12 @@ try:
     CHANNELS_BACKUP_RETENTION_DAYS = validate_int(
         os.getenv("CHANNELS_BACKUP_RETENTION_DAYS", 10),
         "CHANNELS_BACKUP_RETENTION_DAYS",
+        1,
+        365,
+    )
+    STATS_BACKUP_RETENTION_DAYS = validate_int(
+        os.getenv("STATS_BACKUP_RETENTION_DAYS", 10),
+        "STATS_BACKUP_RETENTION_DAYS",
         1,
         365,
     )

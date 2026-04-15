@@ -23,7 +23,15 @@ Bot status, uptime, next run time, and current config values.
   "log_level": "INFO",
   "warn_unconfigured": false,
   "report_frequency": "monthly",
-  "log_max_files": 7
+  "log_max_files": 7,
+  "stats_backup_retention_days": 10,
+  "startup_path_check": {
+    "/config/data": { "ok": true, "detail": "OK" },
+    "/config/logs": { "ok": true, "detail": "OK" },
+    "/tmp/health": { "ok": true, "detail": "OK" }
+  },
+  "notification_fallbacks_recent": 0,
+  "last_notification_fallback": null
 }
 ```
 
@@ -95,6 +103,78 @@ Summary of the most recent cleanup run.
 |--------|---------|
 | `200` | Run data returned |
 | `404` | No runs recorded yet |
+
+---
+
+### `GET /api/backups/stats`
+
+List available `stats.json` and `last_run.json` backup files.
+
+**Response**
+```json
+{
+  "retention_days": 10,
+  "total": 2,
+  "backups": [
+    {
+      "type": "stats",
+      "filename": "stats-20260415-054500.json.bak",
+      "path": "/config/data/backups/stats-20260415-054500.json.bak",
+      "modified": "2026-04-15 05:45:00",
+      "size_bytes": 1524
+    },
+    {
+      "type": "last_run",
+      "filename": "last-run-20260415-054500.json.bak",
+      "path": "/config/data/backups/last-run-20260415-054500.json.bak",
+      "modified": "2026-04-15 05:45:00",
+      "size_bytes": 412
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/backups/channels`
+
+List available `channels.yml` backup files.
+
+**Response**
+```json
+{
+  "retention_days": 10,
+  "total": 1,
+  "backups": [
+    {
+      "type": "channels",
+      "filename": "channels-20260415-054500.yml.bak",
+      "path": "/config/backups/channels-20260415-054500.yml.bak",
+      "modified": "2026-04-15 05:45:00",
+      "size_bytes": 882
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/notifications/fallbacks`
+
+List recent notification fallback events where an embed degraded to a plain-text send.
+
+**Response**
+```json
+{
+  "total": 1,
+  "fallbacks": [
+    {
+      "context": "daily cleanup report",
+      "timestamp": "2026-04-15 05:45:00"
+    }
+  ]
+}
+```
 
 ---
 

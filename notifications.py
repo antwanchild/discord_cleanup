@@ -8,6 +8,7 @@ import os
 import urllib.request
 import discord
 from datetime import datetime
+from collections import deque
 
 from config import (
     BOT_VERSION, DATA_DIR, GITHUB_TOKEN, LAST_VERSION_FILE, LOG_CHANNEL_ID,
@@ -24,6 +25,7 @@ EMBED_FIELD_NAME_LIMIT = 256
 EMBED_FIELD_VALUE_LIMIT = 1024
 EMBED_FOOTER_LIMIT = 2048
 EMBED_TOTAL_LIMIT = 6000
+_recent_notification_fallbacks = deque(maxlen=25)
 
 
 def _version_gt(a: str, b: str) -> bool:
@@ -153,12 +155,21 @@ async def safe_send_embed(channel, embed, *, fallback_text: str | None = None, c
         if fallback_text:
             try:
                 log.warning("Falling back to plain-text send for %s", context)
+                _recent_notification_fallbacks.append({
+                    "context": context,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                })
                 await channel.send(content=_truncate_text(fallback_text, 2000))
             except discord.Forbidden:
                 log.warning("Could not send %s fallback text — missing Discord permissions", context)
             except discord.HTTPException:
                 log.exception("Could not send %s fallback text", context)
         return False
+
+
+def get_recent_notification_fallbacks() -> list[dict]:
+    """Returns recent notification fallback events newest-first."""
+    return list(reversed(_recent_notification_fallbacks))
 
 
 async def _fetch_latest_version() -> str | None:

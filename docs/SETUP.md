@@ -87,6 +87,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `DEFAULT_RETENTION` | ❌ | `7` | Default message retention in days |
 | `LOG_MAX_FILES` | ❌ | `7` | Number of daily log files to retain |
 | `CHANNELS_BACKUP_RETENTION_DAYS` | ❌ | `10` | Number of days to keep `channels.yml` backup files |
+| `STATS_BACKUP_RETENTION_DAYS` | ❌ | `10` | Number of days to keep `stats.json` and `last_run.json` backup files |
 | `LOG_LEVEL` | ❌ | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post stats report (24hr format) |
 | `REPORT_FREQUENCY` | ❌ | `monthly` | Report frequency: `monthly`, `weekly`, or `both` |
@@ -111,6 +112,7 @@ CLEAN_TIME=03:00
 DEFAULT_RETENTION=7
 LOG_MAX_FILES=7
 CHANNELS_BACKUP_RETENTION_DAYS=10
+STATS_BACKUP_RETENTION_DAYS=10
 LOG_LEVEL=INFO
 STATUS_REPORT_TIME=09:00
 WEB_HOST=0.0.0.0
@@ -259,19 +261,20 @@ On the Config page, `channels.yml` can be validated without saving, schema error
 
 | Page | URL | Description |
 |------|-----|-------------|
-| Dashboard | `/` | Bot status, uptime, next run, stats summary |
+| Dashboard | `/` | Bot status, uptime, next run, stats summary, startup path checks, and notification fallback visibility |
 | Config | `/config` | Edit retention, log level, warn unconfigured, report frequency, and `channels.yml` directly |
 | Schedule | `/schedule` | Add and remove scheduled run times |
-| Stats | `/stats` | Full statistics breakdown — toggle between category summary and per-channel detail |
+| Stats | `/stats` | Full statistics breakdown — toggle between category summary and per-channel detail, plus recent stats and channels.yml backup visibility |
 | Logs | `/logs` | Log viewer with file selector and color-coded entries |
 
 **API:**
 - `GET /api/status` — JSON status endpoint for health checks or external tools
+- `GET /api/backups/stats` and `GET /api/backups/channels` — read-only backup listings
 - `POST /admin/...` — Mutating web actions such as config saves, schedule changes, manual cleanup runs, and stats reset
 
 The web UI runs in a background thread alongside the bot. Config changes made in the web UI take effect immediately and persist to `.env.discord_cleanup`, just like slash commands.
 
-The dashboard also shows the active cleanup run owner when a run is in progress, and startup notifications include a self-check summary covering channel visibility and configured target health.
+The dashboard also shows the active cleanup run owner when a run is in progress, recent startup path-check results, and whether any recent Discord notification embeds had to fall back to plain text.
 
 ---
 
@@ -348,6 +351,8 @@ After each cleanup run the bot updates a `stats.json` file in `/config/data` tra
 - **All time** — never resets, cumulative totals since first run
 
 Stats are available on demand via `/cleanup stats view` and as an automated monthly report posted to the report channel on the 1st of each month.
+
+The bot also creates timestamped backups of `stats.json` and `last_run.json` before replacing existing files. These backups are kept in `/config/data/backups` and pruned automatically after `STATS_BACKUP_RETENTION_DAYS`.
 
 ---
 

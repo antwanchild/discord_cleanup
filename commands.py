@@ -12,7 +12,7 @@ from config import (
     BOT_VERSION, DEFAULT_RETENTION, LOG_CHANNEL_ID, LOG_DIR, log
 )
 from cleanup import build_channel_map, run_cleanup, purge_all_channel
-from notifications import post_status_report, safe_send_embed
+from notifications import post_status_report, safe_send_embed, sanitize_embed
 from utils import (
     get_next_run_str,
     get_uptime_str,
@@ -25,6 +25,40 @@ from utils import (
 
 
 cleanup_group = app_commands.Group(name="cleanup", description="Discord Cleanup Bot commands")
+
+
+async def safe_followup_send(interaction: discord.Interaction, *, content: str | None = None, embed=None, fallback_text: str | None = None, **kwargs) -> bool:
+    """Best-effort wrapper for interaction followup sends."""
+    if embed is not None:
+        sanitize_embed(embed)
+    try:
+        await interaction.followup.send(content=content, embed=embed, **kwargs)
+        return True
+    except discord.HTTPException:
+        log.exception("Failed to send command followup | command=%s", getattr(interaction.command, "name", "unknown"))
+        if embed is not None and fallback_text:
+            try:
+                await interaction.followup.send(content=fallback_text, **kwargs)
+            except discord.HTTPException:
+                log.exception("Failed to send command followup fallback | command=%s", getattr(interaction.command, "name", "unknown"))
+        return False
+
+
+async def safe_response_send(interaction: discord.Interaction, *, content: str | None = None, embed=None, fallback_text: str | None = None, **kwargs) -> bool:
+    """Best-effort wrapper for initial interaction responses."""
+    if embed is not None:
+        sanitize_embed(embed)
+    try:
+        await interaction.response.send_message(content=content, embed=embed, **kwargs)
+        return True
+    except discord.HTTPException:
+        log.exception("Failed to send command response | command=%s", getattr(interaction.command, "name", "unknown"))
+        if embed is not None and fallback_text:
+            try:
+                await interaction.followup.send(content=fallback_text, **kwargs)
+            except discord.HTTPException:
+                log.exception("Failed to send command response fallback | command=%s", getattr(interaction.command, "name", "unknown"))
+        return False
 
 
 @cleanup_group.command(name="run", description="Trigger a full cleanup run on all configured channels")
@@ -99,7 +133,12 @@ async def cleanup_reload(interaction: discord.Interaction):
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await interaction.followup.send(embed=embed, ephemeral=True)
+    await safe_followup_send(
+        interaction,
+        embed=embed,
+        fallback_text=message,
+        ephemeral=True,
+    )
 
 
 @cleanup_group.command(name="version", description="Show bot version and uptime")
@@ -117,7 +156,12 @@ async def cleanup_version(interaction: discord.Interaction):
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await interaction.followup.send(embed=embed, ephemeral=True)
+    await safe_followup_send(
+        interaction,
+        embed=embed,
+        fallback_text=f"Discord Cleanup Bot v{BOT_VERSION}\nUptime: {get_uptime_str()}",
+        ephemeral=True,
+    )
 
 
 @cleanup_group.command(name="status", description="Show current bot configuration and next scheduled run")
@@ -201,9 +245,14 @@ async def cleanup_status(interaction: discord.Interaction):
             name=f"📋 Configured Channels (🧹 = deep clean enabled){f' — Page 1/{total_pages}' if total_pages > 1 else ''}",
             value=pages[0],
             inline=False
-        )
+    )
     main_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await interaction.followup.send(embed=main_embed, ephemeral=True)
+    await safe_followup_send(
+        interaction,
+        embed=main_embed,
+        fallback_text="Status report generated, but the full embed could not be delivered.",
+        ephemeral=True,
+    )
 
     for i, page in enumerate(pages[1:], start=2):
         continuation_embed = discord.Embed(
@@ -216,7 +265,12 @@ async def cleanup_status(interaction: discord.Interaction):
             inline=False
         )
         continuation_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-        await interaction.followup.send(embed=continuation_embed, ephemeral=True)
+        await safe_followup_send(
+            interaction,
+            embed=continuation_embed,
+            fallback_text=f"Configured channels page {i}/{total_pages} could not be delivered as an embed.",
+            ephemeral=True,
+        )
 
 
 @cleanup_group.command(name="test", description="Post a test notification to the log channel")
@@ -367,7 +421,13 @@ async def cleanup_purge(interaction: discord.Interaction, channel: discord.TextC
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await interaction.response.send_message(embed=embed, view=PurgeConfirmView(channel=channel, user=interaction.user, bot=bot), ephemeral=True)
+    await safe_response_send(
+        interaction,
+        embed=embed,
+        fallback_text=f"Confirm full purge for #{channel.name}. This cannot be undone.",
+        view=PurgeConfirmView(channel=channel, user=interaction.user, bot=bot),
+        ephemeral=True,
+    )
 
 
 @cleanup_group.command(name="logs", description="Download today's log file")

@@ -14,11 +14,12 @@ from flask import Flask, abort, jsonify, render_template, request, session
 from config import (
     CONFIG_DIR, log
 )
+from config_utils import list_channel_backups
 from utils import (
     get_bot, get_run_owner, is_run_in_progress,
     read_cleanup_log, read_latest_cleanup_log,
 )
-from stats import load_stats, load_last_run
+from stats import list_stats_backups, load_stats, load_last_run
 from api import api, _get_status_context
 from admin import admin
 
@@ -258,6 +259,8 @@ def stats_page():
     context["category_summary"] = category_summary
     context["grouped_categories"] = grouped_categories
     context["standalone_channels"] = standalone_channels
+    context["stats_backups"] = list_stats_backups()[:10]
+    context["channel_backups"] = list_channel_backups()[:10]
     return render_template("stats.html", **context)
 
 

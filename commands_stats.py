@@ -8,7 +8,7 @@ from datetime import datetime
 
 from config import BOT_VERSION, log
 from stats import load_stats, reset_stats
-from commands import cleanup_group
+from commands import cleanup_group, safe_followup_send, safe_response_send
 
 
 stats_group = app_commands.Group(name="stats", description="Cleanup statistics commands", parent=cleanup_group)
@@ -56,7 +56,12 @@ async def stats_view(interaction: discord.Interaction):
             inline=False
         )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await interaction.followup.send(embed=embed, ephemeral=True)
+    await safe_followup_send(
+        interaction,
+        embed=embed,
+        fallback_text="Cleanup statistics generated, but the full embed could not be delivered.",
+        ephemeral=True,
+    )
 
 
 @stats_group.command(name="channel", description="Show cleanup stats for a specific channel")
@@ -84,7 +89,12 @@ async def stats_channel(interaction: discord.Interaction, channel: discord.TextC
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await interaction.followup.send(embed=embed, ephemeral=True)
+    await safe_followup_send(
+        interaction,
+        embed=embed,
+        fallback_text=f"Stats for #{channel.name} generated, but the full embed could not be delivered.",
+        ephemeral=True,
+    )
 
 
 class StatsResetView(discord.ui.View):
@@ -146,4 +156,10 @@ async def stats_reset(interaction: discord.Interaction, scope: app_commands.Choi
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await interaction.response.send_message(embed=embed, view=StatsResetView(scope=scope.value, user=interaction.user), ephemeral=True)
+    await safe_response_send(
+        interaction,
+        embed=embed,
+        fallback_text=f"Confirm stats reset for {scope.name}.",
+        view=StatsResetView(scope=scope.value, user=interaction.user),
+        ephemeral=True,
+    )
