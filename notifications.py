@@ -36,6 +36,43 @@ def _version_gt(a: str, b: str) -> bool:
         return False
 
 
+def _load_recent_changelog_entries(last_version: str | None = None) -> list[str]:
+    """Returns markdown changelog bullets newer than the last deployed version."""
+    try:
+        with open("CHANGELOG.md", "r") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        return []
+
+    entries = []
+    current_version = None
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if line.startswith("## "):
+            heading = line[3:].strip()
+            version = heading.split(" - ", 1)[0].strip()
+            if version == "Unreleased":
+                current_version = version
+                continue
+            current_version = version
+            continue
+
+        if not line.startswith("- ") or not current_version:
+            continue
+
+        if current_version == "Unreleased":
+            entries.append(line)
+            continue
+
+        if last_version and not _version_gt(current_version, last_version):
+            continue
+
+        entries.append(f"{line} `({current_version})`")
+
+    return entries
+
+
 def _build_notification_leaderboard(channels: dict, channel_map: dict, limit: int = 10) -> list[dict]:
     """Aggregates report entries by notification_group while preserving standalone channels."""
     grouped = {}
@@ -298,30 +335,11 @@ async def post_deploy_notification(bot, guild):
         log.info(f"First run detected — posting deploy notification for v{BOT_VERSION}")
         description = f"First deployment of **v{BOT_VERSION}**"
 
-    # Read and filter changelog by last_version (relative to project root working dir)
+    # Read and filter markdown changelog by last_version (relative to project root working dir)
     changelog = None
-    try:
-        with open("CHANGELOG", "r") as f:
-            lines = f.readlines()
-
-        filtered = []
-        for line in lines:
-            line = line.strip()
-            if "|" not in line:
-                continue
-            version, msg = line.split("|", 1)
-            version = version.strip()
-            msg = msg.strip()
-            # Only show commits newer than last_version
-            if last_version and _version_gt(version, last_version):
-                filtered.append(f"- {msg} `({version})`")
-            elif not last_version:
-                filtered.append(f"- {msg} `({version})`")
-
-        if filtered:
-            changelog = "\n".join(filtered)
-    except FileNotFoundError:
-        pass
+    filtered = _load_recent_changelog_entries(last_version=last_version)
+    if filtered:
+        changelog = "\n".join(filtered)
 
     embed = discord.Embed(
         title=f"🚀 New Version Deployed — v{BOT_VERSION}",

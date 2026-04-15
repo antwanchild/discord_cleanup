@@ -13,7 +13,7 @@ COPY *.py .
 COPY templates/ templates/
 COPY static/ static/
 COPY VERSION .
-COPY CHANGELOG .
+COPY CHANGELOG.md .
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

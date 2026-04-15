@@ -1,4 +1,6 @@
 import asyncio
+import os
+import tempfile
 import types
 import unittest
 
@@ -190,6 +192,50 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertFalse(result)
         self.assertEqual(len(channel.calls), 1)
         self.assertIn("embed", channel.calls[0])
+
+    def test_load_recent_changelog_entries_reads_markdown_changelog(self):
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            changelog_path = os.path.join(tempdir, "CHANGELOG.md")
+            with open(changelog_path, "w") as f:
+                f.write(
+                    "# Changelog\n\n"
+                    "## Unreleased\n\n"
+                    "### Changes\n"
+                    "- Pending UI polish\n\n"
+                    "## 5.6.0 - 2026-04-15\n\n"
+                    "### Changes\n"
+                    "- Add backup visibility\n\n"
+                    "## 5.5.14 - 2026-04-15\n\n"
+                    "### Changes\n"
+                    "- Fix dashboard rendering\n"
+                )
+
+            cwd = os.getcwd()
+            try:
+                os.chdir(tempdir)
+                with isolated_module_import(
+                    "notifications",
+                    {
+                        "config": config_stub,
+                        "file_utils": file_utils_stub,
+                        "stats": stats_stub,
+                        "utils": utils_stub,
+                        "discord": discord_stub,
+                    },
+                ) as notifications:
+                    entries = notifications._load_recent_changelog_entries(last_version="5.5.14")
+            finally:
+                os.chdir(cwd)
+
+        self.assertEqual(
+            entries,
+            [
+                "- Pending UI polish",
+                "- Add backup visibility `(5.6.0)`",
+            ],
+        )
 
 
 if __name__ == "__main__":
