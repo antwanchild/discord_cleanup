@@ -12,18 +12,21 @@ from datetime import datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import os
 import logging
+import tempfile
 
 warnings.filterwarnings("ignore", message=".*PyNaCl.*")
 warnings.filterwarnings("ignore", message=".*davey.*")
 
 from config import (
-    BOT_VERSION, CATCHUP_MISSED_RUNS, CLEAN_TIMES, MISSED_RUN_THRESHOLD_MINUTES,
-    STATUS_REPORT_TIME, TOKEN, LOG_LEVEL, REPORT_FREQUENCY, log
+    BOT_VERSION, CATCHUP_MISSED_RUNS, CLEAN_TIMES, DATA_DIR, HEALTH_FILE,
+    MISSED_RUN_THRESHOLD_MINUTES, STATUS_REPORT_TIME, TOKEN, LOG_DIR, LOG_LEVEL,
+    REPORT_FREQUENCY, log
 )
 import config as cfg
 from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
 import commands_stats
+from file_utils import atomic_write_text
 from notifications import (
     post_deploy_notification, post_startup_notification,
     post_missed_run_alert, post_status_report, post_catchup_notification,
@@ -97,6 +100,45 @@ async def _run_per_guild(guilds, action, action_name: str):
             await action(guild)
         except Exception:
             log.exception("%s failed for guild=%s", action_name, getattr(guild, "name", guild))
+
+
+def _probe_writable_directory(path: str) -> tuple[bool, str]:
+    """Best-effort writable check for a directory path."""
+    try:
+        os.makedirs(path, exist_ok=True)
+        fd, temp_path = tempfile.mkstemp(dir=path)
+        os.close(fd)
+        os.remove(temp_path)
+        return True, "OK"
+    except Exception as e:
+        return False, str(e)
+
+
+def _probe_writable_file(path: str) -> tuple[bool, str]:
+    """Best-effort writable check for a file path."""
+    try:
+        atomic_write_text(path, datetime.now().isoformat())
+        return True, "OK"
+    except Exception as e:
+        return False, str(e)
+
+
+def log_startup_path_check() -> dict[str, tuple[bool, str]]:
+    """Logs startup writable-path checks for key bot storage paths."""
+    checks = {
+        DATA_DIR: _probe_writable_directory(DATA_DIR),
+        LOG_DIR: _probe_writable_directory(LOG_DIR),
+        HEALTH_FILE: _probe_writable_file(HEALTH_FILE),
+    }
+    summary = " | ".join(
+        f"{path}: {'OK' if status else 'FAIL'}"
+        for path, (status, _detail) in checks.items()
+    )
+    log.info("Startup path check | %s", summary)
+    for path, (status, detail) in checks.items():
+        if not status:
+            log.warning("Startup path check failed | path=%s | error=%s", path, detail)
+    return checks
 
 
 @tasks.loop(time=task_times)
@@ -262,6 +304,7 @@ async def on_ready():
     log.debug(f"Logged in as {bot.user} | v{BOT_VERSION}")
     log.debug(f"Default retention: {cfg.DEFAULT_RETENTION} days")
     log.debug(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)} ({TASK_TZ})")
+    log_startup_path_check()
 
     for guild in bot.guilds:
         validate_channels(guild)

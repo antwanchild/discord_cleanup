@@ -427,6 +427,8 @@ async def purge_all_channel(channel) -> dict:
 
 async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False, triggered_by: str = "scheduler"):
     """Core cleanup logic used by scheduler, slash commands, and web UI."""
+    from notifications import safe_send_embed
+
     update_health()
 
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
@@ -642,7 +644,12 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
         first_embed.add_field(name=page_label, value="\n".join(chunks[0]), inline=False)
         if total_pages == 1:
             first_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-        await log_channel.send(embed=first_embed)
+        await safe_send_embed(
+            log_channel,
+            first_embed,
+            fallback_text=f"{title_prefix} generated for {guild.name}, but the full embed could not be delivered. Check logs or the web UI for details.",
+            context="daily cleanup report",
+        )
 
         # Additional embeds if needed
         for i, chunk in enumerate(chunks[1:], start=2):
@@ -651,7 +658,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             page_embed.add_field(name=page_label, value="\n".join(chunk), inline=False)
             if i == total_pages:
                 page_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-            await log_channel.send(embed=page_embed)
+            await safe_send_embed(log_channel, page_embed, context=f"daily cleanup report page {i}")
 
         footer_line1 = f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
         footer_line2 = f"  Warnings: {len(error_lines)} | Rate limits: {grand_rate_limits}"
@@ -668,7 +675,12 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
                 timestamp=run_end
             )
             error_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-            await log_channel.send(embed=error_embed)
+            await safe_send_embed(
+                log_channel,
+                error_embed,
+                fallback_text=f"Cleanup run completed with {len(error_lines)} issue(s), but the full error embed could not be delivered. Check logs for details.",
+                context="cleanup error report",
+            )
     except asyncio.CancelledError:
         log.warning("Cleanup run cancelled before completion")
         raise
@@ -692,7 +704,12 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
                 timestamp=datetime.now()
             )
             error_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-            await log_channel.send(embed=error_embed)
+            await safe_send_embed(
+                log_channel,
+                error_embed,
+                fallback_text=f"Cleanup run failed unexpectedly for {guild.name}. Check the container logs for details.",
+                context="unexpected cleanup failure notification",
+            )
         except Exception:
             log.exception("Failed to send unexpected cleanup failure notification")
     finally:

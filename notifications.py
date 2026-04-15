@@ -18,6 +18,13 @@ from file_utils import atomic_write_text
 from stats import load_stats
 from utils import get_next_run_str
 
+EMBED_TITLE_LIMIT = 256
+EMBED_DESCRIPTION_LIMIT = 4096
+EMBED_FIELD_NAME_LIMIT = 256
+EMBED_FIELD_VALUE_LIMIT = 1024
+EMBED_FOOTER_LIMIT = 2048
+EMBED_TOTAL_LIMIT = 6000
+
 
 def _version_gt(a: str, b: str) -> bool:
     """Returns True if version a is greater than version b."""
@@ -68,6 +75,90 @@ def _build_notification_leaderboard(channels: dict, channel_map: dict, limit: in
 
     leaderboard = sorted(grouped.values(), key=lambda item: item["count"], reverse=True)
     return leaderboard[:limit]
+
+
+def _truncate_text(value, limit: int) -> str:
+    """Truncates text to Discord's limits while preserving readability."""
+    if value is None:
+        return ""
+    value = str(value)
+    if len(value) <= limit:
+        return value
+    if limit <= 3:
+        return value[:limit]
+    return value[: limit - 3] + "..."
+
+
+def _embed_text_length(embed) -> int:
+    """Calculates the total text payload size for an embed."""
+    total = len(getattr(embed, "title", "") or "")
+    total += len(getattr(embed, "description", "") or "")
+    footer = getattr(embed, "_footer", {}) or {}
+    total += len(footer.get("text", "") or "")
+    for field in getattr(embed, "_fields", []) or []:
+        total += len(field.get("name", "") or "")
+        total += len(field.get("value", "") or "")
+    return total
+
+
+def sanitize_embed(embed):
+    """Trims embed fields to Discord limits."""
+    if getattr(embed, "title", None):
+        embed.title = _truncate_text(embed.title, EMBED_TITLE_LIMIT)
+    if getattr(embed, "description", None):
+        embed.description = _truncate_text(embed.description, EMBED_DESCRIPTION_LIMIT)
+
+    fields = list(getattr(embed, "_fields", []) or [])
+    if fields and hasattr(embed, "clear_fields") and hasattr(embed, "add_field"):
+        embed.clear_fields()
+        for field in fields:
+            embed.add_field(
+                name=_truncate_text(field.get("name", ""), EMBED_FIELD_NAME_LIMIT),
+                value=_truncate_text(field.get("value", ""), EMBED_FIELD_VALUE_LIMIT),
+                inline=field.get("inline", False),
+            )
+
+    footer = getattr(embed, "_footer", {}) or {}
+    if footer.get("text") and hasattr(embed, "set_footer"):
+        embed.set_footer(text=_truncate_text(footer.get("text", ""), EMBED_FOOTER_LIMIT))
+
+    while _embed_text_length(embed) > EMBED_TOTAL_LIMIT and getattr(embed, "_fields", None):
+        trimmed_fields = list(embed._fields)
+        last_field = trimmed_fields[-1]
+        excess = _embed_text_length(embed) - EMBED_TOTAL_LIMIT
+        new_limit = max(16, len(last_field.get("value", "")) - excess)
+        new_value = _truncate_text(last_field.get("value", ""), new_limit)
+        if new_value == last_field.get("value", ""):
+            trimmed_fields.pop()
+        else:
+            trimmed_fields[-1] = {**last_field, "value": new_value}
+        embed.clear_fields()
+        for field in trimmed_fields:
+            embed.add_field(name=field.get("name", ""), value=field.get("value", ""), inline=field.get("inline", False))
+
+    return embed
+
+
+async def safe_send_embed(channel, embed, *, fallback_text: str | None = None, context: str = "notification") -> bool:
+    """Sends an embed safely with trimming and optional plain-text fallback."""
+    sanitize_embed(embed)
+    try:
+        await channel.send(embed=embed)
+        return True
+    except discord.Forbidden:
+        log.warning("Could not send %s — missing Discord permissions", context)
+        return False
+    except discord.HTTPException as e:
+        log.warning("Could not send %s embed — %s", context, e)
+        if fallback_text:
+            try:
+                log.warning("Falling back to plain-text send for %s", context)
+                await channel.send(content=_truncate_text(fallback_text, 2000))
+            except discord.Forbidden:
+                log.warning("Could not send %s fallback text — missing Discord permissions", context)
+            except discord.HTTPException:
+                log.exception("Could not send %s fallback text", context)
+        return False
 
 
 async def _fetch_latest_version() -> str | None:
@@ -148,7 +239,12 @@ async def post_startup_notification(bot, guild):
         inline=False
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await log_channel.send(embed=embed)
+    await safe_send_embed(
+        log_channel,
+        embed,
+        fallback_text="Bot startup notification generated, but the full embed could not be delivered.",
+        context="startup notification",
+    )
     log.info("Startup notification posted")
 
 
@@ -229,7 +325,12 @@ async def post_deploy_notification(bot, guild):
         embed.add_field(name="📝 Changes", value=changelog, inline=False)
     embed.add_field(name="🐳 Image", value=f"`ghcr.io/antwanchild/discord_cleanup:{BOT_VERSION}`", inline=False)
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await log_channel.send(embed=embed)
+    await safe_send_embed(
+        log_channel,
+        embed,
+        fallback_text="Deploy notification generated, but the full embed could not be delivered.",
+        context="deploy notification",
+    )
 
 
 async def post_status_report(bot, guild, label: str = "monthly"):
@@ -298,7 +399,12 @@ async def post_status_report(bot, guild, label: str = "monthly"):
         embed.add_field(name="🏆 Top Groups", value="No messages deleted this period", inline=False)
 
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await report_channel.send(embed=embed)
+    await safe_send_embed(
+        report_channel,
+        embed,
+        fallback_text=f"{title} generated for {guild.name}, but the full embed could not be delivered. Check logs or the web UI for details.",
+        context=f"{label} status report",
+    )
     log.info(f"{label.capitalize()} status report posted")
 
 
@@ -320,7 +426,12 @@ async def post_schedule_notification(bot, guild, old_times: list, new_times: lis
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await log_channel.send(embed=embed)
+    await safe_send_embed(
+        log_channel,
+        embed,
+        fallback_text="Schedule update notification generated, but the full embed could not be delivered.",
+        context="schedule notification",
+    )
     log.info(f"Schedule notification posted — {', '.join(old_times)} -> {', '.join(new_times)}")
 
 
@@ -343,7 +454,12 @@ async def post_missed_run_alert(bot, guild, scheduled_time: str):
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await log_channel.send(embed=embed)
+    await safe_send_embed(
+        log_channel,
+        embed,
+        fallback_text="Scheduled run delay alert generated, but the full embed could not be delivered.",
+        context="missed-run alert",
+    )
     log.warning(f"Missed run alert posted for scheduled time {scheduled_time}")
 
 
@@ -365,7 +481,12 @@ async def post_catchup_notification(bot, guild, missed_time_str: str):
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await log_channel.send(embed=embed)
+    await safe_send_embed(
+        log_channel,
+        embed,
+        fallback_text="Catchup run notification generated, but the full embed could not be delivered.",
+        context="catchup notification",
+    )
     log.info(f"Catchup notification posted for missed run at {missed_time_str}")
 
 
@@ -387,5 +508,10 @@ async def post_schedule_error_notification(bot, guild, error: str):
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await log_channel.send(embed=embed)
+    await safe_send_embed(
+        log_channel,
+        embed,
+        fallback_text="Schedule error notification generated, but the full embed could not be delivered.",
+        context="schedule error notification",
+    )
     log.warning(f"Schedule error notification posted — {error}")

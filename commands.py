@@ -12,7 +12,7 @@ from config import (
     BOT_VERSION, DEFAULT_RETENTION, LOG_CHANNEL_ID, LOG_DIR, log
 )
 from cleanup import build_channel_map, run_cleanup, purge_all_channel
-from notifications import post_status_report
+from notifications import post_status_report, safe_send_embed
 from utils import (
     get_next_run_str,
     get_uptime_str,
@@ -239,7 +239,12 @@ async def cleanup_test(interaction: discord.Interaction):
         timestamp=datetime.now()
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await log_channel.send(embed=embed)
+    await safe_send_embed(
+        log_channel,
+        embed,
+        fallback_text=f"Test notification for {interaction.guild.name} generated, but the full embed could not be delivered.",
+        context="test notification",
+    )
     log.info(f"Test notification posted by {interaction.user}")
     await interaction.followup.send(f"✅ Test notification posted to {log_channel.mention}.", ephemeral=True)
 
@@ -314,7 +319,12 @@ class PurgeConfirmView(discord.ui.View):
             )
         embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
         if log_channel:
-            await log_channel.send(embed=embed)
+            await safe_send_embed(
+                log_channel,
+                embed,
+                fallback_text=f"Purge result for #{self.channel.name} generated, but the full embed could not be delivered.",
+                context="purge result notification",
+            )
         log.info(f"Purge complete on #{self.channel.name} — {result['count']} deleted by {self.user}")
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)

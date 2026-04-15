@@ -4,6 +4,7 @@ import os
 import tempfile
 import types
 import unittest
+from datetime import datetime
 
 from tests.support import isolated_module_import
 
@@ -50,6 +51,143 @@ class StatsTests(unittest.TestCase):
 
             with open(stats_path, "r") as f:
                 self.assertEqual(f.read(), "{bad json")
+
+    def test_load_stats_normalizes_partial_and_legacy_shapes(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            stats_path = os.path.join(tempdir, "stats.json")
+            with open(stats_path, "w") as f:
+                json.dump(
+                    {
+                        "all_time": {
+                            "runs": "4",
+                            "deleted": "9",
+                            "channels": {
+                                "123": 5,
+                                456: {"name": "build-bot", "count": "7"},
+                            },
+                        },
+                        "rolling_30": {"reset": "not-a-date"},
+                        "monthly": {"catchup_runs": "3", "channels": []},
+                        "last_month": {"deleted": "12"},
+                    },
+                    f,
+                )
+
+            with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
+                payload = stats.load_stats(strict=True)
+
+            self.assertEqual(payload["all_time"]["runs"], 4)
+            self.assertEqual(payload["all_time"]["deleted"], 9)
+            self.assertEqual(payload["all_time"]["catchup_runs"], 0)
+            self.assertEqual(payload["all_time"]["channels"]["123"]["count"], 5)
+            self.assertEqual(payload["all_time"]["channels"]["123"]["category"], "Standalone")
+            self.assertEqual(payload["all_time"]["channels"]["456"]["name"], "build-bot")
+            self.assertEqual(payload["all_time"]["channels"]["456"]["count"], 7)
+            self.assertIn("reset", payload["rolling_30"])
+            self.assertEqual(payload["monthly"]["catchup_runs"], 3)
+            self.assertEqual(payload["monthly"]["channels"], {})
+            self.assertEqual(payload["last_month"]["deleted"], 12)
+            self.assertIn("reset", payload["last_month"])
+
+    def test_load_last_run_normalizes_missing_fields(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            last_run_path = os.path.join(tempdir, "last_run.json")
+            with open(last_run_path, "w") as f:
+                json.dump(
+                    {
+                        "timestamp": "2026-04-15 05:45:00",
+                        "total_deleted": "22",
+                        "categories": [{"name": "Github", "count": "18"}, "bad-item"],
+                    },
+                    f,
+                )
+
+            with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
+                payload = stats.load_last_run()
+
+            self.assertEqual(payload["timestamp"], "2026-04-15 05:45:00")
+            self.assertEqual(payload["total_deleted"], 22)
+            self.assertEqual(payload["triggered_by"], "unknown")
+            self.assertEqual(payload["channels_checked"], 0)
+            self.assertEqual(payload["categories"], [{"name": "Github", "count": 18}])
+
+    def test_save_stats_creates_backup_when_replacing_existing_file(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            stats_path = os.path.join(tempdir, "stats.json")
+            with open(stats_path, "w") as f:
+                json.dump({"all_time": {"runs": 1}}, f)
+
+            with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
+                stats.save_stats(stats._empty_stats())
+
+            backups_dir = os.path.join(tempdir, "backups")
+            backups = os.listdir(backups_dir)
+            self.assertEqual(len(backups), 1)
+            backup_path = os.path.join(backups_dir, backups[0])
+            with open(backup_path, "r") as f:
+                self.assertIn('"runs": 1', f.read())
+
+    def test_save_stats_prunes_old_backups(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            stats_path = os.path.join(tempdir, "stats.json")
+            backups_dir = os.path.join(tempdir, "backups")
+            os.makedirs(backups_dir, exist_ok=True)
+
+            with open(stats_path, "w") as f:
+                json.dump({"all_time": {"runs": 1}}, f)
+
+            old_backup = os.path.join(backups_dir, "stats-20260101-000000.json.bak")
+            recent_backup = os.path.join(backups_dir, "stats-20260407-000000.json.bak")
+            with open(old_backup, "w") as f:
+                f.write("{}")
+            with open(recent_backup, "w") as f:
+                f.write("{}")
+
+            now = datetime.now().timestamp()
+            old_time = 60 * 60 * 24 * 11
+            recent_time = 60 * 60 * 24 * 2
+            os.utime(old_backup, (now - old_time, now - old_time))
+            os.utime(recent_backup, (now - recent_time, now - recent_time))
+
+            with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
+                stats.save_stats(stats._empty_stats())
+
+            self.assertFalse(os.path.exists(old_backup))
+            self.assertTrue(os.path.exists(recent_backup))
+
+    def test_load_stats_strict_error_mentions_latest_backup(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            stats_path = os.path.join(tempdir, "stats.json")
+            backups_dir = os.path.join(tempdir, "backups")
+            os.makedirs(backups_dir, exist_ok=True)
+            backup_path = os.path.join(backups_dir, "stats-20260415-054500.json.bak")
+
+            with open(stats_path, "w") as f:
+                f.write("{bad json")
+            with open(backup_path, "w") as f:
+                f.write("{}")
+
+            with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
+                with self.assertRaises(stats.StatsLoadError) as ctx:
+                    stats.load_stats(strict=True)
+
+            self.assertIn("Latest backup", str(ctx.exception))
+            self.assertIn(backup_path, str(ctx.exception))
+
+    def test_save_last_run_creates_backup_when_replacing_existing_file(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            last_run_path = os.path.join(tempdir, "last_run.json")
+            with open(last_run_path, "w") as f:
+                json.dump({"timestamp": "old", "total_deleted": 4}, f)
+
+            with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
+                stats.save_last_run({"timestamp": "new", "total_deleted": 8})
+
+            backups_dir = os.path.join(tempdir, "backups")
+            backups = [name for name in os.listdir(backups_dir) if name.startswith("last-run-")]
+            self.assertEqual(len(backups), 1)
+            with open(os.path.join(backups_dir, backups[0]), "r") as f:
+                self.assertIn('"total_deleted": 4', f.read())
 
 
 if __name__ == "__main__":
