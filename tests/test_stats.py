@@ -214,6 +214,35 @@ class StatsTests(unittest.TestCase):
             with open(os.path.join(backups_dir, backups[0]), "r") as f:
                 self.assertIn('"total_deleted": 4', f.read())
 
+    def test_record_channel_history_persists_channel_runs(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
+                stats.record_channel_history(
+                    {
+                        "123": {
+                            "name": "build-bot",
+                            "count": 5,
+                            "category": "Github",
+                            "rate_limits": 2,
+                            "oldest": "2026-04-15 05:45:00",
+                            "status": "deleted",
+                        }
+                    },
+                    run_context={
+                        "timestamp": "2026-04-15 05:45:00",
+                        "triggered_by": "scheduler",
+                        "dry_run": False,
+                    },
+                )
+                payload = stats.load_stats(strict=True)
+
+            history = payload["channel_history"]["123"][0]
+            self.assertEqual(history["timestamp"], "2026-04-15 05:45:00")
+            self.assertEqual(history["count"], 5)
+            self.assertEqual(history["category"], "Github")
+            self.assertEqual(history["triggered_by"], "scheduler")
+            self.assertEqual(history["rate_limits"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

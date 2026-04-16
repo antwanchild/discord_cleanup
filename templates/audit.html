@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Audit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem">
+    <h1>Retention Audit</h1>
+    <div class="help-btn" onclick="openPageHelp('help-audit')" title="Help">?</div>
+  </div>
+  <p>Read-only overview of the live cleanup configuration</p>
+</div>
+
+<div class="stat-grid" style="margin-bottom:1.5rem">
+  <div class="stat-box">
+    <div class="stat-value">{{ audit_summary.configured }}</div>
+    <div class="stat-label">Configured Targets</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ audit_summary.categories }}</div>
+    <div class="stat-label">Categories</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ audit_summary.standalone }}</div>
+    <div class="stat-label">Standalone Channels</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ audit_summary.overrides }}</div>
+    <div class="stat-label">Overrides</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ audit_summary.deep_clean }}</div>
+    <div class="stat-label">Deep Clean</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ audit_summary.notification_groups }}</div>
+    <div class="stat-label">Notification Groups</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Live Retention Map</span>
+  </div>
+  {% if audit_rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Target</th>
+        <th>Kind</th>
+        <th>Category</th>
+        <th>Retention</th>
+        <th>Deep Clean</th>
+        <th>Group</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in audit_rows %}
+      <tr>
+        <td>
+          {% if row.kind == "Category" %}
+            📁
+          {% elif row.status == "excluded" %}
+            ⛔
+          {% else %}
+            📄
+          {% endif %}
+          <span class="mono">{{ row.name }}</span>
+        </td>
+        <td class="mono">{{ row.kind }}</td>
+        <td>{{ row.category }}</td>
+        <td class="mono">
+          {% if row.effective_days == "Excluded" %}
+            Excluded
+          {% else %}
+            {{ row.effective_days }}
+            {% if row.override %}<span style="color:var(--warning)">override</span>{% endif %}
+          {% endif %}
+        </td>
+        <td class="mono">{{ "Yes" if row.deep_clean else "No" }}</td>
+        <td class="mono">{{ row.notification_group or "—" }}</td>
+        <td class="mono">
+          {% if row.status == "excluded" %}
+            Excluded
+          {% elif row.status == "category" %}
+            Category
+          {% else %}
+            Active
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-muted); font-size:0.875rem">No configured channels to audit.</p>
+  {% endif %}
+</div>
+
+<template id="help-audit">
+  <h2>Retention Audit Help</h2>
+  <p>This page shows the live cleanup configuration in one place. Use it to spot retention overrides, deep-clean channels, exclusions, and notification groups without digging through the raw YAML.</p>
+</template>
+{% endblock %}

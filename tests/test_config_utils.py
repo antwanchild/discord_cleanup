@@ -19,6 +19,56 @@ class ConfigUtilsTests(unittest.TestCase):
             raw_channels=[],
         )
 
+    def test_preview_channels_content_reports_added_removed_and_updated_entries(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            config_stub = self._build_config_stub(tempdir)
+            config_stub.raw_channels = [
+                {"id": 1, "name": "old-channel"},
+                {"id": 2, "name": "keep-channel", "days": 7},
+            ]
+            content = (
+                "channels:\n"
+                "  - id: 2\n"
+                "    name: keep-renamed\n"
+                "    days: 14\n"
+                "  - id: 3\n"
+                "    name: new-channel\n"
+                "    deep_clean: true\n"
+            )
+
+            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+                success, message, preview = config_utils.preview_channels_content(content)
+
+            self.assertTrue(success)
+            self.assertIn("preview ready", message)
+            self.assertEqual(preview["summary"]["counts"]["added"], 1)
+            self.assertEqual(preview["summary"]["counts"]["removed"], 1)
+            self.assertEqual(preview["summary"]["counts"]["updated"], 1)
+            self.assertEqual(preview["changes"]["added"][0]["name"], "new-channel")
+            self.assertEqual(preview["changes"]["removed"][0]["name"], "old-channel")
+            self.assertEqual(preview["changes"]["updated"][0]["label"], "#keep-renamed")
+            changed_fields = {item["field"] for item in preview["changes"]["updated"][0]["changes"]}
+            self.assertEqual(changed_fields, {"name", "days"})
+
+    def test_update_report_grouping_updates_env_and_in_memory_config(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            env_path = os.path.join(tempdir, ".env.discord_cleanup")
+            with open(env_path, "w") as f:
+                f.write("REPORT_GROUP_MONTHLY=true\nREPORT_GROUP_WEEKLY=true\n")
+
+            config_stub = self._build_config_stub(tempdir)
+            config_stub.REPORT_GROUP_MONTHLY = True
+            config_stub.REPORT_GROUP_WEEKLY = True
+
+            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+                success, message = config_utils.update_report_grouping("monthly", False)
+
+            self.assertTrue(success)
+            self.assertEqual(message, "false")
+            self.assertFalse(config_stub.REPORT_GROUP_MONTHLY)
+            with open(env_path, "r") as f:
+                self.assertIn("REPORT_GROUP_MONTHLY=false", f.read())
+
     def test_reload_channels_returns_validation_error(self):
         with tempfile.TemporaryDirectory() as tempdir:
             with open(os.path.join(tempdir, "channels.yml"), "w") as f:

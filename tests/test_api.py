@@ -33,7 +33,7 @@ class ApiTests(unittest.TestCase):
         )
 
     def test_api_returns_generic_internal_error_message(self):
-        config_stub = types.SimpleNamespace(BOT_VERSION="1.0.0", STATS_BACKUP_RETENTION_DAYS=10, log=logging.getLogger("test-api"))
+        config_stub = types.SimpleNamespace(BOT_VERSION="1.0.0", STATS_BACKUP_RETENTION_DAYS=10, REPORT_GROUP_MONTHLY=True, REPORT_GROUP_WEEKLY=True, log=logging.getLogger("test-api"))
 
         with isolated_module_import(
             "api",
@@ -58,7 +58,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(logs_response.get_json()["error"], "Internal server error")
 
     def test_api_exposes_stats_backups_and_status_config(self):
-        config_stub = types.SimpleNamespace(BOT_VERSION="1.0.0", STATS_BACKUP_RETENTION_DAYS=10, CHANNELS_BACKUP_RETENTION_DAYS=10, CLEAN_TIMES=["03:00"], DEFAULT_RETENTION=7, LOG_LEVEL="INFO", WARN_UNCONFIGURED=False, REPORT_FREQUENCY="monthly", LOG_MAX_FILES=7, log=logging.getLogger("test-api"))
+        config_stub = types.SimpleNamespace(BOT_VERSION="1.0.0", STATS_BACKUP_RETENTION_DAYS=10, CHANNELS_BACKUP_RETENTION_DAYS=10, CLEAN_TIMES=["03:00"], DEFAULT_RETENTION=7, LOG_LEVEL="INFO", WARN_UNCONFIGURED=False, REPORT_FREQUENCY="monthly", REPORT_GROUP_MONTHLY=True, REPORT_GROUP_WEEKLY=True, LOG_MAX_FILES=7, log=logging.getLogger("test-api"))
         utils_stub = types.SimpleNamespace(
             get_uptime_str=lambda: "1m",
             get_next_run_str=lambda: "tomorrow",

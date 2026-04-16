@@ -42,21 +42,6 @@
 - Automate changelog updates for releases
 
 
-## Unreleased
-
-### Features
-- Keep daily cleanup notifications per-channel; reserve `notification_group` for monthly/weekly reports.
-- Add automatic stats backups with retention and backup visibility in the API/UI.
-- Add dashboard/API visibility for startup path health, channel backups, and notification fallback events.
-- Improve slash-command response resilience for large or rejected Discord embeds.
-
-### Fixes
-- Correct false retention override labels in cleanup reports.
-- Prevent one guild error from stopping scheduled runs for others.
-- Harden stats loading to avoid silent data loss on corrupt files.
-- Stop leaking raw server exceptions in API responses.
-- Improve fallback behavior when Discord rejects embeds.
-
 ## 5.5.12 - 2026-04-15
 
 ### Changes

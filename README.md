@@ -125,7 +125,9 @@ Five separate workflows post to a Discord webhook (`DISCORD_WEBHOOK_URL` secret)
 
 The web UI can sit behind a reverse proxy such as Authentik, but it still defaults to binding on `0.0.0.0` so the published Docker port works out of the box. Mutating admin routes live under `/admin/*` while read-only routes live under `/api/*`. `channels.yml` backups and stats/last-run backups are pruned automatically after their configured retention windows, which default to 10 days. `channels.yml` backups live under `/config/backups/channels/`, while generated data backups live under `/config/data/backups/stats/` and `/config/data/backups/last-run/`.
 
-The Config page supports validate-before-save for `channels.yml`, and schema errors include line and column details when possible. Saving `channels.yml` creates a backup before replacing the live file.
+The Config page supports preview-before-save for `channels.yml`, validate-before-save, per-report grouping controls, and a dry run from the preview modal. Schema errors include line and column details when possible. Saving `channels.yml` creates a backup before replacing the live file.
+
+The Stats page includes a per-channel history timeline, and the Audit page provides a read-only retention review of the live cleanup configuration.
 
 The dashboard also shows the active cleanup run owner when a run is in progress, which makes it easier to tell whether a scheduler, slash command, or web action is holding the cleanup lock. It now also surfaces the most recent startup path-check results and recent notification fallback activity. The Stats page shows the 10 most recent stats-related backups and `channels.yml` backups, and the API exposes them at `GET /api/backups/stats` and `GET /api/backups/channels`.
 

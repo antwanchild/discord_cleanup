@@ -37,7 +37,10 @@ def _version_gt(a: str, b: str) -> bool:
 
 
 def _load_recent_changelog_entries(last_version: str | None = None) -> list[str]:
-    """Returns markdown changelog bullets newer than the last deployed version."""
+    """Returns markdown changelog bullets newer than the last deployed version.
+
+    Any legacy `Unreleased` section is ignored if it appears in an older file.
+    """
     try:
         with open("CHANGELOG.md", "r") as f:
             lines = f.readlines()
@@ -73,7 +76,7 @@ def _load_recent_changelog_entries(last_version: str | None = None) -> list[str]
     return entries
 
 
-def _build_notification_leaderboard(channels: dict, channel_map: dict, limit: int = 10) -> list[dict]:
+def _build_notification_leaderboard(channels: dict, channel_map: dict, limit: int = 10, group_notification_groups: bool = True) -> list[dict]:
     """Aggregates report entries by notification_group while preserving standalone channels."""
     grouped = {}
 
@@ -89,7 +92,7 @@ def _build_notification_leaderboard(channels: dict, channel_map: dict, limit: in
             continue
 
         live_config = channel_map.get(int(ch_id)) or channel_map.get(str(ch_id)) or {}
-        notification_group = live_config.get("notification_group")
+        notification_group = live_config.get("notification_group") if group_notification_groups else None
 
         if notification_group:
             key = f"group:{notification_group}"
@@ -384,7 +387,8 @@ async def post_status_report(bot, guild, label: str = "monthly"):
 
     channels = display.get("channels", {})
     channel_map = build_channel_map(guild)
-    leaderboard = _build_notification_leaderboard(channels, channel_map, limit=10)
+    group_notification_groups = cfg.REPORT_GROUP_MONTHLY if label == "monthly" else cfg.REPORT_GROUP_WEEKLY
+    leaderboard = _build_notification_leaderboard(channels, channel_map, limit=10, group_notification_groups=group_notification_groups)
 
     # Build diff string — only meaningful when showing current month vs prior month
     diff_str = ""

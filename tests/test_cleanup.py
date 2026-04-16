@@ -45,6 +45,7 @@ class BuildChannelMapTests(unittest.TestCase):
             load_stats=lambda: {},
             save_last_run=lambda *_a, **_k: None,
             update_stats=lambda *_a, **_k: None,
+            record_channel_history=lambda *_a, **_k: None,
         )
         utils_stub = types.SimpleNamespace(
             get_next_run_str=lambda: "tomorrow",
@@ -81,6 +82,33 @@ class BuildChannelMapTests(unittest.TestCase):
         self.assertEqual(channel_map[20]["notification_group"], "Build Channels")
         self.assertTrue(channel_map[21]["is_override"])
         self.assertEqual(channel_map[21]["days"], 3)
+
+    def test_build_channel_map_can_use_explicit_raw_channels(self):
+        config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([])
+
+        with isolated_module_import(
+            "cleanup",
+            {
+                "config": config_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "discord": discord_stub,
+            },
+        ) as cleanup:
+            build_channel = types.SimpleNamespace(id=20, name="build-bot")
+            category = types.SimpleNamespace(id=10, text_channels=[build_channel])
+            guild = types.SimpleNamespace(get_channel=lambda channel_id: {10: category}.get(channel_id))
+
+            channel_map = cleanup.build_channel_map(
+                guild,
+                raw_channels=[
+                    {"id": 10, "name": "Github", "type": "category", "days": 7},
+                    {"id": 20, "name": "build-bot", "days": 4},
+                ],
+            )
+
+        self.assertEqual(channel_map[20]["days"], 4)
+        self.assertTrue(channel_map[20]["is_override"])
 
     def test_daily_breakdown_keeps_channels_separate(self):
         config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([])

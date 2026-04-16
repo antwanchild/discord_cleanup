@@ -215,6 +215,7 @@ def stats_page():
     """Statistics page — provides both per-channel detail and category summary views."""
     context = _get_status_context()
     stats = load_stats()
+    from cleanup import build_channel_map
 
     # Pre-sort channels by count descending for the detail view
     raw_channels = stats.get("all_time", {}).get("channels", {})
@@ -254,14 +255,123 @@ def stats_page():
     # Summary view still just needs totals
     category_summary = [(g["name"], {"count": g["count"], "channels": len(g["channels"])}) for g in grouped_categories]
 
+    channel_history = stats.get("channel_history", {})
+    bot = get_bot()
+    history_channels = []
+    if bot and bot.guilds:
+        guild = bot.guilds[0]
+        channel_map = build_channel_map(guild)
+        for ch_id, data in channel_map.items():
+            discord_channel = guild.get_channel(ch_id)
+            name = discord_channel.name if discord_channel else str(ch_id)
+            entries = list(reversed(channel_history.get(str(ch_id), [])))
+            latest = entries[0] if entries else None
+            history_channels.append({
+                "id": ch_id,
+                "name": name,
+                "category": data.get("category_name") or "Standalone",
+                "days": data.get("days"),
+                "is_override": data.get("is_override", False),
+                "deep_clean": data.get("deep_clean", False),
+                "notification_group": data.get("notification_group"),
+                "history": entries[:10],
+                "history_total": len(entries),
+                "latest": latest,
+            })
+        history_channels.sort(key=lambda item: item["latest"]["timestamp"] if item["latest"] else "", reverse=True)
+
     context["stats"] = stats
     context["sorted_channels"] = sorted_channels
     context["category_summary"] = category_summary
     context["grouped_categories"] = grouped_categories
     context["standalone_channels"] = standalone_channels
+    context["history_channels"] = history_channels
     context["stats_backups"] = list_stats_backups()[:10]
     context["channel_backups"] = list_channel_backups()[:10]
     return render_template("stats.html", **context)
+
+
+@app.route("/audit")
+def audit_page():
+    """Retention audit page — shows the live cleanup configuration at a glance."""
+    from cleanup import build_channel_map
+    import config as cfg
+
+    context = _get_status_context()
+    bot = get_bot()
+    audit_rows = []
+    summary = {
+        "configured": 0,
+        "categories": 0,
+        "standalone": 0,
+        "excluded": 0,
+        "overrides": 0,
+        "deep_clean": 0,
+        "notification_groups": 0,
+    }
+
+    if bot and bot.guilds:
+        guild = bot.guilds[0]
+        channel_map = build_channel_map(guild)
+        excluded_ids = {ch["id"] for ch in cfg.raw_channels if ch.get("exclude", False)}
+        notification_groups = {ch.get("notification_group") for ch in cfg.raw_channels if ch.get("notification_group")}
+
+        summary["configured"] = len(channel_map)
+        summary["categories"] = len({data.get("category_name") for data in channel_map.values() if data.get("category_name")})
+        summary["standalone"] = sum(1 for data in channel_map.values() if not data.get("category_name"))
+        summary["overrides"] = sum(1 for data in channel_map.values() if data.get("is_override"))
+        summary["deep_clean"] = sum(1 for data in channel_map.values() if data.get("deep_clean"))
+        summary["notification_groups"] = len(notification_groups)
+        summary["excluded"] = len(excluded_ids)
+
+        for ch in cfg.raw_channels:
+            ch_id = ch["id"]
+            discord_channel = guild.get_channel(ch_id)
+            if ch.get("exclude"):
+                audit_rows.append({
+                    "name": ch.get("name", str(ch_id)),
+                    "kind": "Excluded",
+                    "category": discord_channel.category.name if discord_channel and discord_channel.category else "Standalone",
+                    "days": "—",
+                    "effective_days": "Excluded",
+                    "override": False,
+                    "deep_clean": bool(ch.get("deep_clean", False)),
+                    "notification_group": ch.get("notification_group"),
+                    "status": "excluded",
+                })
+                continue
+
+            if ch.get("type") == "category":
+                audit_rows.append({
+                    "name": ch.get("name", str(ch_id)),
+                    "kind": "Category",
+                    "category": "Category",
+                    "days": ch.get("days", cfg.DEFAULT_RETENTION),
+                    "effective_days": f"{ch.get('days', cfg.DEFAULT_RETENTION)}d",
+                    "override": bool(ch.get("days") and ch.get("days") != cfg.DEFAULT_RETENTION),
+                    "deep_clean": bool(ch.get("deep_clean", False)),
+                    "notification_group": ch.get("notification_group"),
+                    "status": "category",
+                })
+                continue
+
+            mapped = channel_map.get(ch_id, {})
+            audit_rows.append({
+                "name": ch.get("name", discord_channel.name if discord_channel else str(ch_id)),
+                "kind": "Channel",
+                "category": mapped.get("category_name") or (discord_channel.category.name if discord_channel and discord_channel.category else "Standalone"),
+                "days": ch.get("days", cfg.DEFAULT_RETENTION),
+                "effective_days": f"{mapped.get('days', ch.get('days', cfg.DEFAULT_RETENTION))}d",
+                "override": mapped.get("is_override", False),
+                "deep_clean": mapped.get("deep_clean", False),
+                "notification_group": mapped.get("notification_group") or ch.get("notification_group"),
+                "status": "configured",
+            })
+
+    audit_rows.sort(key=lambda row: (row["category"], row["name"]))
+    context["audit_summary"] = summary
+    context["audit_rows"] = audit_rows
+    return render_template("audit.html", **context)
 
 
 

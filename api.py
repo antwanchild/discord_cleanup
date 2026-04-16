@@ -51,6 +51,8 @@ def _get_status_context() -> dict:
         "log_level":        cfg.LOG_LEVEL,
         "warn_unconfigured": cfg.WARN_UNCONFIGURED,
         "report_frequency": cfg.REPORT_FREQUENCY,
+        "report_group_monthly": cfg.REPORT_GROUP_MONTHLY,
+        "report_group_weekly": cfg.REPORT_GROUP_WEEKLY,
         "log_max_files":    cfg.LOG_MAX_FILES,
         "stats_backup_retention_days": cfg.STATS_BACKUP_RETENTION_DAYS,
         "startup_path_check": _format_startup_path_check(),

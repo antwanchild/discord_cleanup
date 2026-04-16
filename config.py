@@ -9,6 +9,7 @@ from validation import (
     ChannelsConfigError,
     load_channels_config_file,
     parse_time_list,
+    validate_bool,
     validate_int,
     validate_report_frequency,
     validate_time_string,
@@ -56,6 +57,10 @@ def create_default_files():
                         "STATUS_REPORT_TIME=09:00\n\n"
                         "# Report frequency: monthly, weekly, or both\n"
                         "REPORT_FREQUENCY=monthly\n\n"
+                        "# Group notification_group channels in monthly reports (true/false)\n"
+                        "REPORT_GROUP_MONTHLY=true\n\n"
+                        "# Group notification_group channels in weekly reports (true/false)\n"
+                        "REPORT_GROUP_WEEKLY=true\n\n"
                         "# Warn about Discord channels not in channels.yml (true/false)\n"
                         "WARN_UNCONFIGURED=false\n\n"
                         "# Trigger a catchup run on startup if a scheduled run was missed (true/false)\n"
@@ -63,17 +68,11 @@ def create_default_files():
                         "# Web UI bind host and port\n"
                         "WEB_HOST=0.0.0.0\n"
                         "WEB_PORT=8080\n\n"
-                        "# Optional reverse-proxy auth header pair for the web UI\n"
-                        "# WEB_AUTH_HEADER_NAME=X-Forwarded-User\n"
-                        "# WEB_AUTH_HEADER_VALUE=your-expected-authentik-username\n\n"
                         "# Admin endpoint rate limits\n"
                         "ADMIN_RATE_LIMIT_WINDOW_SECONDS=60\n"
                         "ADMIN_RATE_LIMIT_MAX_REQUESTS=20\n"
                         "RUN_RATE_LIMIT_MAX_REQUESTS=5\n\n"
-                        "# Optional fixed secret for web sessions and CSRF tokens\n"
-                        "# WEB_SECRET_KEY=\n\n"
-                        "# GitHub personal access token for version update checks (required for private repos)\n"
-                        "# GITHUB_TOKEN=\n")
+                        "# Optional runtime settings can still be added manually if needed\n")
             print(f"{CONFIG_DIR}/.env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
             created = True
         except PermissionError:
@@ -200,6 +199,8 @@ try:
     DEFAULT_RETENTION = validate_int(os.getenv("DEFAULT_RETENTION", 7), "DEFAULT_RETENTION", 1, 365)
     STATUS_REPORT_TIME = validate_time_string(os.getenv("STATUS_REPORT_TIME", "09:00"), "STATUS_REPORT_TIME")
     REPORT_FREQUENCY = validate_report_frequency(os.getenv("REPORT_FREQUENCY", "monthly"))
+    REPORT_GROUP_MONTHLY = validate_bool(os.getenv("REPORT_GROUP_MONTHLY", "true"), "REPORT_GROUP_MONTHLY")
+    REPORT_GROUP_WEEKLY = validate_bool(os.getenv("REPORT_GROUP_WEEKLY", "true"), "REPORT_GROUP_WEEKLY")
 except ValueError as e:
     log.error(f"Invalid configuration value — {e}")
     sys.exit(1)

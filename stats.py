@@ -52,7 +52,8 @@ def _empty_stats():
         "all_time": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}},
         "rolling_30": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}, "reset": now},
         "monthly": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}, "reset": now},
-        "last_month": None
+        "last_month": None,
+        "channel_history": {},
     }
 
 
@@ -125,6 +126,47 @@ def _normalize_last_month(value, default_reset: str) -> dict | None:
     }
 
 
+def _coerce_timestamp(value: str | None, default: str) -> str:
+    """Normalizes persisted timestamps to the current log-friendly format."""
+    if isinstance(value, str) and value.strip():
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                parsed = datetime.strptime(value, fmt)
+                return parsed.strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue
+    return default
+
+
+def _normalize_channel_history(history) -> dict:
+    """Normalizes persisted channel history entries to the current schema."""
+    if not isinstance(history, dict):
+        return {}
+
+    normalized = {}
+    for ch_id, entries in history.items():
+        if not isinstance(entries, list):
+            continue
+        channel_entries = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            channel_entries.append({
+                "timestamp": _coerce_timestamp(entry.get("timestamp"), datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                "triggered_by": str(entry.get("triggered_by") or "unknown"),
+                "count": _coerce_non_negative_int(entry.get("count", 0)),
+                "category": str(entry.get("category") or "Standalone"),
+                "status": str(entry.get("status") or ("error" if entry.get("error") else "deleted" if _coerce_non_negative_int(entry.get("count", 0)) > 0 else "clean")),
+                "rate_limits": _coerce_non_negative_int(entry.get("rate_limits", 0)),
+                "dry_run": bool(entry.get("dry_run", False)),
+                "oldest": entry.get("oldest"),
+                "error": entry.get("error"),
+            })
+        if channel_entries:
+            normalized[str(ch_id)] = channel_entries[-50:]
+    return normalized
+
+
 def _normalize_stats_payload(payload) -> dict:
     """Normalizes stats.json content to the current schema."""
     if not isinstance(payload, dict):
@@ -136,6 +178,7 @@ def _normalize_stats_payload(payload) -> dict:
         "rolling_30": _normalize_stats_bucket(payload.get("rolling_30", {}), default_reset=now),
         "monthly": _normalize_stats_bucket(payload.get("monthly", {}), default_reset=now),
         "last_month": _normalize_last_month(payload.get("last_month"), default_reset=now),
+        "channel_history": _normalize_channel_history(payload.get("channel_history", {})),
     }
 
 
@@ -350,7 +393,14 @@ def save_stats(stats: dict):
         log.warning(f"Could not save stats file — {e}")
 
 
-def update_stats(channel_results: dict):
+def _append_channel_history(history: dict, ch_id: str, entry: dict) -> None:
+    """Appends a history entry and keeps the channel timeline bounded."""
+    history.setdefault(ch_id, [])
+    history[ch_id].append(entry)
+    history[ch_id] = history[ch_id][-20:]
+
+
+def update_stats(channel_results: dict, run_context: dict | None = None):
     """Updates stats after a cleanup run."""
     try:
         stats = load_stats(strict=True)
@@ -391,6 +441,38 @@ def update_stats(channel_results: dict):
 
     save_stats(stats)
     log.info(f"Stats updated | Run total: {total_deleted} | All-time: {stats['all_time']['deleted']}")
+
+
+def record_channel_history(channel_results: dict, run_context: dict | None = None):
+    """Records per-channel run history without touching aggregate stats buckets."""
+    try:
+        stats = load_stats(strict=True)
+    except StatsLoadError as e:
+        log.error(f"Skipping channel history update to avoid overwriting unreadable stats data — {e}")
+        return
+
+    run_context = run_context or {}
+    run_timestamp = str(run_context.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    triggered_by = str(run_context.get("triggered_by") or "unknown")
+    dry_run = bool(run_context.get("dry_run", False))
+
+    history = stats.setdefault("channel_history", {})
+    for ch_id, ch_data in channel_results.items():
+        entry = {
+            "timestamp": run_timestamp,
+            "triggered_by": triggered_by,
+            "count": _coerce_non_negative_int(ch_data.get("count", 0)),
+            "category": ch_data.get("category", "Standalone"),
+            "status": ch_data.get("status") or ("error" if ch_data.get("count", 0) < 0 or ch_data.get("error") else "deleted" if ch_data.get("count", 0) > 0 else "clean"),
+            "rate_limits": _coerce_non_negative_int(ch_data.get("rate_limits", 0)),
+            "dry_run": dry_run,
+            "oldest": ch_data.get("oldest"),
+            "error": ch_data.get("error"),
+        }
+        _append_channel_history(history, str(ch_id), entry)
+
+    save_stats(stats)
+    log.info("Channel history updated | entries=%s", len(channel_results))
 
 
 def reset_stats(scope: str) -> bool:

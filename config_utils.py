@@ -129,6 +129,123 @@ def validate_channels_content(content: str) -> tuple[bool, str, list[dict] | Non
         return False, f"Invalid YAML — {e}", None
 
 
+def _channel_preview_snapshot(channel: dict) -> dict:
+    """Returns a compact, JSON-friendly snapshot of a channels.yml entry."""
+    snapshot = {
+        "id": channel["id"],
+        "name": channel.get("name", str(channel["id"])),
+        "type": channel.get("type", "channel"),
+        "days": channel.get("days"),
+        "exclude": channel.get("exclude", False),
+        "deep_clean": channel.get("deep_clean", False),
+        "notification_group": channel.get("notification_group"),
+    }
+    return snapshot
+
+
+def _channel_preview_label(channel: dict) -> str:
+    """Returns a human-readable label for a channels.yml entry."""
+    prefix = "📁 " if channel.get("type") == "category" else "#"
+    return f"{prefix}{channel.get('name', channel['id'])}"
+
+
+def _channel_preview_overview(channels: list[dict]) -> dict:
+    """Summarizes a channels.yml list for the config preview."""
+    notification_groups = {ch.get("notification_group") for ch in channels if ch.get("notification_group")}
+    return {
+        "entries": len(channels),
+        "categories": sum(1 for ch in channels if ch.get("type") == "category"),
+        "excluded": sum(1 for ch in channels if ch.get("exclude", False)),
+        "deep_clean": sum(1 for ch in channels if ch.get("deep_clean", False)),
+        "with_notification_groups": len(notification_groups),
+    }
+
+
+def _channel_preview_diff(current: list[dict], proposed: list[dict]) -> dict:
+    """Computes added, removed, and updated channels between two configs."""
+    current_by_id = {ch["id"]: ch for ch in current}
+    proposed_by_id = {ch["id"]: ch for ch in proposed}
+    keys = ["name", "type", "days", "exclude", "deep_clean", "notification_group"]
+
+    added = [_channel_preview_snapshot(proposed_by_id[ch_id]) for ch_id in proposed_by_id.keys() if ch_id not in current_by_id]
+    removed = [_channel_preview_snapshot(current_by_id[ch_id]) for ch_id in current_by_id.keys() if ch_id not in proposed_by_id]
+    updated = []
+    field_counts: dict[str, int] = {}
+
+    for ch_id in proposed_by_id.keys():
+        before = current_by_id.get(ch_id)
+        after = proposed_by_id[ch_id]
+        if before is None:
+            continue
+
+        changed_fields = []
+        for key in keys:
+            before_value = before.get(key, "channel" if key == "type" else None)
+            after_value = after.get(key, "channel" if key == "type" else None)
+            if before_value != after_value:
+                changed_fields.append({
+                    "field": key,
+                    "before": before_value,
+                    "after": after_value,
+                })
+                field_counts[key] = field_counts.get(key, 0) + 1
+
+        if changed_fields:
+            updated.append({
+                "id": ch_id,
+                "label": _channel_preview_label(after),
+                "before": _channel_preview_snapshot(before),
+                "after": _channel_preview_snapshot(after),
+                "changes": changed_fields,
+            })
+
+    return {
+        "added": added,
+        "removed": removed,
+        "updated": updated,
+        "field_counts": field_counts,
+    }
+
+
+def preview_channels_content(content: str) -> tuple[bool, str, dict | None]:
+    """Validates proposed channels.yml content and builds a config diff preview."""
+    import config
+
+    valid, message, channels = validate_channels_content(content)
+    if not valid or channels is None:
+        return False, message, None
+
+    current_channels = getattr(config, "raw_channels", []) or []
+    diff = _channel_preview_diff(current_channels, channels)
+    current_overview = _channel_preview_overview(current_channels)
+    proposed_overview = _channel_preview_overview(channels)
+    summary = {
+        "current": current_overview,
+        "proposed": proposed_overview,
+        "delta": {
+            "entries": proposed_overview["entries"] - current_overview["entries"],
+            "categories": proposed_overview["categories"] - current_overview["categories"],
+            "excluded": proposed_overview["excluded"] - current_overview["excluded"],
+            "deep_clean": proposed_overview["deep_clean"] - current_overview["deep_clean"],
+            "with_notification_groups": proposed_overview["with_notification_groups"] - current_overview["with_notification_groups"],
+        },
+        "counts": {
+            "added": len(diff["added"]),
+            "removed": len(diff["removed"]),
+            "updated": len(diff["updated"]),
+            "field_changes": sum(diff["field_counts"].values()),
+        },
+    }
+    label = "entry" if len(channels) == 1 else "entries"
+    preview = {
+        "summary": summary,
+        "changes": diff,
+        "parsed_channels": channels,
+        "message": f"channels.yml preview ready — {len(channels)} channel {label}",
+    }
+    return True, preview["message"], preview
+
+
 def save_channels_content(content: str) -> tuple[bool, str, str | None]:
     """Validates, backs up, and saves channels.yml content."""
     import config
@@ -264,6 +381,25 @@ def update_report_frequency(frequency: str) -> tuple[bool, str]:
     success, message = update_env_value("REPORT_FREQUENCY", frequency.lower())
     if success:
         config.REPORT_FREQUENCY = frequency.lower()
+    return success, message
+
+
+def update_report_grouping(scope: str, enabled: bool) -> tuple[bool, str]:
+    """Updates report grouping toggles for monthly or weekly reports."""
+    import config
+
+    scope = scope.lower().strip()
+    if scope not in {"monthly", "weekly"}:
+        return False, "Invalid grouping scope — must be monthly or weekly"
+
+    key = "REPORT_GROUP_MONTHLY" if scope == "monthly" else "REPORT_GROUP_WEEKLY"
+    value = "true" if enabled else "false"
+    success, message = update_env_value(key, value)
+    if success:
+        if scope == "monthly":
+            config.REPORT_GROUP_MONTHLY = enabled
+        else:
+            config.REPORT_GROUP_WEEKLY = enabled
     return success, message
 
 

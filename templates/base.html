@@ -918,6 +918,7 @@
     <div class="topbar-nav">
       <a href="/"         class="{% if request.path == '/' %}active{% endif %}">Dashboard</a>
       <a href="/config"   class="{% if request.path == '/config' %}active{% endif %}">Config</a>
+      <a href="/audit"    class="{% if request.path == '/audit' %}active{% endif %}">Audit</a>
       <a href="/schedule" class="{% if request.path == '/schedule' %}active{% endif %}">Schedule</a>
       <a href="/stats"    class="{% if request.path == '/stats' %}active{% endif %}">Stats</a>
       <a href="/logs"     class="{% if '/logs' in request.path %}active{% endif %}">Logs</a>
@@ -971,7 +972,10 @@
       <p>Overview of bot status, last run summary, stats, and run controls. Trigger a full or single-channel cleanup run directly from here.</p>
 
       <h3>Config</h3>
-      <p>Edit bot settings — retention period, log level, report frequency, and the raw <span class="mono">channels.yml</span> file. Changes take effect immediately without a restart.</p>
+      <p>Edit bot settings — retention period, log level, report frequency, report grouping, and the raw <span class="mono">channels.yml</span> file. Changes take effect immediately without a restart.</p>
+
+      <h3>Audit</h3>
+      <p>Review the live retention configuration at a glance. See categories, overrides, deep clean channels, exclusions, and notification groups in one read-only page.</p>
 
       <h3>Schedule</h3>
       <p>Add or remove scheduled cleanup run times. Uses the timezone set via the <span class="mono">TZ</span> environment variable. At least one run time must remain.</p>

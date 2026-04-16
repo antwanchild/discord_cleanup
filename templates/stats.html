@@ -149,6 +149,78 @@
   </div>
 </div>
 
+<!-- Channel history timeline -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Channel History</span>
+    {% if history_channels %}
+    <select id="history-channel-select" onchange="setHistoryChannel(this.value)" style="margin-left:auto; max-width:320px">
+      {% for ch in history_channels %}
+      <option value="history-{{ ch.id }}">{{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+  </div>
+
+  {% if history_channels %}
+    {% for ch in history_channels %}
+    <div class="history-pane" id="history-{{ ch.id }}" style="display:none">
+      <div class="stat-grid" style="margin-bottom:1rem">
+        <div class="stat-box">
+          <div class="stat-value">{{ ch.days }}d</div>
+          <div class="stat-label">Retention</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ ch.history_total }}</div>
+          <div class="stat-label">Recorded Runs</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ "Yes" if ch.deep_clean else "No" }}</div>
+          <div class="stat-label">Deep Clean</div>
+        </div>
+      </div>
+
+      {% if ch.history %}
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Deleted</th>
+            <th>Status</th>
+            <th>Triggered By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in ch.history %}
+          <tr>
+            <td class="mono">{{ entry.timestamp }}</td>
+            <td class="mono">{{ entry.count }}</td>
+            <td class="mono">
+              {% if entry.status == "error" %}
+                ⛔ error
+              {% elif entry.status == "clean" %}
+                ℹ️ clean
+              {% elif entry.dry_run %}
+                🔍 dry run
+              {% else %}
+                ✅ deleted
+              {% endif %}
+            </td>
+            <td class="mono">{{ entry.triggered_by }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No recorded runs for this channel yet.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No channel history yet.</p>
+  {% endif %}
+</div>
+
 <!-- Stats reset -->
 <div class="card">
   <div class="card-header">
@@ -275,10 +347,12 @@
     <p>Totals for the last 30 days. Resets automatically every 30 days.</p>
     <h3>This Month</h3>
     <p>Totals since the 1st of the current month. Resets on the 1st of each month.</p>
-    <h3>Views</h3>
-    <p>Summary shows category totals. Detail shows every channel sorted by count. Grouped shows channels nested under their category. Your preference is saved automatically.</p>
-    <h3>Catchup Runs</h3>
-    <p>All-time count of cleanup runs that were triggered automatically on startup because a scheduled run was missed while the bot was offline.</p>
+  <h3>Views</h3>
+  <p>Summary shows category totals. Detail shows every channel sorted by count. Grouped shows channels nested under their category. Your preference is saved automatically.</p>
+  <h3>Channel History</h3>
+  <p>Shows the most recent cleanup runs for each configured channel, including deleted count, run status, and trigger source.</p>
+  <h3>Catchup Runs</h3>
+  <p>All-time count of cleanup runs that were triggered automatically on startup because a scheduled run was missed while the bot was offline.</p>
     <h3>Reset Stats</h3>
     <p>Resets the chosen period back to zero. This cannot be undone.</p>
 </template>
@@ -287,6 +361,7 @@
 {% block scripts %}
 <script>
   const STORAGE_VIEW = "dcb-stats-view";
+  const STORAGE_HISTORY = "dcb-stats-history";
   let pendingResetScope = null;
 
   function confirmReset(scope, label) {
@@ -321,10 +396,27 @@
     localStorage.setItem(STORAGE_VIEW, view);
   }
 
+  function setHistoryChannel(id) {
+    document.querySelectorAll(".history-pane").forEach(pane => {
+      pane.style.display = pane.id === id ? "" : "none";
+    });
+    localStorage.setItem(STORAGE_HISTORY, id);
+  }
+
   // Restore saved view preference on load
   (function() {
     const saved = localStorage.getItem(STORAGE_VIEW) || "detail";
     setView(saved);
+    const historySelect = document.getElementById("history-channel-select");
+    if (historySelect) {
+      const savedHistory = localStorage.getItem(STORAGE_HISTORY) || historySelect.value;
+      if ([...historySelect.options].some(opt => opt.value === savedHistory)) {
+        historySelect.value = savedHistory;
+        setHistoryChannel(savedHistory);
+      } else {
+        setHistoryChannel(historySelect.value);
+      }
+    }
   })();
 </script>
 {% endblock %}

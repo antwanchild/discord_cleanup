@@ -60,6 +60,18 @@ def validate_report_frequency(value: str) -> str:
     return normalized
 
 
+def validate_bool(value, label: str) -> bool:
+    """Validates a boolean-like environment value."""
+    if isinstance(value, bool):
+        return value
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be true or false")
+    normalized = value.strip().lower()
+    if normalized not in {"true", "false"}:
+        raise ValueError(f"{label} must be true or false")
+    return normalized == "true"
+
+
 def _location(node) -> str:
     """Formats a node's starting line and column for user-facing errors."""
     mark = getattr(node, "start_mark", None)

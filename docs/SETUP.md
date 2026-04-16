@@ -91,16 +91,25 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `LOG_LEVEL` | ❌ | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post stats report (24hr format) |
 | `REPORT_FREQUENCY` | ❌ | `monthly` | Report frequency: `monthly`, `weekly`, or `both` |
+| `REPORT_GROUP_MONTHLY` | ❌ | `true` | Group `notification_group` channels in monthly reports |
+| `REPORT_GROUP_WEEKLY` | ❌ | `true` | Group `notification_group` channels in weekly reports |
 | `WARN_UNCONFIGURED` | ❌ | `false` | Log a warning for any Discord channels not in channels.yml |
-| `GITHUB_TOKEN` | ❌ | — | GitHub personal access token for version update checks (required for private repos) |
 | `WEB_HOST` | ❌ | `0.0.0.0` | Host/interface the web UI binds to |
 | `WEB_PORT` | ❌ | `8080` | Port the web UI listens on |
-| `WEB_AUTH_HEADER_NAME` | ❌ | — | Optional reverse-proxy header name required for web UI access |
-| `WEB_AUTH_HEADER_VALUE` | ❌ | — | Expected value for `WEB_AUTH_HEADER_NAME` |
-| `WEB_SECRET_KEY` | ❌ | — | Optional fixed secret for web sessions and CSRF protection |
 | `ADMIN_RATE_LIMIT_WINDOW_SECONDS` | ❌ | `60` | Window size for admin route rate limiting |
 | `ADMIN_RATE_LIMIT_MAX_REQUESTS` | ❌ | `20` | Max mutating admin requests per window |
 | `RUN_RATE_LIMIT_MAX_REQUESTS` | ❌ | `5` | Max cleanup trigger requests per window |
+
+### Optional / Advanced Settings
+
+These are only needed for specific deployments and can be added manually if you use them.
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `WEB_AUTH_HEADER_NAME` | ❌ | — | Reverse-proxy header name required for web UI access |
+| `WEB_AUTH_HEADER_VALUE` | ❌ | — | Expected value for `WEB_AUTH_HEADER_NAME` |
+| `WEB_SECRET_KEY` | ❌ | — | Fixed secret for web sessions and CSRF protection |
+| `GITHUB_TOKEN` | ❌ | — | GitHub personal access token for version update checks in private repos |
 
 ### Example `.env.discord_cleanup`
 
@@ -115,11 +124,15 @@ CHANNELS_BACKUP_RETENTION_DAYS=10
 STATS_BACKUP_RETENTION_DAYS=10
 LOG_LEVEL=INFO
 STATUS_REPORT_TIME=09:00
+REPORT_FREQUENCY=monthly
+REPORT_GROUP_MONTHLY=true
+REPORT_GROUP_WEEKLY=true
+WARN_UNCONFIGURED=false
 WEB_HOST=0.0.0.0
 WEB_PORT=8080
 ```
 
-> All variables marked ❌ can also be changed at runtime via the web UI without restarting the container.
+> All variables marked ❌ in the main table can also be changed at runtime via the web UI without restarting the container. Optional settings live in the section below and only need to be added manually if you use them.
 
 ### Web UI hardening
 
@@ -255,16 +268,19 @@ The bot includes a built-in web interface accessible on port 8080. It provides f
 
 If you publish the web UI through a reverse proxy, keep the container on an internal network and consider setting `WEB_AUTH_HEADER_NAME` and `WEB_AUTH_HEADER_VALUE` so the app only trusts requests that arrive through your proxy.
 
-On the Config page, `channels.yml` can be validated without saving, schema errors include exact line and column numbers where possible, and saving creates a backup of the previous file before applying changes.
+On the Config page, `channels.yml` can be previewed before saving, validated without saving, and schema errors include exact line and column numbers where possible. You can also launch a dry run from the preview modal to test the proposed config without writing it to disk. Saving creates a backup of the previous file before applying changes.
+
+The Stats page now includes a per-channel history timeline, and the Audit page provides a read-only retention review of the live cleanup configuration.
 
 **Pages:**
 
 | Page | URL | Description |
 |------|-----|-------------|
 | Dashboard | `/` | Bot status, uptime, next run, stats summary, startup path checks, and notification fallback visibility |
-| Config | `/config` | Edit retention, log level, warn unconfigured, report frequency, and `channels.yml` directly |
+| Config | `/config` | Edit retention, log level, warn unconfigured, report frequency, report grouping, and `channels.yml` directly |
+| Audit | `/audit` | Read-only retention audit showing categories, overrides, deep clean, exclusions, and grouping |
 | Schedule | `/schedule` | Add and remove scheduled run times |
-| Stats | `/stats` | Full statistics breakdown — toggle between category summary and per-channel detail, plus recent stats and channels.yml backup visibility |
+| Stats | `/stats` | Full statistics breakdown — toggle between category summary, per-channel detail, and channel history, plus recent stats and channels.yml backup visibility |
 | Logs | `/logs` | Log viewer with file selector and color-coded entries |
 
 **API:**

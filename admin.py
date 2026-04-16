@@ -6,7 +6,7 @@ import re
 from flask import Blueprint, jsonify, request
 
 from config import log
-from config_utils import save_channels_content, validate_channels_content
+from config_utils import preview_channels_content, save_channels_content, update_report_grouping, validate_channels_content
 from utils import (
     get_bot,
     get_bot_loop,
@@ -26,6 +26,48 @@ def _with_error_location(message: str, success: bool = False, **extra):
         payload["line"] = int(match.group(1))
         payload["column"] = int(match.group(2))
     return jsonify(payload)
+
+
+def _augment_preview_with_effective_counts(preview: dict) -> dict:
+    """Adds live-vs-proposed cleanup target counts when the bot is available."""
+    from cleanup import build_channel_map
+
+    bot = get_bot()
+    if not bot or not bot.guilds or "parsed_channels" not in preview:
+        return preview
+
+    guild = bot.guilds[0]
+
+    def summarize(channel_map: dict) -> dict:
+        return {
+            "targets": len(channel_map),
+            "categories": len({data.get("category_name") for data in channel_map.values() if data.get("category_name")}),
+            "standalone": sum(1 for data in channel_map.values() if not data.get("category_name")),
+            "overrides": sum(1 for data in channel_map.values() if data.get("is_override")),
+            "deep_clean": sum(1 for data in channel_map.values() if data.get("deep_clean")),
+            "notification_groups": len({data.get("notification_group") for data in channel_map.values() if data.get("notification_group")}),
+        }
+
+    current_map = build_channel_map(guild)
+    proposed_map = build_channel_map(guild, raw_channels=preview["parsed_channels"])
+    preview["effective"] = {
+        "current": summarize(current_map),
+        "proposed": summarize(proposed_map),
+        "delta": {
+            "targets": len(proposed_map) - len(current_map),
+            "categories": len({data.get("category_name") for data in proposed_map.values() if data.get("category_name")})
+                - len({data.get("category_name") for data in current_map.values() if data.get("category_name")}),
+            "standalone": sum(1 for data in proposed_map.values() if not data.get("category_name"))
+                - sum(1 for data in current_map.values() if not data.get("category_name")),
+            "overrides": sum(1 for data in proposed_map.values() if data.get("is_override"))
+                - sum(1 for data in current_map.values() if data.get("is_override")),
+            "deep_clean": sum(1 for data in proposed_map.values() if data.get("deep_clean"))
+                - sum(1 for data in current_map.values() if data.get("deep_clean")),
+            "notification_groups": len({data.get("notification_group") for data in proposed_map.values() if data.get("notification_group")})
+                - len({data.get("notification_group") for data in current_map.values() if data.get("notification_group")}),
+        },
+    }
+    return preview
 
 
 @admin.route("/admin/config/retention", methods=["POST"])
@@ -73,6 +115,15 @@ def set_report_frequency():
     return jsonify({"success": success, "message": message})
 
 
+@admin.route("/admin/config/reportgrouping", methods=["POST"])
+def set_report_grouping():
+    """Toggle grouping for monthly or weekly scheduled reports."""
+    scope = request.form.get("scope", "").lower().strip()
+    enabled = request.form.get("enabled", "false").lower() == "true"
+    success, message = update_report_grouping(scope, enabled)
+    return jsonify({"success": success, "message": message})
+
+
 @admin.route("/admin/config/logmaxfiles", methods=["POST"])
 def set_log_max_files():
     """Update number of log files to retain."""
@@ -117,6 +168,23 @@ def validate_channels_route():
         "message": message,
         "details": message,
         "channel_count": len(channels or []),
+    })
+
+
+@admin.route("/admin/config/channels/preview", methods=["POST"])
+def preview_channels_route():
+    """Preview how proposed channels.yml content differs from the live config."""
+    content = request.form.get("channels_yml", "")
+    success, message, preview = preview_channels_content(content)
+    if not success:
+        return _with_error_location(message, success=False, details=message), 400
+    preview = _augment_preview_with_effective_counts(preview)
+
+    return jsonify({
+        "success": True,
+        "message": message,
+        "details": message,
+        "preview": preview,
     })
 
 
@@ -234,6 +302,50 @@ def trigger_channel_run():
         return jsonify({"success": False, "message": "Could not schedule cleanup run"}), 500
     log.info(f"Channel cleanup run triggered from web UI for #{channel_name}")
     return jsonify({"success": True, "message": f"Cleanup started for #{channel_name} — check the log channel for results"})
+
+
+@admin.route("/admin/config/channels/dry-run", methods=["POST"])
+def preview_dry_run():
+    """Run a dry cleanup preview against proposed channels.yml content."""
+    from cleanup import run_cleanup
+    from utils import is_run_in_progress
+
+    content = request.form.get("channels_yml", "")
+    success, message, preview = preview_channels_content(content)
+    if not success or preview is None:
+        status_code = 500 if "Permission denied" in message else 400
+        return _with_error_location(message, success=False, details=message), status_code
+    preview = _augment_preview_with_effective_counts(preview)
+
+    if is_run_in_progress():
+        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
+
+    bot = get_bot()
+    loop = get_bot_loop()
+    if not bot or not loop:
+        return jsonify({"success": False, "message": "Bot is not ready yet"}), 503
+    if not bot.guilds:
+        return jsonify({"success": False, "message": "Bot is not in any guilds"}), 503
+
+    guild = bot.guilds[0]
+    if not try_acquire_run("web UI preview dry run"):
+        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
+
+    async def _run():
+        try:
+            await run_cleanup(bot, guild, dry_run=True, triggered_by="web UI preview", raw_channels=preview["parsed_channels"])
+        finally:
+            release_run()
+
+    try:
+        asyncio.run_coroutine_threadsafe(_run(), loop)
+    except Exception:
+        release_run()
+        log.exception("Failed to schedule preview dry run from web UI")
+        return jsonify({"success": False, "message": "Could not schedule cleanup run"}), 500
+
+    log.info("Preview dry run triggered from web UI")
+    return jsonify({"success": True, "message": "Preview dry run started — check the log channel for results", "preview": preview})
 
 
 @admin.route("/admin/api/stats/reset", methods=["POST"])

@@ -90,6 +90,28 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertEqual(leaderboard[1]["count"], 8)
         self.assertFalse(leaderboard[1]["grouped"])
 
+    def test_build_notification_leaderboard_can_disable_grouping(self):
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+
+        with isolated_module_import(
+            "notifications",
+            {
+                "config": config_stub,
+                "file_utils": file_utils_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "discord": discord_stub,
+            },
+        ) as notifications:
+            leaderboard = notifications._build_notification_leaderboard(
+                {"101": {"name": "repo-a-builds", "count": 20}},
+                {101: {"notification_group": "Build Channels"}},
+                group_notification_groups=False,
+            )
+
+        self.assertEqual(leaderboard[0]["label"], "#repo-a-builds")
+        self.assertFalse(leaderboard[0]["grouped"])
+
     def test_sanitize_embed_trims_fields_to_discord_limits(self):
         config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
 
@@ -201,9 +223,6 @@ class NotificationGroupingTests(unittest.TestCase):
             with open(changelog_path, "w") as f:
                 f.write(
                     "# Changelog\n\n"
-                    "## Unreleased\n\n"
-                    "### Changes\n"
-                    "- Pending UI polish\n\n"
                     "## 5.6.0 - 2026-04-15\n\n"
                     "### Changes\n"
                     "- Add backup visibility\n\n"
@@ -232,7 +251,6 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertEqual(
             entries,
             [
-                "- Pending UI polish",
                 "- Add backup visibility `(5.6.0)`",
             ],
         )

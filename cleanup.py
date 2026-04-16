@@ -8,11 +8,11 @@ from config import (
     BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_CHANNEL_ID,
     RETRY_DELAY, WARN_UNCONFIGURED, log
 )
-from stats import update_stats, load_stats, save_last_run
+from stats import record_channel_history, update_stats, load_stats, save_last_run
 from utils import get_next_run_str, setup_run_log, update_health
 
 
-def build_channel_map(guild):
+def build_channel_map(guild, raw_channels=None):
     """Builds a map of channel_id -> config dict for all channels to be cleaned.
 
     Uses three passes over raw_channels:
@@ -26,7 +26,9 @@ def build_channel_map(guild):
     category_map = {}
 
     # Pass 1: index all configured entries by type
-    for ch in cfg.raw_channels:
+    channel_source = raw_channels if raw_channels is not None else cfg.raw_channels
+
+    for ch in channel_source:
         ch_id = ch["id"]
         if ch.get("type") == "category":
             category_map[ch_id] = {
@@ -47,7 +49,7 @@ def build_channel_map(guild):
     channel_map = {}
 
     # Pass 2: expand categories into their child text channels
-    for ch_config in cfg.raw_channels:
+    for ch_config in channel_source:
         if ch_config.get("type") != "category":
             continue
         cat_id = ch_config["id"]
@@ -88,7 +90,7 @@ def build_channel_map(guild):
                 }
 
     # Pass 3: add standalone channels not already in the map or excluded
-    for ch_config in cfg.raw_channels:
+    for ch_config in channel_source:
         if ch_config.get("type") == "category":
             continue
         ch_id = ch_config["id"]
@@ -401,7 +403,7 @@ async def purge_all_channel(channel) -> dict:
     return {"count": total_deleted, "error": None}
 
 
-async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False, triggered_by: str = "scheduler"):
+async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False, triggered_by: str = "scheduler", raw_channels=None):
     """Core cleanup logic used by scheduler, slash commands, and web UI."""
     from notifications import safe_send_embed
 
@@ -416,7 +418,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
         bulk_cutoff = run_time - timedelta(days=14)
         local_run_time = datetime.now()
 
-        channel_map = build_channel_map(guild)
+        channel_map = build_channel_map(guild, raw_channels=raw_channels)
 
         if single_channel_id:
             if single_channel_id in channel_map:
@@ -433,7 +435,8 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             f"TZ: {os.getenv('TZ', 'UTC')}"
         )
 
-        for ch in cfg.raw_channels:
+        channel_source = raw_channels if raw_channels is not None else cfg.raw_channels
+        for ch in channel_source:
             if ch.get("exclude", False):
                 log.info(f"#{ch.get('name', ch['id'])} — excluded (skipping)")
 
@@ -463,10 +466,20 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
                 dry_run=dry_run, deep_clean=ch_config.get("deep_clean", False)
             )
             stats["is_override"] = ch_config["is_override"]
+            stats["notification_group"] = ch_config.get("notification_group")
+
+            channel_results[str(channel.id)] = {
+                "name": channel.name,
+                "count": stats["count"],
+                "category": ch_config.get("category_name") or "Standalone",
+                "rate_limits": stats["rate_limits"],
+                "oldest": stats["oldest"].strftime("%Y-%m-%d %H:%M:%S") if stats.get("oldest") else None,
+                "error": stats.get("error"),
+                "status": "error" if stats["count"] < 0 or stats.get("error") else ("deleted" if stats["count"] > 0 else "clean"),
+            }
 
             if stats["count"] > 0:
                 grand_total += stats["count"]
-                channel_results[str(channel.id)] = {"name": channel.name, "count": stats["count"], "category": ch_config.get("category_name") or "Standalone"}
                 log.info(f"  ✅ #{channel.name} — deleted {stats['count']} message(s)")
             elif stats["count"] == 0:
                 log.info(f"  ℹ️ #{channel.name} — nothing to delete")
@@ -500,49 +513,59 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
         duration_str = f"{minutes}m {seconds}s" if minutes else f"{seconds}s"
 
         if not dry_run and not single_channel_id:
-            update_stats(channel_results)
+            update_stats(channel_results, run_context={
+                "timestamp": run_end.strftime("%Y-%m-%d %H:%M:%S"),
+                "triggered_by": triggered_by,
+                "dry_run": dry_run,
+            })
 
-            # Build category totals for last run summary
-            cat_totals = {}
-            for cat_name, cat_data in category_results.items():
-                cat_total = sum(s["count"] for s in cat_data["channels"].values() if s["count"] > 0)
-                if cat_total > 0:
-                    cat_totals[cat_name] = cat_total
-            for ch_name, s in standalone_results.items():
-                if s["count"] > 0:
-                    cat_totals[f"#{ch_name}"] = s["count"]
+        record_channel_history(channel_results, run_context={
+            "timestamp": run_end.strftime("%Y-%m-%d %H:%M:%S"),
+            "triggered_by": triggered_by,
+            "dry_run": dry_run,
+        })
 
-            # Determine status label for summary
-            if has_warnings and grand_total == 0:
-                run_status = "error"
-            elif has_warnings:
-                run_status = "warning"
-            elif grand_total > 0:
-                run_status = "success"
-            else:
-                run_status = "clean"
+        # Build category totals for last run summary
+        cat_totals = {}
+        for cat_name, cat_data in category_results.items():
+            cat_total = sum(s["count"] for s in cat_data["channels"].values() if s["count"] > 0)
+            if cat_total > 0:
+                cat_totals[cat_name] = cat_total
+        for ch_name, s in standalone_results.items():
+            if s["count"] > 0:
+                cat_totals[f"#{ch_name}"] = s["count"]
 
-            try:
-                save_last_run({
-                    "timestamp":        run_end.strftime("%Y-%m-%d %H:%M:%S"),
-                    "triggered_by":     triggered_by,
-                    "duration":         duration_str,
-                    "total_deleted":    grand_total,
-                    "channels_checked": len(channel_map),
-                    "rate_limits":      grand_rate_limits,
-                    "status":           run_status,
-                    "categories":       [
-                        {"name": k, "count": v}
-                        for k, v in sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:5]
-                    ],
-                })
-            except Exception as e:
-                log.warning(f"Could not save last run summary — {e}")
-            stats_data = load_stats()
-            log.info(
-                f"Stats | All-time: {stats_data['all_time']['deleted']} deleted across {stats_data['all_time']['runs']} runs "
-                f"| This month: {stats_data['monthly']['deleted']} deleted"
-            )
+        # Determine status label for summary
+        if has_warnings and grand_total == 0:
+            run_status = "error"
+        elif has_warnings:
+            run_status = "warning"
+        elif grand_total > 0:
+            run_status = "success"
+        else:
+            run_status = "clean"
+
+        try:
+            save_last_run({
+                "timestamp":        run_end.strftime("%Y-%m-%d %H:%M:%S"),
+                "triggered_by":     triggered_by,
+                "duration":         duration_str,
+                "total_deleted":    grand_total,
+                "channels_checked": len(channel_map),
+                "rate_limits":      grand_rate_limits,
+                "status":           run_status,
+                "categories":       [
+                    {"name": k, "count": v}
+                    for k, v in sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:5]
+                ],
+            })
+        except Exception as e:
+            log.warning(f"Could not save last run summary — {e}")
+        stats_data = load_stats()
+        log.info(
+            f"Stats | All-time: {stats_data['all_time']['deleted']} deleted across {stats_data['all_time']['runs']} runs "
+            f"| This month: {stats_data['monthly']['deleted']} deleted"
+        )
 
         # Color logic
         if dry_run:
