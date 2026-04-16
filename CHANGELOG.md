@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.9.0 - 2026-04-16
+
+### Changes
+- Add log search filters and clarify retention labels
+
+
 ## 5.8.0 - 2026-04-16
 
 ### Changes
