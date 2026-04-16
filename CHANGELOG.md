@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.8.0 - 2026-04-16
+
+### Changes
+- Add .env rollback UI and routes
+
+
 ## 5.7.0 - 2026-04-16
 
 ### Changes
