@@ -9,7 +9,7 @@
     <h1>Statistics</h1>
     <div class="help-btn" onclick="openPageHelp('help-stats')" title="Help">?</div>
   </div>
-  <p>Cleanup run history and message deletion breakdown</p>
+  <p>Cleanup run history, message deletion breakdown, and per-channel drilldown</p>
 </div>
 
 <!-- Summary buckets -->
@@ -68,14 +68,14 @@
       </thead>
       <tbody>
         {% for cat_name, cat_data in category_summary %}
-        <tr>
+        <tr style="cursor:pointer" onclick="setDrilldownChannel('history-{{ grouped_categories[loop.index0].channels[0].id if grouped_categories and grouped_categories[loop.index0].channels else '' }}')">
           <td>📁 {{ cat_name }}</td>
           <td class="mono">{{ cat_data.count }}</td>
           <td class="mono">{{ cat_data.channels }}</td>
         </tr>
         {% endfor %}
         {% for ch in standalone_channels %}
-        <tr>
+        <tr style="cursor:pointer" onclick="setDrilldownChannel('history-{{ ch.id if ch.id is defined else '' }}')">
           <td class="mono">📄 #{{ ch.name }}</td>
           <td class="mono">{{ ch.count }}</td>
           <td class="mono">—</td>
@@ -100,7 +100,7 @@
       </thead>
       <tbody>
         {% for ch_id, ch_data in sorted_channels %}
-        <tr>
+        <tr style="cursor:pointer" onclick="setDrilldownChannel('history-{{ ch_id }}')">
           <td class="mono">#{{ ch_data.name if ch_data is mapping else ch_id }}</td>
           <td class="mono">{{ ch_data.count if ch_data is mapping else ch_data }}</td>
         </tr>
@@ -124,19 +124,19 @@
       </thead>
       <tbody>
         {% for cat in grouped_categories %}
-        <tr style="background: var(--surface)">
+        <tr style="background: var(--surface); cursor:pointer" onclick="setDrilldownChannel('history-{{ cat.channels[0].id if cat.channels else '' }}')">
           <td style="font-weight:600; color:var(--brand)">📁 {{ cat.name }}</td>
           <td class="mono" style="font-weight:600; color:var(--brand)">{{ cat.count }}</td>
         </tr>
         {% for ch in cat.channels %}
-        <tr>
+        <tr style="cursor:pointer" onclick="setDrilldownChannel('history-{{ ch.id if ch.id is defined else '' }}')">
           <td class="mono" style="padding-left:2rem">↳ #{{ ch.name }}</td>
           <td class="mono">{{ ch.count }}</td>
         </tr>
         {% endfor %}
         {% endfor %}
         {% for ch in standalone_channels %}
-        <tr>
+        <tr style="cursor:pointer" onclick="setDrilldownChannel('history-{{ ch.id if ch.id is defined else '' }}')">
           <td class="mono">📄 #{{ ch.name }}</td>
           <td class="mono">{{ ch.count }}</td>
         </tr>
@@ -192,7 +192,7 @@
         </thead>
         <tbody>
           {% for entry in ch.history %}
-          <tr>
+          <tr style="cursor:pointer" onclick="setDrilldownChannel('history-{{ ch.id }}')">
             <td class="mono">{{ entry.timestamp }}</td>
             <td class="mono">{{ entry.count }}</td>
             <td class="mono">
@@ -218,6 +218,122 @@
     {% endfor %}
   {% else %}
     <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No channel history yet.</p>
+  {% endif %}
+</div>
+
+<!-- Channel drilldown -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Channel Drilldown</span>
+    {% if history_channels %}
+    <select id="drilldown-channel-select" onchange="setDrilldownChannel(this.value)" style="margin-left:auto; max-width:320px">
+      {% for ch in history_channels %}
+      <option value="history-{{ ch.id }}">{{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+  </div>
+
+  {% if history_channels %}
+  <div id="drilldown-empty" style="color:var(--text-muted); font-size:0.875rem; margin:0">Select a channel to inspect its current config and recent run history.</div>
+  {% for ch in history_channels %}
+  <div class="drilldown-pane" id="drilldown-{{ ch.id }}" data-channel-name="{{ ch.name }}" data-channel-id="{{ ch.id }}" data-history-count="{{ ch.history_total }}" style="display:none">
+    <div class="stat-grid" style="margin-bottom:1rem">
+      <div class="stat-box">
+        <div class="stat-value">{{ ch.all_time_deleted | default(0) }}</div>
+        <div class="stat-label">All-Time Deleted</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ ch.history_total }}</div>
+        <div class="stat-label">Recorded Runs</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ ch.days }}d</div>
+        <div class="stat-label">Retention</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ "Yes" if ch.deep_clean else "No" }}</div>
+        <div class="stat-label">Deep Clean</div>
+      </div>
+    </div>
+
+    <table style="margin-bottom:1rem">
+      <tbody>
+        <tr>
+          <td>Category</td>
+          <td class="mono">{{ ch.category }}</td>
+        </tr>
+        <tr>
+          <td>Override</td>
+          <td class="mono">{{ "Yes" if ch.is_override else "No" }}</td>
+        </tr>
+        <tr>
+          <td>Notification Group</td>
+          <td class="mono">{{ ch.notification_group or "—" }}</td>
+        </tr>
+        <tr>
+          <td>Latest Trigger</td>
+          <td class="mono">{{ ch.latest.triggered_by if ch.latest else "—" }}</td>
+        </tr>
+        <tr>
+          <td>Latest Status</td>
+          <td class="mono">
+            {% if ch.latest %}
+              {% if ch.latest.status == "error" %}
+                ⛔ error
+              {% elif ch.latest.status == "clean" %}
+                ℹ️ clean
+              {% elif ch.latest.dry_run %}
+                🔍 dry run
+              {% else %}
+                ✅ deleted
+              {% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    {% if ch.history %}
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Deleted</th>
+          <th>Status</th>
+          <th>Triggered By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in ch.history %}
+        <tr>
+          <td class="mono">{{ entry.timestamp }}</td>
+          <td class="mono">{{ entry.count }}</td>
+          <td class="mono">
+            {% if entry.status == "error" %}
+              ⛔ error
+            {% elif entry.status == "clean" %}
+              ℹ️ clean
+            {% elif entry.dry_run %}
+              🔍 dry run
+            {% else %}
+              ✅ deleted
+            {% endif %}
+          </td>
+          <td class="mono">{{ entry.triggered_by }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No recorded runs for this channel yet.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% else %}
+  <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No channel history yet.</p>
   {% endif %}
 </div>
 
@@ -337,6 +453,8 @@
   <p>Summary shows category totals. Detail shows every channel sorted by count. Grouped shows channels nested under their category. Your preference is saved automatically.</p>
   <h3>Channel History</h3>
   <p>Shows the most recent cleanup runs for each configured channel, including deleted count, run status, and trigger source.</p>
+  <h3>Channel Drilldown</h3>
+  <p>Use the dropdown or click a channel row to jump into a detailed per-channel view with retention, config context, all-time totals, and recent run history.</p>
   <h3>Catchup Runs</h3>
   <p>All-time count of cleanup runs that were triggered automatically on startup because a scheduled run was missed while the bot was offline.</p>
   <h3>Reset Stats</h3>
@@ -348,6 +466,7 @@
 <script>
   const STORAGE_VIEW = "dcb-stats-view";
   const STORAGE_HISTORY = "dcb-stats-history";
+  const HISTORY_CHANNELS = {{ history_channels | tojson }};
   let pendingResetScope = null;
 
   function confirmReset(scope, label) {
@@ -385,7 +504,34 @@
     document.querySelectorAll(".history-pane").forEach(pane => {
       pane.style.display = pane.id === id ? "" : "none";
     });
+    setDrilldownChannel(id);
     localStorage.setItem(STORAGE_HISTORY, id);
+  }
+
+  function getHistoryChannelData(id) {
+    return HISTORY_CHANNELS.find(ch => `history-${ch.id}` === id || String(ch.id) === id) || null;
+  }
+
+  function renderDrilldownChannel(data) {
+    const empty = document.getElementById("drilldown-empty");
+    const panes = document.querySelectorAll(".drilldown-pane");
+    panes.forEach(pane => pane.style.display = "none");
+    if (!data) {
+      if (empty) empty.style.display = "";
+      return;
+    }
+    if (empty) empty.style.display = "none";
+    const pane = document.getElementById(`drilldown-${data.id}`);
+    if (pane) pane.style.display = "";
+  }
+
+  function setDrilldownChannel(id) {
+    const data = getHistoryChannelData(id);
+    renderDrilldownChannel(data);
+    const select = document.getElementById("drilldown-channel-select");
+    if (select && data && select.value !== `history-${data.id}`) {
+      select.value = `history-${data.id}`;
+    }
   }
 
   // Restore saved view preference on load
@@ -400,6 +546,12 @@
         setHistoryChannel(savedHistory);
       } else {
         setHistoryChannel(historySelect.value);
+      }
+    }
+    const drilldownSelect = document.getElementById("drilldown-channel-select");
+    if (drilldownSelect) {
+      if (!localStorage.getItem(STORAGE_HISTORY) && drilldownSelect.value) {
+        setDrilldownChannel(drilldownSelect.value);
       }
     }
   })();

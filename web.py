@@ -237,12 +237,12 @@ def stats_page():
         name     = ch_data.get("name", str(ch_id))
         category = ch_data.get("category", "Standalone")
         if category == "Standalone":
-            standalone.append({"name": name, "count": count})
+            standalone.append({"id": ch_id, "name": name, "count": count})
         else:
             if category not in cat_totals:
                 cat_totals[category] = {"count": 0, "channels": []}
             cat_totals[category]["count"] += count
-            cat_totals[category]["channels"].append({"name": name, "count": count})
+            cat_totals[category]["channels"].append({"id": ch_id, "name": name, "count": count})
 
     # Sort categories by total count, sort channels within each category by count
     grouped_categories = sorted(
@@ -258,6 +258,7 @@ def stats_page():
     category_summary = [(g["name"], {"count": g["count"], "channels": len(g["channels"])}) for g in grouped_categories]
 
     channel_history = stats.get("channel_history", {})
+    all_time_channels = stats.get("all_time", {}).get("channels", {})
     bot = get_bot()
     history_channels = []
     if bot and bot.guilds:
@@ -268,6 +269,7 @@ def stats_page():
             name = discord_channel.name if discord_channel else str(ch_id)
             entries = list(reversed(channel_history.get(str(ch_id), [])))
             latest = entries[0] if entries else None
+            stats_entry = all_time_channels.get(str(ch_id), {})
             history_channels.append({
                 "id": ch_id,
                 "name": name,
@@ -276,6 +278,7 @@ def stats_page():
                 "is_override": data.get("is_override", False),
                 "deep_clean": data.get("deep_clean", False),
                 "notification_group": data.get("notification_group"),
+                "all_time_deleted": stats_entry.get("count", 0) if isinstance(stats_entry, dict) else stats_entry,
                 "history": entries[:10],
                 "history_total": len(entries),
                 "latest": latest,
