@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.6.5 - 2026-04-16
+
+### Changes
+- Polish config docs and cleanup UI
+
+
 ## 5.6.4 - 2026-04-16
 
 ### Changes
