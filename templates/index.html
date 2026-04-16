@@ -239,17 +239,17 @@
 
 <template id="help-dashboard">
   <h2>Dashboard Help</h2>
-    <h3>Bot Status</h3>
-    <p>Shows current uptime, next scheduled run time, default retention, log level, scheduled runs per day, and report frequency.</p>
-    <h3>Run Controls</h3>
-    <p>Trigger a cleanup run directly from the web UI. Run All Channels runs the full scheduled cleanup. Single Channel runs cleanup on one channel — select it then click Run. Buttons are disabled during an active run, and the active run owner is shown above the controls.</p>
-    <p>Note: Dry run and purge are only available as slash commands in Discord.</p>
-    <h3>Last Run</h3>
-    <p>Summary of the most recent full cleanup run — status, messages deleted, duration, timestamp, trigger source, and top categories.</p>
-    <h3>Stats Summary</h3>
-    <p>Quick view of all-time, rolling 30-day, and monthly deletion counts. Click Full Stats for the complete breakdown.</p>
-    <h3>Runtime Health</h3>
-    <p>Shows the most recent startup writable-path checks and whether any Discord notifications recently had to fall back from embeds to plain text.</p>
+  <h3>Bot Status</h3>
+  <p>Shows current uptime, next scheduled run time, default retention, log level, scheduled runs per day, and report frequency.</p>
+  <h3>Run Controls</h3>
+  <p>Trigger a cleanup run directly from the web UI. Run All Channels runs the full scheduled cleanup. For Single Channel, select a channel and click Run. Buttons are disabled during an active run, and the active run owner is shown above the controls.</p>
+  <p>Dry run and purge are only available as slash commands in Discord.</p>
+  <h3>Last Run</h3>
+  <p>Summary of the most recent full cleanup run — status, messages deleted, duration, timestamp, trigger source, and top categories.</p>
+  <h3>Stats Summary</h3>
+  <p>Quick view of all-time, rolling 30-day, and monthly deletion counts. Click Full Stats for the complete breakdown.</p>
+  <h3>Runtime Health</h3>
+  <p>Shows the most recent startup writable-path checks and whether any Discord notifications recently had to fall back from embeds to plain text.</p>
 </template>
 {% endblock %}
 
