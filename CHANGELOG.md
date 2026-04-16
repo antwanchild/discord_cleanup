@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.7.0 - 2026-04-16
+
+### Changes
+- Add channels.yml rollback UI
+
+
 ## 5.6.7 - 2026-04-16
 
 ### Changes
