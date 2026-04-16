@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.6.4 - 2026-04-16
+
+### Changes
+- Keep daily cleanup reports per-channel
+
+
 ## 5.6.3 - 2026-04-15
 
 ### Changes
