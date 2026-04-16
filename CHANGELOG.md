@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.6.7 - 2026-04-16
+
+### Changes
+- Polish dashboard and logs copy
+
+
 ## 5.6.6 - 2026-04-16
 
 ### Changes
