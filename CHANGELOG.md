@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.6.6 - 2026-04-16
+
+### Changes
+- Polish modal and help copy
+
+
 ## 5.6.5 - 2026-04-16
 
 ### Changes
