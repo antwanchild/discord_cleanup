@@ -34,6 +34,12 @@ channels:
     name: crowdsec
     # Optional: group channels together in monthly/weekly Discord reports
     # notification_group: Build Channels
+    # Optional: override the report group label for this channel
+    # report_group: Build Channels
+    # Optional: keep this channel ungrouped in reports
+    # report_individual: true
+    # Optional: exclude this channel from report embeds
+    # report_exclude: true
 
   # Individual channel with retention override and deep clean enabled
   - id: 678901234567890123

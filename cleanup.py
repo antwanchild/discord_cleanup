@@ -12,6 +12,33 @@ from stats import record_channel_history, update_stats, load_stats, save_last_ru
 from utils import get_next_run_str, setup_run_log, update_health
 
 
+def _merge_report_controls(base: dict, override: dict | None = None) -> dict:
+    """Merges per-channel report controls with explicit overrides taking precedence."""
+    controls = {
+        "report_exclude": base.get("report_exclude", False),
+        "report_individual": base.get("report_individual", False),
+        "report_group": base.get("report_group"),
+        "report_group_override": base.get("report_group_override"),
+    }
+    if base.get("report_group") is not None:
+        controls["report_group_override"] = base.get("report_group")
+    if controls["report_group"] is None and base.get("notification_group"):
+        controls["report_group"] = base.get("notification_group")
+
+    if override is not None:
+        if "report_exclude" in override:
+            controls["report_exclude"] = override["report_exclude"]
+        if "report_individual" in override:
+            controls["report_individual"] = override["report_individual"]
+        if "report_group" in override:
+            controls["report_group"] = override["report_group"]
+            controls["report_group_override"] = override["report_group"]
+        elif "notification_group" in override:
+            controls["report_group"] = override["notification_group"]
+
+    return controls
+
+
 def build_channel_map(guild, raw_channels=None):
     """Builds a map of channel_id -> config dict for all channels to be cleaned.
 
@@ -31,19 +58,29 @@ def build_channel_map(guild, raw_channels=None):
     for ch in channel_source:
         ch_id = ch["id"]
         if ch.get("type") == "category":
+            report_controls = _merge_report_controls(ch)
             category_map[ch_id] = {
                 "name": ch.get("name", str(ch_id)),
                 "days": ch.get("days", DEFAULT_RETENTION),
                 "deep_clean": ch.get("deep_clean", False),
-                "notification_group": ch.get("notification_group")
+                "notification_group": report_controls["report_group"],
+                "report_exclude": report_controls["report_exclude"],
+                "report_individual": report_controls["report_individual"],
+                "report_group": ch.get("report_group"),
+                "report_group_override": report_controls["report_group_override"],
             }
         elif ch.get("exclude", False):
             exclude_set.add(ch_id)
         else:
+            report_controls = _merge_report_controls(ch)
             override_map[ch_id] = {
                 "days": ch.get("days", DEFAULT_RETENTION),
                 "deep_clean": ch.get("deep_clean", False),
-                "notification_group": ch.get("notification_group")
+                "notification_group": report_controls["report_group"],
+                "report_exclude": report_controls["report_exclude"],
+                "report_individual": report_controls["report_individual"],
+                "report_group": ch.get("report_group"),
+                "report_group_override": report_controls["report_group_override"],
             }
 
     channel_map = {}
@@ -57,6 +94,9 @@ def build_channel_map(guild, raw_channels=None):
         cat_name = ch_config.get("name", str(cat_id))
         cat_deep_clean = ch_config.get("deep_clean", False)
         cat_notification_group = ch_config.get("notification_group")
+        cat_report_group = ch_config.get("report_group")
+        cat_report_exclude = ch_config.get("report_exclude", False)
+        cat_report_individual = ch_config.get("report_individual", False)
 
         category = guild.get_channel(cat_id)
         if not category:
@@ -68,6 +108,9 @@ def build_channel_map(guild, raw_channels=None):
                 continue
             if sub.id in override_map:
                 ch_override = override_map[sub.id]
+                report_group_override = ch_override.get("report_group_override")
+                if cat_report_group and not report_group_override:
+                    report_group_override = cat_report_group
                 channel_map[sub.id] = {
                     "days": ch_override["days"],
                     "category_name": cat_name,
@@ -77,7 +120,11 @@ def build_channel_map(guild, raw_channels=None):
                     # notification_group or deep_clean should not show a retention override.
                     "is_override": ch_override["days"] != cat_days,
                     "deep_clean": ch_override["deep_clean"] or cat_deep_clean,
-                    "notification_group": ch_override.get("notification_group") or cat_notification_group
+                    "notification_group": ch_override.get("notification_group") or cat_notification_group,
+                    "report_exclude": ch_override.get("report_exclude", cat_report_exclude),
+                    "report_individual": ch_override.get("report_individual", cat_report_individual),
+                    "report_group": ch_override.get("report_group") or cat_report_group,
+                    "report_group_override": report_group_override,
                 }
             else:
                 channel_map[sub.id] = {
@@ -86,7 +133,11 @@ def build_channel_map(guild, raw_channels=None):
                     "category_default": cat_days,
                     "is_override": False,
                     "deep_clean": cat_deep_clean,
-                    "notification_group": cat_notification_group
+                    "notification_group": cat_notification_group or cat_report_group,
+                    "report_exclude": cat_report_exclude,
+                    "report_individual": cat_report_individual,
+                    "report_group": cat_report_group,
+                    "report_group_override": cat_report_group,
                 }
 
     # Pass 3: add standalone channels not already in the map or excluded
@@ -99,6 +150,7 @@ def build_channel_map(guild, raw_channels=None):
 
         days = ch_config.get("days", DEFAULT_RETENTION)
         deep_clean = ch_config.get("deep_clean", False)
+        report_controls = _merge_report_controls(ch_config)
         discord_channel = guild.get_channel(ch_id)
         cat_name = None
         cat_default = None
@@ -116,7 +168,11 @@ def build_channel_map(guild, raw_channels=None):
             "category_default": cat_default,
             "is_override": days != DEFAULT_RETENTION,
             "deep_clean": deep_clean,
-            "notification_group": ch_config.get("notification_group")
+            "notification_group": report_controls["report_group"],
+            "report_exclude": report_controls["report_exclude"],
+            "report_individual": report_controls["report_individual"],
+            "report_group": ch_config.get("report_group"),
+            "report_group_override": report_controls["report_group_override"],
         }
 
     return channel_map

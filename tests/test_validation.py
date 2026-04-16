@@ -44,19 +44,25 @@ class ValidationTests(unittest.TestCase):
             "    name: logs\n"
             "    days: 7\n"
             "    exclude: false\n"
+            "    report_individual: true\n"
+            "    report_group: Audit Channels\n"
             "    notification_group: Build Channels\n"
             "  - id: 456\n"
             "    type: category\n"
             "    deep_clean: true\n"
+            "    report_exclude: false\n"
         )
 
         channels = load_channels_config(content)
 
         self.assertEqual(channels[0]["id"], 123)
         self.assertFalse(channels[0]["exclude"])
+        self.assertTrue(channels[0]["report_individual"])
+        self.assertEqual(channels[0]["report_group"], "Audit Channels")
         self.assertEqual(channels[0]["notification_group"], "Build Channels")
         self.assertEqual(channels[1]["type"], "category")
         self.assertTrue(channels[1]["deep_clean"])
+        self.assertFalse(channels[1]["report_exclude"])
 
     def test_load_channels_config_rejects_non_string_notification_group(self):
         content = (
@@ -68,6 +74,19 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(
             ChannelsConfigError,
             r"channels\[1\]\.notification_group must be a string at line 3, column 25",
+        ):
+            load_channels_config(content)
+
+    def test_load_channels_config_rejects_non_bool_report_control(self):
+        content = (
+            "channels:\n"
+            "  - id: 123\n"
+            "    report_exclude: maybe\n"
+        )
+
+        with self.assertRaisesRegex(
+            ChannelsConfigError,
+            r"channels\[1\]\.report_exclude must be true or false at line 3, column 21",
         ):
             load_channels_config(content)
 

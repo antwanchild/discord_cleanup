@@ -165,20 +165,34 @@
   {% if history_channels %}
     {% for ch in history_channels %}
     <div class="history-pane" id="history-{{ ch.id }}" style="display:none">
-      <div class="stat-grid" style="margin-bottom:1rem">
-        <div class="stat-box">
-          <div class="stat-value">{{ ch.days }}d</div>
-          <div class="stat-label">Retention</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-value">{{ ch.history_total }}</div>
-          <div class="stat-label">Recorded Runs</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-value">{{ "Yes" if ch.deep_clean else "No" }}</div>
-          <div class="stat-label">Deep Clean</div>
-        </div>
+    <div class="stat-grid" style="margin-bottom:1rem">
+      <div class="stat-box">
+        <div class="stat-value">{{ ch.days }}d</div>
+        <div class="stat-label">Retention</div>
       </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ ch.history_total }}</div>
+        <div class="stat-label">Recorded Runs</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">{{ "Yes" if ch.deep_clean else "No" }}</div>
+        <div class="stat-label">Deep Clean</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">
+          {% if ch.report_exclude %}
+            Excluded
+          {% elif ch.report_individual %}
+            Individual
+          {% elif ch.report_group %}
+            Group
+          {% else %}
+            Default
+          {% endif %}
+        </div>
+        <div class="stat-label">Report Mode</div>
+      </div>
+    </div>
 
       {% if ch.history %}
       <table>
@@ -268,8 +282,20 @@
           <td class="mono">{{ "Yes" if ch.is_override else "No" }}</td>
         </tr>
         <tr>
-          <td>Notification Group</td>
-          <td class="mono">{{ ch.notification_group or "—" }}</td>
+          <td>Report Group</td>
+          <td class="mono">{{ ch.report_group or ch.notification_group or "—" }}</td>
+        </tr>
+        <tr>
+          <td>Report Control</td>
+          <td class="mono">
+            {% if ch.report_exclude %}
+              Excluded
+            {% elif ch.report_individual %}
+              Individual
+            {% else %}
+              Default
+            {% endif %}
+          </td>
         </tr>
         <tr>
           <td>Latest Trigger</td>
@@ -454,7 +480,7 @@
   <h3>Channel History</h3>
   <p>Shows the most recent cleanup runs for each configured channel, including deleted count, run status, and trigger source.</p>
   <h3>Channel Drilldown</h3>
-  <p>Use the dropdown or click a channel row to jump into a detailed per-channel view with retention, config context, all-time totals, and recent run history.</p>
+  <p>Use the dropdown or click a channel row to jump into a detailed per-channel view with retention, report controls, config context, all-time totals, and recent run history.</p>
   <h3>Catchup Runs</h3>
   <p>All-time count of cleanup runs that were triggered automatically on startup because a scheduled run was missed while the bot was offline.</p>
   <h3>Reset Stats</h3>

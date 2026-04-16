@@ -36,6 +36,18 @@
     <div class="stat-value">{{ audit_summary.notification_groups }}</div>
     <div class="stat-label">Notification Groups</div>
   </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ audit_summary.report_groups }}</div>
+    <div class="stat-label">Report Groups</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ audit_summary.report_individual }}</div>
+    <div class="stat-label">Forced Individual</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-value">{{ audit_summary.report_excluded }}</div>
+    <div class="stat-label">Report Excluded</div>
+  </div>
 </div>
 
 <div class="card">
@@ -51,7 +63,7 @@
         <th>Category</th>
         <th>Retention</th>
         <th>Deep Clean</th>
-        <th>Group</th>
+        <th>Report</th>
         <th>Status</th>
       </tr>
     </thead>
@@ -79,7 +91,19 @@
           {% endif %}
         </td>
         <td class="mono">{{ "Yes" if row.deep_clean else "No" }}</td>
-        <td class="mono">{{ row.notification_group or "—" }}</td>
+        <td class="mono">
+          {% if row.report_exclude %}
+            Excluded
+          {% elif row.report_individual %}
+            Individual
+          {% elif row.report_group %}
+            Group: {{ row.report_group }}
+          {% elif row.notification_group %}
+            Group: {{ row.notification_group }}
+          {% else %}
+            Default
+          {% endif %}
+        </td>
         <td class="mono">
           {% if row.status == "excluded" %}
             Excluded
@@ -100,6 +124,6 @@
 
 <template id="help-audit">
   <h2>Retention Audit Help</h2>
-  <p>This page shows the live cleanup configuration in one place. Use it to spot retention overrides, deep-clean channels, exclusions, and notification groups without digging through the raw YAML.</p>
+  <p>This page shows the live cleanup configuration in one place. Use it to spot retention overrides, deep-clean channels, exclusions, and report controls without digging through the raw YAML.</p>
 </template>
 {% endblock %}

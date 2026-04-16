@@ -287,7 +287,7 @@
   <h3>Report Frequency</h3>
   <p>How often the automated stats report is posted. Monthly posts on the 1st, weekly posts every Monday, both does both.</p>
   <h3>Report Grouping</h3>
-  <p>Controls whether channels with the same <span class="mono">notification_group</span> value are combined in the monthly and weekly report embeds.</p>
+  <p>Controls whether channels with the same <span class="mono">notification_group</span> value are combined in the monthly and weekly report embeds. Individual channels can still override this in <span class="mono">channels.yml</span> with <span class="mono">report_group</span>, <span class="mono">report_individual</span>, or <span class="mono">report_exclude</span>.</p>
   <h3>Backups</h3>
   <p>The backup browser shows recent channels.yml and .env.discord_cleanup snapshots. Preview a restore first, then restore the snapshot to replace the live config. The current file is backed up automatically before the restore is written, and startup-only env settings may require a restart.</p>
   <h3>channels.yml Editor</h3>
@@ -453,6 +453,9 @@
     if (entry.days !== null && entry.days !== undefined) bits.push(`${entry.days}d`);
     if (entry.exclude) bits.push("excluded");
     if (entry.deep_clean) bits.push("deep clean");
+    if (entry.report_exclude) bits.push("report excluded");
+    if (entry.report_individual) bits.push("report individual");
+    if (entry.report_group) bits.push(`report group: ${entry.report_group}`);
     if (entry.notification_group) bits.push(`group: ${entry.notification_group}`);
     return bits.map(bit => `<span class="mono">${escapeHtml(bit)}</span>`).join(" · ");
   }
@@ -619,7 +622,9 @@
       renderOverviewCard("Added", counts.added ?? 0),
       renderOverviewCard("Removed", counts.removed ?? 0),
       renderOverviewCard("Updated", counts.updated ?? 0),
-      renderOverviewCard("Notification Groups", `${current.with_notification_groups ?? 0} → ${proposed.with_notification_groups ?? 0}`),
+      renderOverviewCard("Report Groups", `${current.with_report_groups ?? 0} → ${proposed.with_report_groups ?? 0}`),
+      renderOverviewCard("Report Excluded", `${current.report_excluded ?? 0} → ${proposed.report_excluded ?? 0}`),
+      renderOverviewCard("Report Individual", `${current.report_individual ?? 0} → ${proposed.report_individual ?? 0}`),
       renderOverviewCard("Excluded", `${current.excluded ?? 0} → ${proposed.excluded ?? 0}`),
       renderOverviewCard("Deep Clean", `${current.deep_clean ?? 0} → ${proposed.deep_clean ?? 0}`),
       ...(effective ? [
@@ -637,7 +642,7 @@
         <h3 style="margin-top:0; margin-bottom:0.5rem">Impact Summary</h3>
         <p style="margin:0; color:var(--text-muted)">
           Preview shows ${counts.added || 0} added, ${counts.removed || 0} removed, and ${counts.updated || 0} updated entry(ies).
-          Entries change by ${delta.entries ?? 0}, categories by ${delta.categories ?? 0}, excluded by ${delta.excluded ?? 0}, and deep-clean entries by ${delta.deep_clean ?? 0}.
+          Entries change by ${delta.entries ?? 0}, categories by ${delta.categories ?? 0}, excluded by ${delta.excluded ?? 0}, deep-clean entries by ${delta.deep_clean ?? 0}, report exclusions by ${delta.report_excluded ?? 0}, and forced individual entries by ${delta.report_individual ?? 0}.
           ${effective ? `Cleanup targets change by ${effective.delta.targets ?? 0}.` : ""}
         </p>
         <div style="margin-top:0.75rem">${changedFields || "<span style='color:var(--text-muted)'>No field-level changes detected.</span>"}</div>

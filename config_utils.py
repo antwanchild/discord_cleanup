@@ -448,6 +448,9 @@ def _channel_preview_snapshot(channel: dict) -> dict:
         "days": channel.get("days"),
         "exclude": channel.get("exclude", False),
         "deep_clean": channel.get("deep_clean", False),
+        "report_exclude": channel.get("report_exclude", False),
+        "report_individual": channel.get("report_individual", False),
+        "report_group": channel.get("report_group"),
         "notification_group": channel.get("notification_group"),
     }
     return snapshot
@@ -462,12 +465,16 @@ def _channel_preview_label(channel: dict) -> str:
 def _channel_preview_overview(channels: list[dict]) -> dict:
     """Summarizes a channels.yml list for the config preview."""
     notification_groups = {ch.get("notification_group") for ch in channels if ch.get("notification_group")}
+    report_groups = {ch.get("report_group") or ch.get("notification_group") for ch in channels if (ch.get("report_group") or ch.get("notification_group"))}
     return {
         "entries": len(channels),
         "categories": sum(1 for ch in channels if ch.get("type") == "category"),
         "excluded": sum(1 for ch in channels if ch.get("exclude", False)),
         "deep_clean": sum(1 for ch in channels if ch.get("deep_clean", False)),
         "with_notification_groups": len(notification_groups),
+        "with_report_groups": len(report_groups),
+        "report_excluded": sum(1 for ch in channels if ch.get("report_exclude", False)),
+        "report_individual": sum(1 for ch in channels if ch.get("report_individual", False)),
     }
 
 
@@ -475,7 +482,7 @@ def _channel_preview_diff(current: list[dict], proposed: list[dict]) -> dict:
     """Computes added, removed, and updated channels between two configs."""
     current_by_id = {ch["id"]: ch for ch in current}
     proposed_by_id = {ch["id"]: ch for ch in proposed}
-    keys = ["name", "type", "days", "exclude", "deep_clean", "notification_group"]
+    keys = ["name", "type", "days", "exclude", "deep_clean", "report_exclude", "report_individual", "report_group", "notification_group"]
 
     added = [_channel_preview_snapshot(proposed_by_id[ch_id]) for ch_id in proposed_by_id.keys() if ch_id not in current_by_id]
     removed = [_channel_preview_snapshot(current_by_id[ch_id]) for ch_id in current_by_id.keys() if ch_id not in proposed_by_id]
@@ -538,6 +545,9 @@ def preview_channels_content(content: str) -> tuple[bool, str, dict | None]:
             "excluded": proposed_overview["excluded"] - current_overview["excluded"],
             "deep_clean": proposed_overview["deep_clean"] - current_overview["deep_clean"],
             "with_notification_groups": proposed_overview["with_notification_groups"] - current_overview["with_notification_groups"],
+            "with_report_groups": proposed_overview["with_report_groups"] - current_overview["with_report_groups"],
+            "report_excluded": proposed_overview["report_excluded"] - current_overview["report_excluded"],
+            "report_individual": proposed_overview["report_individual"] - current_overview["report_individual"],
         },
         "counts": {
             "added": len(diff["added"]),

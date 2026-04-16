@@ -281,6 +281,9 @@ def stats_page():
                 "is_override": data.get("is_override", False),
                 "deep_clean": data.get("deep_clean", False),
                 "notification_group": data.get("notification_group"),
+                "report_exclude": data.get("report_exclude", False),
+                "report_individual": data.get("report_individual", False),
+                "report_group": data.get("report_group"),
                 "all_time_deleted": stats_entry.get("count", 0) if isinstance(stats_entry, dict) else stats_entry,
                 "history": entries[:10],
                 "history_total": len(entries),
@@ -316,6 +319,9 @@ def audit_page():
         "overrides": 0,
         "deep_clean": 0,
         "notification_groups": 0,
+        "report_excluded": 0,
+        "report_individual": 0,
+        "report_groups": 0,
     }
 
     if bot and bot.guilds:
@@ -323,6 +329,7 @@ def audit_page():
         channel_map = build_channel_map(guild)
         excluded_ids = {ch["id"] for ch in cfg.raw_channels if ch.get("exclude", False)}
         notification_groups = {ch.get("notification_group") for ch in cfg.raw_channels if ch.get("notification_group")}
+        report_groups = {ch.get("report_group") or ch.get("notification_group") for ch in cfg.raw_channels if (ch.get("report_group") or ch.get("notification_group"))}
 
         summary["configured"] = len(channel_map)
         summary["categories"] = len({data.get("category_name") for data in channel_map.values() if data.get("category_name")})
@@ -330,6 +337,9 @@ def audit_page():
         summary["overrides"] = sum(1 for data in channel_map.values() if data.get("is_override"))
         summary["deep_clean"] = sum(1 for data in channel_map.values() if data.get("deep_clean"))
         summary["notification_groups"] = len(notification_groups)
+        summary["report_groups"] = len(report_groups)
+        summary["report_excluded"] = sum(1 for ch in cfg.raw_channels if ch.get("report_exclude", False))
+        summary["report_individual"] = sum(1 for ch in cfg.raw_channels if ch.get("report_individual", False))
         summary["excluded"] = len(excluded_ids)
 
         for ch in cfg.raw_channels:
@@ -345,6 +355,9 @@ def audit_page():
                     "override": False,
                     "deep_clean": bool(ch.get("deep_clean", False)),
                     "notification_group": ch.get("notification_group"),
+                    "report_exclude": bool(ch.get("report_exclude", False)),
+                    "report_individual": bool(ch.get("report_individual", False)),
+                    "report_group": ch.get("report_group"),
                     "status": "excluded",
                 })
                 continue
@@ -359,6 +372,9 @@ def audit_page():
                     "override": bool(ch.get("days") and ch.get("days") != cfg.DEFAULT_RETENTION),
                     "deep_clean": bool(ch.get("deep_clean", False)),
                     "notification_group": ch.get("notification_group"),
+                    "report_exclude": bool(ch.get("report_exclude", False)),
+                    "report_individual": bool(ch.get("report_individual", False)),
+                    "report_group": ch.get("report_group"),
                     "status": "category",
                 })
                 continue
@@ -373,6 +389,9 @@ def audit_page():
                 "override": mapped.get("is_override", False),
                 "deep_clean": mapped.get("deep_clean", False),
                 "notification_group": mapped.get("notification_group") or ch.get("notification_group"),
+                "report_exclude": mapped.get("report_exclude", ch.get("report_exclude", False)),
+                "report_individual": mapped.get("report_individual", ch.get("report_individual", False)),
+                "report_group": mapped.get("report_group") or ch.get("report_group"),
                 "status": "configured",
             })
 

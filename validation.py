@@ -229,6 +229,12 @@ def _parse_channel_entry(node, index: int) -> dict:
         item["exclude"] = _scalar_bool(mapping["exclude"][1], f"{label}.exclude")
     if "deep_clean" in mapping:
         item["deep_clean"] = _scalar_bool(mapping["deep_clean"][1], f"{label}.deep_clean")
+    if "report_exclude" in mapping:
+        item["report_exclude"] = _scalar_bool(mapping["report_exclude"][1], f"{label}.report_exclude")
+    if "report_individual" in mapping:
+        item["report_individual"] = _scalar_bool(mapping["report_individual"][1], f"{label}.report_individual")
+    if "report_group" in mapping:
+        item["report_group"] = _scalar_string(mapping["report_group"][1], f"{label}.report_group")
     if "notification_group" in mapping:
         item["notification_group"] = _scalar_string(mapping["notification_group"][1], f"{label}.notification_group")
 

@@ -92,9 +92,15 @@ def _build_notification_leaderboard(channels: dict, channel_map: dict, limit: in
             continue
 
         live_config = channel_map.get(int(ch_id)) or channel_map.get(str(ch_id)) or {}
-        notification_group = live_config.get("notification_group") if group_notification_groups else None
+        if live_config.get("report_exclude", False):
+            continue
 
-        if notification_group:
+        report_individual = live_config.get("report_individual", False)
+        notification_group = live_config.get("notification_group")
+        explicit_group = live_config.get("report_group_override")
+        should_group = bool(notification_group) and not report_individual and (group_notification_groups or bool(explicit_group))
+
+        if should_group:
             key = f"group:{notification_group}"
             if key not in grouped:
                 grouped[key] = {

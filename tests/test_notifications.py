@@ -112,6 +112,44 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertEqual(leaderboard[0]["label"], "#repo-a-builds")
         self.assertFalse(leaderboard[0]["grouped"])
 
+    def test_build_notification_leaderboard_respects_per_channel_report_controls(self):
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+
+        with isolated_module_import(
+            "notifications",
+            {
+                "config": config_stub,
+                "file_utils": file_utils_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "discord": discord_stub,
+            },
+        ) as notifications:
+            leaderboard = notifications._build_notification_leaderboard(
+                {
+                    "101": {"name": "repo-a-builds", "count": 20},
+                    "102": {"name": "repo-b-builds", "count": 15},
+                    "103": {"name": "audit", "count": 9},
+                    "104": {"name": "silent", "count": 5},
+                },
+                {
+                    101: {"notification_group": "Build Channels", "report_group_override": "Build Channels"},
+                    102: {"notification_group": "Build Channels", "report_individual": True},
+                    103: {"notification_group": "Build Channels", "report_exclude": True},
+                    104: {"notification_group": "Build Channels"},
+                },
+                group_notification_groups=False,
+            )
+
+        labels = [item["label"] for item in leaderboard]
+        self.assertIn("Build Channels", labels)
+        self.assertIn("#repo-b-builds", labels)
+        self.assertIn("#silent", labels)
+        self.assertNotIn("#audit", labels)
+        grouped = next(item for item in leaderboard if item["label"] == "Build Channels")
+        self.assertTrue(grouped["grouped"])
+        self.assertEqual(grouped["count"], 20)
+
     def test_sanitize_embed_trims_fields_to_discord_limits(self):
         config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
 
