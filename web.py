@@ -14,7 +14,7 @@ from flask import Flask, abort, jsonify, render_template, request, session
 from config import (
     CONFIG_DIR, log
 )
-from config_utils import list_channel_backups
+from config_utils import list_channel_backups, list_env_backups
 from utils import (
     get_bot, get_run_owner, is_run_in_progress,
     read_cleanup_log, read_latest_cleanup_log,
@@ -159,6 +159,7 @@ def config_page():
     """Config editor — retention, log level, warn unconfigured, report frequency."""
     context = _get_status_context()
     context["channel_backups"] = list_channel_backups()[:10]
+    context["env_backups"] = list_env_backups()[:10]
 
     # Load raw channels.yml content for the editor
     try:

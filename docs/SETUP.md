@@ -268,7 +268,7 @@ The bot includes a built-in web interface accessible on port 8080. It provides f
 
 If you publish the web UI through a reverse proxy, keep the container on an internal network and consider setting `WEB_AUTH_HEADER_NAME` and `WEB_AUTH_HEADER_VALUE` so the app only trusts requests that arrive through your proxy.
 
-On the Config page, `channels.yml` can be previewed before saving, validated without saving, restored from a previous backup, and schema errors include exact line and column numbers where possible. You can also launch a dry run from the preview modal to test the proposed config without writing it to disk. Saving or restoring creates a backup of the previous file before applying changes.
+On the Config page, `channels.yml` can be previewed before saving, validated without saving, restored from a previous backup, and schema errors include exact line and column numbers where possible. You can also launch a dry run from the preview modal to test the proposed config without writing it to disk. The backup browser also lets you restore `.env.discord_cleanup` snapshots, with startup-only settings calling out when a restart is still needed. Saving or restoring creates a backup of the previous file before applying changes.
 
 The Stats page now includes a per-channel history timeline, and the Audit page provides a read-only retention review of the live cleanup configuration.
 

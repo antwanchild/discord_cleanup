@@ -8,7 +8,9 @@ from flask import Blueprint, jsonify, request
 from config import log
 from config_utils import (
     preview_channel_restore,
+    preview_env_restore,
     preview_channels_content,
+    restore_env_backup,
     restore_channels_backup,
     save_channels_content,
     update_report_grouping,
@@ -221,6 +223,38 @@ def restore_channels_route():
     """Restore channels.yml from a backup file."""
     backup_filename = request.form.get("backup_filename", "").strip()
     success, message, backup_path = restore_channels_backup(backup_filename)
+    if not success:
+        return _with_error_location(message, success=False, details=message), 400
+
+    return jsonify({
+        "success": True,
+        "message": message,
+        "details": message,
+        "backup_path": backup_path,
+    })
+
+
+@admin.route("/admin/config/env/restore/preview", methods=["POST"])
+def preview_env_restore_route():
+    """Preview restoring .env.discord_cleanup from a backup file."""
+    backup_filename = request.form.get("backup_filename", "").strip()
+    success, message, preview = preview_env_restore(backup_filename)
+    if not success:
+        return _with_error_location(message, success=False, details=message), 400
+
+    return jsonify({
+        "success": True,
+        "message": message,
+        "details": message,
+        "preview": preview,
+    })
+
+
+@admin.route("/admin/config/env/restore", methods=["POST"])
+def restore_env_route():
+    """Restore .env.discord_cleanup from a backup file."""
+    backup_filename = request.form.get("backup_filename", "").strip()
+    success, message, backup_path = restore_env_backup(backup_filename)
     if not success:
         return _with_error_location(message, success=False, details=message), 400
 

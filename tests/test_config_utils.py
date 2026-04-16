@@ -15,6 +15,20 @@ class ConfigUtilsTests(unittest.TestCase):
             config_lock=threading.Lock(),
             CONFIG_DIR=config_dir,
             CHANNELS_BACKUP_RETENTION_DAYS=10,
+            STATS_BACKUP_RETENTION_DAYS=10,
+            CLEAN_TIMES=["03:00"],
+            DEFAULT_RETENTION=7,
+            LOG_MAX_FILES=7,
+            REPORT_FREQUENCY="monthly",
+            REPORT_GROUP_MONTHLY=True,
+            REPORT_GROUP_WEEKLY=True,
+            WARN_UNCONFIGURED=False,
+            CATCHUP_MISSED_RUNS=True,
+            LOG_LEVEL="INFO",
+            TOKEN=None,
+            LOG_CHANNEL_ID=None,
+            REPORT_CHANNEL_ID=None,
+            GITHUB_TOKEN=None,
             log=logging.getLogger("test-config-utils"),
             raw_channels=[],
         )
@@ -200,6 +214,100 @@ class ConfigUtilsTests(unittest.TestCase):
             with open(backup_path, "r") as f:
                 self.assertEqual(f.read(), current_content)
             self.assertEqual(config_stub.raw_channels, [{"id": 456, "name": "restored-channel"}])
+
+    def test_preview_env_restore_reports_diff_and_restart_requirement(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            backups_dir = os.path.join(tempdir, "backups", "env")
+            os.makedirs(backups_dir, exist_ok=True)
+
+            env_path = os.path.join(tempdir, ".env.discord_cleanup")
+            with open(env_path, "w") as f:
+                f.write(
+                    "DISCORD_TOKEN=oldtoken123\n"
+                    "REPORT_GROUP_WEEKLY=true\n"
+                    "WEB_HOST=0.0.0.0\n"
+                    "WARN_UNCONFIGURED=false\n"
+                )
+
+            backup_path = os.path.join(backups_dir, "env-20260415-054500.env.bak")
+            with open(backup_path, "w") as f:
+                f.write(
+                    "DISCORD_TOKEN=newtoken456\n"
+                    "REPORT_GROUP_WEEKLY=false\n"
+                    "WEB_HOST=127.0.0.1\n"
+                    "GITHUB_TOKEN=ghp_secret123\n"
+                )
+
+            config_stub = self._build_config_stub(tempdir)
+            original_env = {key: os.environ.get(key) for key in ["DISCORD_TOKEN", "REPORT_GROUP_WEEKLY", "WEB_HOST", "GITHUB_TOKEN", "WARN_UNCONFIGURED"]}
+
+            try:
+                with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+                    success, message, preview = config_utils.preview_env_restore("env-20260415-054500.env.bak")
+
+                self.assertTrue(success)
+                self.assertIn("Restore preview ready", message)
+                self.assertEqual(preview["backup"]["filename"], "env-20260415-054500.env.bak")
+                self.assertEqual(preview["counts"]["added"], 1)
+                self.assertEqual(preview["counts"]["removed"], 1)
+                self.assertEqual(preview["counts"]["updated"], 3)
+                self.assertTrue(preview["restores"]["restart_required"])
+                self.assertIn("WEB_HOST", preview["restores"]["startup_only_changed"])
+            finally:
+                for key, value in original_env.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
+
+    def test_restore_env_backup_restores_current_file_and_creates_backup(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            env_path = os.path.join(tempdir, ".env.discord_cleanup")
+            backups_dir = os.path.join(tempdir, "backups", "env")
+            os.makedirs(backups_dir, exist_ok=True)
+
+            current_content = (
+                "DISCORD_TOKEN=oldtoken123\n"
+                "REPORT_GROUP_WEEKLY=true\n"
+                "WEB_HOST=0.0.0.0\n"
+                "WARN_UNCONFIGURED=false\n"
+            )
+            backup_content = (
+                "DISCORD_TOKEN=newtoken456\n"
+                "REPORT_GROUP_WEEKLY=false\n"
+                "WEB_HOST=127.0.0.1\n"
+                "GITHUB_TOKEN=ghp_secret123\n"
+            )
+            with open(env_path, "w") as f:
+                f.write(current_content)
+
+            backup_file = os.path.join(backups_dir, "env-20260415-054500.env.bak")
+            with open(backup_file, "w") as f:
+                f.write(backup_content)
+
+            config_stub = self._build_config_stub(tempdir)
+            original_env = {key: os.environ.get(key) for key in ["DISCORD_TOKEN", "REPORT_GROUP_WEEKLY", "WEB_HOST", "GITHUB_TOKEN", "WARN_UNCONFIGURED"]}
+
+            try:
+                with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+                    success, message, backup_path = config_utils.restore_env_backup("env-20260415-054500.env.bak")
+
+                self.assertTrue(success)
+                self.assertIn("Restored .env.discord_cleanup from env-20260415-054500.env.bak", message)
+                self.assertIsNotNone(backup_path)
+                self.assertTrue(os.path.exists(backup_path))
+                with open(env_path, "r") as f:
+                    self.assertEqual(f.read(), backup_content)
+                with open(backup_path, "r") as f:
+                    self.assertEqual(f.read(), current_content)
+                self.assertEqual(os.getenv("REPORT_GROUP_WEEKLY"), "false")
+                self.assertEqual(os.getenv("WEB_HOST"), "127.0.0.1")
+            finally:
+                for key, value in original_env.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
 
 
 if __name__ == "__main__":

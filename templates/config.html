@@ -187,6 +187,41 @@
   </div>
 </div>
 
+<!-- .env backups -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Environment Backups</span>
+    <span style="color:var(--text-muted); font-size:0.75rem; margin-left:0.5rem">Preview and restore previous .env.discord_cleanup snapshots. Restores create a fresh backup of the current file first, and startup-only settings may still require a restart.</span>
+  </div>
+  {% if env_backups %}
+  <table>
+    <thead>
+      <tr>
+        <th>Backup</th>
+        <th>Modified</th>
+        <th>Size</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for backup in env_backups %}
+      <tr>
+        <td class="mono">{{ backup.filename }}</td>
+        <td class="mono">{{ backup.modified }}</td>
+        <td class="mono">{{ backup.size_bytes }} B</td>
+        <td>
+          <button class="btn btn-ghost" type="button" onclick='previewEnvRestore({{ backup.filename | tojson }})'>Preview Restore</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p style="color:var(--text-muted); font-size:0.75rem; margin:0.75rem 0 0">Showing the 10 most recent .env backups.</p>
+  {% else %}
+  <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No .env backups yet.</p>
+  {% endif %}
+</div>
+
 <!-- channels.yml backups -->
 <div class="card">
   <div class="card-header">
@@ -234,7 +269,7 @@
       <button class="btn btn-ghost" type="button" onclick="closeChannelsPreviewModal()">Cancel</button>
       <button class="btn btn-ghost" id="channels-preview-dry-run-btn" type="button" onclick="startPreviewDryRun()">Dry Run</button>
       <button class="btn btn-primary" id="channels-preview-save-btn" type="button" onclick="confirmChannelsSave()">Save Changes</button>
-      <button class="btn btn-danger" id="channels-preview-restore-btn" type="button" onclick="confirmChannelsRestore()" style="display:none">Restore Backup</button>
+      <button class="btn btn-danger" id="channels-preview-restore-btn" type="button" onclick="confirmBackupRestore()" style="display:none">Restore Backup</button>
     </div>
   </div>
 </div>
@@ -254,7 +289,7 @@
   <h3>Log Files Retained</h3>
   <p>Number of daily log files to keep. Files older than this are deleted automatically.</p>
   <h3>Backups</h3>
-  <p>The backup browser shows recent channels.yml snapshots. Preview a restore first, then restore the snapshot to replace the live config. The current file is backed up automatically before the restore is written.</p>
+  <p>The backup browser shows recent channels.yml and .env.discord_cleanup snapshots. Preview a restore first, then restore the snapshot to replace the live config. The current file is backed up automatically before the restore is written, and startup-only env settings may require a restart.</p>
   <h3>channels.yml Editor</h3>
   <p>Edit the channel configuration directly as valid YAML. Use Preview Changes to review the parsed diff, Save Changes to apply it, or Dry Run to test the proposed config without saving. Validate checks syntax and schema without saving. Saving creates a backup before applying changes.</p>
 </template>
@@ -268,6 +303,7 @@
   let pendingChannelsContent = "";
   let pendingRestoreFilename = "";
   let channelsPreviewMode = "edit";
+  let channelsPreviewKind = "channels";
 
   // ── Config custom dropdowns ─────────────────────────────────────────────────
   function toggleCfgDropdown(id) {
@@ -433,22 +469,89 @@
     return `
       <div style="margin-top:1rem">
         <h3 style="margin-bottom:0.5rem">${escapeHtml(title)} (${items.length})</h3>
-        ${items.map(item => renderPreviewEntry(item, kind)).join("")}
+      ${items.map(item => renderPreviewEntry(item, kind)).join("")}
       </div>
     `;
   }
 
-  function setChannelsPreviewMode(mode) {
+  function maskEnvValue(key, value) {
+    if (value === null || value === undefined || value === "") {
+      return "<span style='color:var(--text-muted)'>empty</span>";
+    }
+    const sensitiveKeys = new Set(["DISCORD_TOKEN", "GITHUB_TOKEN", "WEB_SECRET_KEY", "WEB_AUTH_HEADER_VALUE"]);
+    const text = String(value);
+    if (sensitiveKeys.has(key)) {
+      if (text.length <= 6) {
+        return "<span class='mono'>****</span>";
+      }
+      return `<span class="mono">${escapeHtml(text.slice(0, 2))}***${escapeHtml(text.slice(-2))}</span>`;
+    }
+    return `<span class="mono">${escapeHtml(text)}</span>`;
+  }
+
+  function renderEnvEntry(entry, kind) {
+    const badgeColor = kind === "added" ? "var(--success)" : kind === "removed" ? "var(--danger)" : "var(--brand)";
+    const valueLine = kind === "removed"
+      ? ""
+      : `<div style="color:var(--text-muted); font-size:0.8rem; margin-top:0.25rem">Value: ${maskEnvValue(entry.key, entry.after ?? entry.value)}</div>`;
+    const beforeLine = kind === "added"
+      ? ""
+      : `<div style="color:var(--text-muted); font-size:0.8rem; margin-top:0.35rem">Before: ${maskEnvValue(entry.key, entry.before)}</div>`;
+    const afterLine = kind === "removed"
+      ? ""
+      : `<div style="color:var(--text-muted); font-size:0.8rem; margin-top:0.25rem">After: ${maskEnvValue(entry.key, entry.after ?? entry.value)}</div>`;
+
+    return `
+      <div style="
+        border:1px solid var(--border);
+        border-left:4px solid ${badgeColor};
+        border-radius:8px;
+        padding:0.85rem 1rem;
+        background:var(--surface-alt);
+        margin-bottom:0.75rem;
+      ">
+        <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:flex-start">
+          <strong class="mono">${escapeHtml(entry.key)}</strong>
+          <span style="color:${badgeColor}; text-transform:uppercase; letter-spacing:0.04em; font-size:0.72rem">${escapeHtml(kind)}</span>
+        </div>
+        ${beforeLine}
+        ${afterLine}
+        ${valueLine}
+      </div>
+    `;
+  }
+
+  function renderEnvSection(title, items, kind) {
+    if (!items || !items.length) {
+      return `
+        <div style="margin-top:1rem">
+          <h3 style="margin-bottom:0.5rem">${escapeHtml(title)}</h3>
+          <p style="color:var(--text-muted); margin:0">No ${escapeHtml(title.toLowerCase())}.</p>
+        </div>
+      `;
+    }
+    return `
+      <div style="margin-top:1rem">
+        <h3 style="margin-bottom:0.5rem">${escapeHtml(title)} (${items.length})</h3>
+        ${items.map(item => renderEnvEntry(item, kind)).join("")}
+      </div>
+    `;
+  }
+
+  function setChannelsPreviewMode(mode, kind = "channels") {
     channelsPreviewMode = mode;
+    channelsPreviewKind = kind;
     const restoreBtn = document.getElementById("channels-preview-restore-btn");
     const dryRunBtn = document.getElementById("channels-preview-dry-run-btn");
     const saveBtn = document.getElementById("channels-preview-save-btn");
-    if (restoreBtn) restoreBtn.style.display = mode === "restore" ? "" : "none";
-    if (dryRunBtn) dryRunBtn.style.display = mode === "restore" ? "none" : "";
-    if (saveBtn) saveBtn.style.display = mode === "restore" ? "none" : "";
+    const isRestore = mode === "restore";
+    const isChannelsEdit = kind === "channels" && mode === "edit";
+    if (restoreBtn) restoreBtn.style.display = isRestore ? "" : "none";
+    if (dryRunBtn) dryRunBtn.style.display = isChannelsEdit ? "" : "none";
+    if (saveBtn) saveBtn.style.display = isChannelsEdit ? "" : "none";
   }
 
-  function renderPreviewModal(preview, mode = "edit") {
+  function renderPreviewModal(preview, mode = "edit", kind = "channels") {
     const summary = preview.summary || {};
     const current = summary.current || {};
     const proposed = summary.proposed || {};
@@ -456,12 +559,51 @@
     const delta = summary.delta || {};
     const effective = preview.effective || null;
     const backup = preview.backup || null;
+    const restores = preview.restores || {};
     const overview = document.getElementById("channels-preview-overview");
     const diff = document.getElementById("channels-preview-diff");
     const title = document.getElementById("channels-preview-title");
     const summaryText = document.getElementById("channels-preview-summary");
 
-    setChannelsPreviewMode(mode);
+    setChannelsPreviewMode(mode, kind);
+    if (kind === "env") {
+      const backupLabel = backup?.filename || pendingRestoreFilename || "selected backup";
+      title.textContent = `Restore .env.discord_cleanup Backup — ${backupLabel}`;
+      summaryText.textContent = `${counts.added || 0} added, ${counts.removed || 0} removed, ${counts.updated || 0} updated. ${counts.sensitive_updates || 0} sensitive value change(s). ${restores.restart_required ? "A restart will be required for startup-only settings." : "No restart-required settings changed."} Restoring this backup will replace the live .env.discord_cleanup after creating a fresh backup of the current file.`;
+      overview.innerHTML = [
+        renderOverviewCard("Current Keys", current.keys ?? 0),
+        renderOverviewCard("Proposed Keys", proposed.keys ?? 0),
+        renderOverviewCard("Added", counts.added ?? 0),
+        renderOverviewCard("Removed", counts.removed ?? 0),
+        renderOverviewCard("Updated", counts.updated ?? 0),
+        renderOverviewCard("Sensitive Changes", counts.sensitive_updates ?? 0),
+        renderOverviewCard("Restart Required", restores.restart_required ? "Yes" : "No"),
+        renderOverviewCard("Startup-only Keys", (restores.startup_only_changed || []).length),
+      ].join("");
+
+      const startupOnlyKeys = (restores.startup_only_changed || [])
+        .map(key => `<span class="mono">${escapeHtml(key)}</span>`)
+        .join(" · ");
+
+      diff.innerHTML = `
+        <div style="border:1px solid var(--border); border-radius:10px; padding:1rem; background:var(--surface)">
+          <h3 style="margin-top:0; margin-bottom:0.5rem">Impact Summary</h3>
+          <p style="margin:0; color:var(--text-muted)">
+            Preview shows ${counts.added || 0} added, ${counts.removed || 0} removed, and ${counts.updated || 0} updated setting(s).
+            Sensitive values are masked in this preview.
+            ${restores.restart_required ? "Startup-only settings changed, so a container restart will be required after restore." : "No startup-only settings changed."}
+          </p>
+          <div style="margin-top:0.75rem">
+            ${startupOnlyKeys ? `<div style="color:var(--text-muted); font-size:0.85rem">Startup-only keys: ${startupOnlyKeys}</div>` : "<span style='color:var(--text-muted)'>No startup-only keys changed.</span>"}
+          </div>
+        </div>
+        ${renderEnvSection("Added Environment Keys", preview.added || [], "added")}
+        ${renderEnvSection("Removed Environment Keys", preview.removed || [], "removed")}
+        ${renderEnvSection("Updated Environment Keys", preview.updated || [], "updated")}
+      `;
+      return;
+    }
+
     if (mode === "restore") {
       const backupLabel = backup?.filename || pendingRestoreFilename || "selected backup";
       title.textContent = `Restore Backup — ${backupLabel}`;
@@ -598,12 +740,12 @@
     }
     pendingChannelsContent = content;
     pendingRestoreFilename = "";
-    renderPreviewModal(data.preview, "edit");
+    renderPreviewModal(data.preview, "edit", "channels");
     openChannelsPreviewModal();
   }
 
   async function confirmChannelsSave() {
-    if (!pendingChannelsContent || channelsPreviewMode !== "edit") {
+    if (!pendingChannelsContent || channelsPreviewMode !== "edit" || channelsPreviewKind !== "channels") {
       showToast("Preview the config first", "error");
       return;
     }
@@ -619,7 +761,7 @@
   }
 
   async function startPreviewDryRun() {
-    if (!pendingChannelsContent || channelsPreviewMode !== "edit") {
+    if (!pendingChannelsContent || channelsPreviewMode !== "edit" || channelsPreviewKind !== "channels") {
       showToast("Preview the config first", "error");
       return;
     }
@@ -640,18 +782,54 @@
     }
     pendingChannelsContent = "";
     pendingRestoreFilename = filename;
-    renderPreviewModal(data.preview, "restore");
+    renderPreviewModal(data.preview, "restore", "channels");
     openChannelsPreviewModal();
   }
 
   async function confirmChannelsRestore() {
-    if (!pendingRestoreFilename || channelsPreviewMode !== "restore") {
+    if (!pendingRestoreFilename || channelsPreviewMode !== "restore" || channelsPreviewKind !== "channels") {
       showToast("Preview the backup first", "error");
       return;
     }
     const fd = new FormData();
     fd.append("backup_filename", pendingRestoreFilename);
     const data = await postForm("/admin/config/channels/restore", fd);
+    if (data.success) {
+      closeChannelsPreviewModal();
+      pendingRestoreFilename = "";
+      pendingChannelsContent = "";
+      setTimeout(() => window.location.reload(), 1000);
+    }
+  }
+
+  async function confirmBackupRestore() {
+    if (channelsPreviewKind === "env") {
+      return confirmEnvRestore();
+    }
+    return confirmChannelsRestore();
+  }
+
+  async function previewEnvRestore(filename) {
+    const fd = new FormData();
+    fd.append("backup_filename", filename);
+    const data = await postForm("/admin/config/env/restore/preview", fd);
+    if (!data.success) {
+      return;
+    }
+    pendingChannelsContent = "";
+    pendingRestoreFilename = filename;
+    renderPreviewModal(data.preview, "restore", "env");
+    openChannelsPreviewModal();
+  }
+
+  async function confirmEnvRestore() {
+    if (!pendingRestoreFilename || channelsPreviewMode !== "restore" || channelsPreviewKind !== "env") {
+      showToast("Preview the backup first", "error");
+      return;
+    }
+    const fd = new FormData();
+    fd.append("backup_filename", pendingRestoreFilename);
+    const data = await postForm("/admin/config/env/restore", fd);
     if (data.success) {
       closeChannelsPreviewModal();
       pendingRestoreFilename = "";

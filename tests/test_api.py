@@ -134,7 +134,25 @@ class ApiTests(unittest.TestCase):
                     "parsed_channels": [{"id": 1, "name": "old-channel"}],
                 },
             ),
+            preview_env_restore=lambda filename: (
+                True,
+                "Restore preview ready — env-1.env.bak",
+                {
+                    "summary": {
+                        "current": {"keys": 4, "sensitive": 1},
+                        "proposed": {"keys": 5, "sensitive": 2},
+                        "delta": {"keys": 1, "sensitive": 1},
+                        "counts": {"added": 1, "removed": 1, "updated": 1, "field_changes": 0, "sensitive_updates": 1},
+                    },
+                    "added": [{"key": "GITHUB_TOKEN", "value": "gh***23"}],
+                    "removed": [{"key": "WARN_UNCONFIGURED", "value": "false"}],
+                    "updated": [{"key": "WEB_HOST", "before": "0.0.0.0", "after": "127.0.0.1"}],
+                    "backup": {"filename": filename, "modified": "2026-04-15 05:45:00", "size_bytes": 88, "path": "/config/backups/env-1.env.bak", "type": "env"},
+                    "restores": {"startup_only_changed": ["WEB_HOST"], "restart_required": True},
+                },
+            ),
             restore_channels_backup=lambda filename: (True, f"Restored channels.yml from {filename}", "/config/backups/channels-restore.yml.bak"),
+            restore_env_backup=lambda filename: (True, f"Restored .env.discord_cleanup from {filename}", "/config/backups/env-restore.env.bak"),
             preview_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
             save_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
             update_report_grouping=lambda *_a, **_k: (True, "true"),
@@ -156,14 +174,23 @@ class ApiTests(unittest.TestCase):
             client = app.test_client()
 
             preview_response = client.post("/admin/config/channels/restore/preview", data={"backup_filename": "channels-1.yml.bak"})
+            env_preview_response = client.post("/admin/config/env/restore/preview", data={"backup_filename": "env-1.env.bak"})
             restore_response = client.post("/admin/config/channels/restore", data={"backup_filename": "channels-1.yml.bak"})
+            env_restore_response = client.post("/admin/config/env/restore", data={"backup_filename": "env-1.env.bak"})
 
         self.assertEqual(preview_response.status_code, 200)
         self.assertTrue(preview_response.get_json()["success"])
         self.assertEqual(preview_response.get_json()["preview"]["backup"]["filename"], "channels-1.yml.bak")
+        self.assertEqual(env_preview_response.status_code, 200)
+        self.assertTrue(env_preview_response.get_json()["success"])
+        self.assertEqual(env_preview_response.get_json()["preview"]["backup"]["filename"], "env-1.env.bak")
+        self.assertTrue(env_preview_response.get_json()["preview"]["restores"]["restart_required"])
         self.assertEqual(restore_response.status_code, 200)
         self.assertTrue(restore_response.get_json()["success"])
         self.assertEqual(restore_response.get_json()["backup_path"], "/config/backups/channels-restore.yml.bak")
+        self.assertEqual(env_restore_response.status_code, 200)
+        self.assertTrue(env_restore_response.get_json()["success"])
+        self.assertEqual(env_restore_response.get_json()["backup_path"], "/config/backups/env-restore.env.bak")
 
 
 if __name__ == "__main__":
