@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.1 - 2026-04-16
+
+### Changes
+- Document report control examples
+
+
 ## 5.11.0 - 2026-04-16
 
 ### Changes
