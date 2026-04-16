@@ -41,6 +41,13 @@ channels:
     # Optional: exclude this channel from report embeds
     # report_exclude: true
 
+  # Report controls work independently from retention
+  - id: 789012345678901236
+    name: audit-only
+    days: 7
+    deep_clean: true
+    report_individual: true
+
   # Individual channel with retention override and deep clean enabled
   - id: 678901234567890123
     name: notifications

@@ -218,6 +218,8 @@ When `channels.yml` is invalid, the bot now reports schema errors with exact lin
 
 `report_group`, `report_individual`, and `report_exclude` add per-channel report overrides. `report_group` replaces the shared report label for that channel, `report_individual` keeps the channel ungrouped even if grouping is enabled, and `report_exclude` omits the channel from the monthly/weekly report embed entirely.
 
+If you want a concrete example of how those options fit together, check [channels.example.yml](../channels.example.yml).
+
 ---
 
 ## Deep Clean
