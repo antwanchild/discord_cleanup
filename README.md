@@ -19,6 +19,9 @@ An automated Discord bot that cleans up old messages from configured channels on
 ├── cleanup.py                      # Core cleanup logic, channel map, validation
 ├── commands.py                     # Core slash commands — run, status, reload, logs, etc.
 ├── commands_stats.py               # Stats slash commands — view, reset
+├── config_backups.py               # Backup discovery, env snapshots, restore helpers
+├── config_channels.py              # channels.yml reload, preview, save, restore helpers
+├── config_settings.py              # Runtime env update helpers for config settings
 ├── web.py                          # Flask web UI — page routes and server thread
 ├── api.py                          # Flask Blueprint — read-only /api/* endpoints
 ├── admin.py                        # Flask Blueprint — mutating /admin/* endpoints
