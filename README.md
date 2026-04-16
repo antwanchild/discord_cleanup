@@ -123,7 +123,7 @@ Five separate workflows post to a Discord webhook (`DISCORD_WEBHOOK_URL` secret)
 
 ## Web UI and API
 
-The web UI can sit behind a reverse proxy such as Authentik, but it still defaults to binding on `0.0.0.0` so the published Docker port works out of the box. Mutating admin routes live under `/admin/*` while read-only routes live under `/api/*`. `channels.yml` backups and stats/last-run backups are pruned automatically after their configured retention windows, which default to 10 days. `channels.yml` backups live under `/config/backups/channels/`, while generated data backups live under `/config/data/backups/stats/` and `/config/data/backups/last-run/`.
+The web UI can sit behind a reverse proxy such as Authentik, but it still defaults to binding on `0.0.0.0` so the published Docker port works out of the box. Mutating admin routes live under `/admin/*` while read-only routes live under `/api/*`. `channels.yml` backups and stats/last-run backups are pruned automatically after their configured retention windows, which default to 10 days. `channels.yml` backups live under `/config/backups/channels/`, while generated data backups live under `/config/data/backups/stats/` and `/config/data/backups/last-run/`. The Logs page now includes search and level filters for the visible log file.
 
 The Config page supports preview-before-save for `channels.yml`, validate-before-save, per-report grouping controls, a dry run from the preview modal, and restoring `channels.yml` or `.env.discord_cleanup` from recent backups. Schema errors include line and column details when possible. Saving or restoring `channels.yml` creates a backup before replacing the live file, and `.env` restores also create a fresh backup before writing.
 

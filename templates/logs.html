@@ -33,6 +33,20 @@
     {% endif %}
     <button class="btn btn-ghost" onclick="window.location.reload()">Refresh</button>
   </div>
+  {% if log_entries %}
+  <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:center; margin:0.5rem 0 1rem">
+    <input type="search" id="log-search" placeholder="Search log lines" style="max-width:320px">
+    <select id="log-level-filter" style="max-width:180px">
+      <option value="all">All levels</option>
+      <option value="debug">DEBUG</option>
+      <option value="info">INFO</option>
+      <option value="warning">WARNING</option>
+      <option value="error">ERROR</option>
+    </select>
+    <button class="btn btn-ghost" type="button" id="log-clear-filters">Clear Filters</button>
+    <span id="log-filter-count" style="color:var(--text-muted); font-size:0.8rem"></span>
+  </div>
+  {% endif %}
 
   {% if log_entries %}
   <div style="
@@ -45,6 +59,7 @@
     overflow-y: auto;
   " id="log-container">
     {% for line in log_entries %}
+    {% set line_level = 'error' if 'ERROR' in line else 'warning' if 'WARNING' in line else 'debug' if 'DEBUG' in line else 'info' %}
     <div class="log-line mono" style="
       font-size: 0.75rem;
       line-height: 1.7;
@@ -54,9 +69,10 @@
       {% elif 'DEBUG' in line %}color: var(--text-muted);
       {% else %}color: var(--text-base);
       {% endif %}
-    ">{{ line }}</div>
+    " data-log-level="{{ line_level }}">{{ line }}</div>
     {% endfor %}
   </div>
+  <p id="log-filter-empty" style="display:none; color:var(--text-muted); font-size:0.875rem; margin-top:0.75rem">No matching log entries.</p>
   {% else %}
     <p style="color:var(--text-muted); font-size:0.875rem">No log entries found.</p>
   {% endif %}
@@ -66,10 +82,12 @@
   <h2>Logs Help</h2>
   <h3>Log Files</h3>
   <p>The bot creates one log file per day. Use the dropdown to switch between files. The most recent is shown by default.</p>
+  <h3>Search & Filters</h3>
+  <p>Use the search box to find matching lines and the level filter to narrow the view to DEBUG, INFO, WARNING, or ERROR entries. Filters stay in the URL so you can share or refresh the same view.</p>
   <h3>Color Coding</h3>
   <p>Lines are color-coded — grey for DEBUG, white for INFO, orange for WARNING, red for ERROR.</p>
   <h3>Log Retention</h3>
-  <p>Files older than the Log Files Retained setting are deleted automatically. Change this on the Config page.</p>
+  <p>Files older than the Log Retention setting are deleted automatically. Change this on the Config page.</p>
   <h3>Download</h3>
   <p>Use the slash command <span class="mono">/cleanup logs</span> in Discord to download today's log as a file attachment.</p>
 </template>
@@ -80,13 +98,81 @@
   // Auto-scroll to bottom of log container on load
   const container = document.getElementById("log-container");
   if (container) container.scrollTop = container.scrollHeight;
+  const logSearch = document.getElementById("log-search");
+  const logLevelFilter = document.getElementById("log-level-filter");
+  const logClearFilters = document.getElementById("log-clear-filters");
+  const logFilterCount = document.getElementById("log-filter-count");
+  const logFilterEmpty = document.getElementById("log-filter-empty");
+  const logLines = Array.from(document.querySelectorAll(".log-line"));
+
+  function syncLogFilterUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const query = (logSearch?.value || "").trim();
+    const level = logLevelFilter?.value || "all";
+    if (query) {
+      params.set("q", query);
+    } else {
+      params.delete("q");
+    }
+    if (level !== "all") {
+      params.set("level", level);
+    } else {
+      params.delete("level");
+    }
+    const next = params.toString();
+    const url = next ? `${window.location.pathname}?${next}` : window.location.pathname;
+    window.history.replaceState({}, "", url);
+  }
+
+  function applyLogFilters() {
+    const query = (logSearch?.value || "").trim().toLowerCase();
+    const level = logLevelFilter?.value || "all";
+    let visible = 0;
+
+    logLines.forEach((line) => {
+      const text = line.textContent.toLowerCase();
+      const matchesQuery = !query || text.includes(query);
+      const matchesLevel = level === "all" || line.dataset.logLevel === level;
+      const show = matchesQuery && matchesLevel;
+      line.style.display = show ? "" : "none";
+      if (show) {
+        visible += 1;
+      }
+    });
+
+    if (logFilterCount) {
+      logFilterCount.textContent = `${visible} of ${logLines.length} line${logLines.length === 1 ? "" : "s"} shown`;
+    }
+    if (logFilterEmpty) {
+      logFilterEmpty.style.display = logLines.length && visible === 0 ? "block" : "none";
+    }
+
+    syncLogFilterUrl();
+  }
+
+  if (logSearch && logLevelFilter) {
+    const params = new URLSearchParams(window.location.search);
+    logSearch.value = params.get("q") || "";
+    logLevelFilter.value = params.get("level") || "all";
+    logSearch.addEventListener("input", applyLogFilters);
+    logLevelFilter.addEventListener("change", applyLogFilters);
+    if (logClearFilters) {
+      logClearFilters.addEventListener("click", () => {
+        logSearch.value = "";
+        logLevelFilter.value = "all";
+        applyLogFilters();
+      });
+    }
+    applyLogFilters();
+  }
 
   function toggleLogDropdown() {
     document.getElementById("log-file-menu").classList.toggle("open");
   }
 
   function selectLogFile(filename) {
-    window.location = '/logs/' + filename;
+    const suffix = window.location.search || "";
+    window.location = '/logs/' + encodeURIComponent(filename) + suffix;
   }
 
   // Close dropdown when clicking outside

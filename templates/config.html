@@ -8,7 +8,7 @@
     <h1>Configuration</h1>
     <div class="help-btn" onclick="openPageHelp('help-config')" title="Help">?</div>
   </div>
-  <p>Changes apply immediately in memory and persist to .env.discord_cleanup</p>
+  <p>Changes apply immediately in memory and persist to .env.discord_cleanup or channels.yml as appropriate</p>
 </div>
 
 <!-- Bot settings -->
@@ -18,10 +18,17 @@
   </div>
 
   <div class="form-row">
-    <label>Default Retention</label>
+    <label>Message Retention</label>
     <input type="number" id="retention-input" value="{{ default_retention }}" min="1" max="365" style="max-width:200px">
     <span style="color:var(--text-muted); font-size:0.8rem">days (1–365)</span>
     <button class="btn btn-primary" onclick="saveRetention()">Save</button>
+  </div>
+
+  <div class="form-row">
+    <label>Log Retention</label>
+    <input type="number" id="logmaxfiles-input" value="{{ log_max_files }}" min="1" max="365" style="max-width:200px">
+    <span style="color:var(--text-muted); font-size:0.8rem">days (1–365)</span>
+    <button class="btn btn-primary" onclick="saveLogMaxFiles()">Save</button>
   </div>
 
   <!-- Log Level -->
@@ -107,13 +114,6 @@
     </div>
     <input type="hidden" id="group-weekly-select" value="{{ 'true' if report_group_weekly else 'false' }}">
     <button class="btn btn-primary" onclick="saveReportGrouping('weekly')">Save</button>
-  </div>
-
-  <div class="form-row">
-    <label>Log Files Retained</label>
-    <input type="number" id="logmaxfiles-input" value="{{ log_max_files }}" min="1" max="365" style="max-width:200px">
-    <span style="color:var(--text-muted); font-size:0.8rem">days (1–365)</span>
-    <button class="btn btn-primary" onclick="saveLogMaxFiles()">Save</button>
   </div>
 </div>
 
@@ -276,8 +276,10 @@
 
 <template id="help-config">
   <h2>Config Help</h2>
-  <h3>Default Retention</h3>
+  <h3>Message Retention</h3>
   <p>Messages older than this many days will be deleted during cleanup. Range: 1-365 days. Channels can override this in channels.yml.</p>
+  <h3>Log Retention</h3>
+  <p>Number of daily log files to keep before the bot prunes older logs automatically.</p>
   <h3>Log Level</h3>
   <p>Controls how much detail is written to log files. DEBUG is very verbose — use INFO for normal operation.</p>
   <h3>Warn Unconfigured</h3>
@@ -286,8 +288,6 @@
   <p>How often the automated stats report is posted. Monthly posts on the 1st, weekly posts every Monday, both does both.</p>
   <h3>Report Grouping</h3>
   <p>Controls whether channels with the same <span class="mono">notification_group</span> value are combined in the monthly and weekly report embeds.</p>
-  <h3>Log Files Retained</h3>
-  <p>Number of daily log files to keep. Files older than this are deleted automatically.</p>
   <h3>Backups</h3>
   <p>The backup browser shows recent channels.yml and .env.discord_cleanup snapshots. Preview a restore first, then restore the snapshot to replace the live config. The current file is backed up automatically before the restore is written, and startup-only env settings may require a restart.</p>
   <h3>channels.yml Editor</h3>

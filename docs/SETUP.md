@@ -281,7 +281,7 @@ The Stats page now includes a per-channel history timeline, and the Audit page p
 | Audit | `/audit` | Read-only retention audit showing categories, overrides, deep clean, exclusions, and grouping |
 | Schedule | `/schedule` | Add and remove scheduled run times |
 | Stats | `/stats` | Full statistics breakdown — toggle between category summary, per-channel detail, and channel history, plus recent stats and channels.yml backup visibility |
-| Logs | `/logs` | Log viewer with file selector and color-coded entries |
+| Logs | `/logs` | Log viewer with file selector, search/filter controls, and color-coded entries |
 
 **API:**
 - `GET /api/status` — JSON status endpoint for health checks or external tools
