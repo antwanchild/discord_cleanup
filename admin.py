@@ -6,7 +6,14 @@ import re
 from flask import Blueprint, jsonify, request
 
 from config import log
-from config_utils import preview_channels_content, save_channels_content, update_report_grouping, validate_channels_content
+from config_utils import (
+    preview_channel_restore,
+    preview_channels_content,
+    restore_channels_backup,
+    save_channels_content,
+    update_report_grouping,
+    validate_channels_content,
+)
 from utils import (
     get_bot,
     get_bot_loop,
@@ -30,7 +37,11 @@ def _with_error_location(message: str, success: bool = False, **extra):
 
 def _augment_preview_with_effective_counts(preview: dict) -> dict:
     """Adds live-vs-proposed cleanup target counts when the bot is available."""
-    from cleanup import build_channel_map
+    try:
+        from cleanup import build_channel_map
+    except ModuleNotFoundError:
+        log.warning("Could not import cleanup while building config preview; skipping effective counts")
+        return preview
 
     bot = get_bot()
     if not bot or not bot.guilds or "parsed_channels" not in preview:
@@ -185,6 +196,39 @@ def preview_channels_route():
         "message": message,
         "details": message,
         "preview": preview,
+    })
+
+
+@admin.route("/admin/config/channels/restore/preview", methods=["POST"])
+def preview_channels_restore_route():
+    """Preview restoring channels.yml from a backup file."""
+    backup_filename = request.form.get("backup_filename", "").strip()
+    success, message, preview = preview_channel_restore(backup_filename)
+    if not success:
+        return _with_error_location(message, success=False, details=message), 400
+    preview = _augment_preview_with_effective_counts(preview)
+
+    return jsonify({
+        "success": True,
+        "message": message,
+        "details": message,
+        "preview": preview,
+    })
+
+
+@admin.route("/admin/config/channels/restore", methods=["POST"])
+def restore_channels_route():
+    """Restore channels.yml from a backup file."""
+    backup_filename = request.form.get("backup_filename", "").strip()
+    success, message, backup_path = restore_channels_backup(backup_filename)
+    if not success:
+        return _with_error_location(message, success=False, details=message), 400
+
+    return jsonify({
+        "success": True,
+        "message": message,
+        "details": message,
+        "backup_path": backup_path,
     })
 
 

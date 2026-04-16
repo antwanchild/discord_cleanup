@@ -187,6 +187,41 @@
   </div>
 </div>
 
+<!-- channels.yml backups -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Channels Backups</span>
+    <span style="color:var(--text-muted); font-size:0.75rem; margin-left:0.5rem">Preview and restore previous channels.yml snapshots. Restores create a fresh backup of the current file first.</span>
+  </div>
+  {% if channel_backups %}
+  <table>
+    <thead>
+      <tr>
+        <th>Backup</th>
+        <th>Modified</th>
+        <th>Size</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for backup in channel_backups %}
+      <tr>
+        <td class="mono">{{ backup.filename }}</td>
+        <td class="mono">{{ backup.modified }}</td>
+        <td class="mono">{{ backup.size_bytes }} B</td>
+        <td>
+          <button class="btn btn-ghost" type="button" onclick='previewBackupRestore({{ backup.filename | tojson }})'>Preview Restore</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p style="color:var(--text-muted); font-size:0.75rem; margin:0.75rem 0 0">Showing the 10 most recent channels.yml backups.</p>
+  {% else %}
+  <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No channels.yml backups yet.</p>
+  {% endif %}
+</div>
+
 <!-- channels.yml preview modal -->
 <div class="modal-overlay" id="channels-preview-modal">
   <div class="modal-box" style="position:relative; max-width:980px; width:min(96vw, 980px); max-height:90vh; overflow:auto">
@@ -197,8 +232,9 @@
     <div id="channels-preview-diff"></div>
     <div class="modal-footer" style="justify-content:flex-end; gap:0.75rem; margin-top:1.5rem">
       <button class="btn btn-ghost" type="button" onclick="closeChannelsPreviewModal()">Cancel</button>
-      <button class="btn btn-ghost" type="button" onclick="startPreviewDryRun()">Dry Run</button>
-      <button class="btn btn-primary" type="button" onclick="confirmChannelsSave()">Save Changes</button>
+      <button class="btn btn-ghost" id="channels-preview-dry-run-btn" type="button" onclick="startPreviewDryRun()">Dry Run</button>
+      <button class="btn btn-primary" id="channels-preview-save-btn" type="button" onclick="confirmChannelsSave()">Save Changes</button>
+      <button class="btn btn-danger" id="channels-preview-restore-btn" type="button" onclick="confirmChannelsRestore()" style="display:none">Restore Backup</button>
     </div>
   </div>
 </div>
@@ -217,6 +253,8 @@
   <p>Controls whether channels with the same <span class="mono">notification_group</span> value are combined in the monthly and weekly report embeds.</p>
   <h3>Log Files Retained</h3>
   <p>Number of daily log files to keep. Files older than this are deleted automatically.</p>
+  <h3>Backups</h3>
+  <p>The backup browser shows recent channels.yml snapshots. Preview a restore first, then restore the snapshot to replace the live config. The current file is backed up automatically before the restore is written.</p>
   <h3>channels.yml Editor</h3>
   <p>Edit the channel configuration directly as valid YAML. Use Preview Changes to review the parsed diff, Save Changes to apply it, or Dry Run to test the proposed config without saving. Validate checks syntax and schema without saving. Saving creates a backup before applying changes.</p>
 </template>
@@ -228,6 +266,8 @@
   let channelsFeedbackLine = null;
   let channelsFeedbackColumn = null;
   let pendingChannelsContent = "";
+  let pendingRestoreFilename = "";
+  let channelsPreviewMode = "edit";
 
   // ── Config custom dropdowns ─────────────────────────────────────────────────
   function toggleCfgDropdown(id) {
@@ -398,20 +438,38 @@
     `;
   }
 
-  function renderPreviewModal(preview) {
+  function setChannelsPreviewMode(mode) {
+    channelsPreviewMode = mode;
+    const restoreBtn = document.getElementById("channels-preview-restore-btn");
+    const dryRunBtn = document.getElementById("channels-preview-dry-run-btn");
+    const saveBtn = document.getElementById("channels-preview-save-btn");
+    if (restoreBtn) restoreBtn.style.display = mode === "restore" ? "" : "none";
+    if (dryRunBtn) dryRunBtn.style.display = mode === "restore" ? "none" : "";
+    if (saveBtn) saveBtn.style.display = mode === "restore" ? "none" : "";
+  }
+
+  function renderPreviewModal(preview, mode = "edit") {
     const summary = preview.summary || {};
     const current = summary.current || {};
     const proposed = summary.proposed || {};
     const counts = summary.counts || {};
     const delta = summary.delta || {};
     const effective = preview.effective || null;
+    const backup = preview.backup || null;
     const overview = document.getElementById("channels-preview-overview");
     const diff = document.getElementById("channels-preview-diff");
     const title = document.getElementById("channels-preview-title");
     const summaryText = document.getElementById("channels-preview-summary");
 
-    title.textContent = "channels.yml Preview";
-    summaryText.textContent = `${counts.added || 0} added, ${counts.removed || 0} removed, ${counts.updated || 0} updated. ${counts.field_changes || 0} field change(s) total.`;
+    setChannelsPreviewMode(mode);
+    if (mode === "restore") {
+      const backupLabel = backup?.filename || pendingRestoreFilename || "selected backup";
+      title.textContent = `Restore Backup — ${backupLabel}`;
+      summaryText.textContent = `${counts.added || 0} added, ${counts.removed || 0} removed, ${counts.updated || 0} updated. ${counts.field_changes || 0} field change(s) total. Restoring this backup will replace the live channels.yml after creating a fresh backup of the current file.`;
+    } else {
+      title.textContent = "Review channels.yml Changes";
+      summaryText.textContent = `${counts.added || 0} added, ${counts.removed || 0} removed, ${counts.updated || 0} updated. ${counts.field_changes || 0} field change(s) total.`;
+    }
 
     overview.innerHTML = [
       renderOverviewCard("Current Entries", current.entries ?? 0),
@@ -539,12 +597,13 @@
       return;
     }
     pendingChannelsContent = content;
-    renderPreviewModal(data.preview);
+    pendingRestoreFilename = "";
+    renderPreviewModal(data.preview, "edit");
     openChannelsPreviewModal();
   }
 
   async function confirmChannelsSave() {
-    if (!pendingChannelsContent) {
+    if (!pendingChannelsContent || channelsPreviewMode !== "edit") {
       showToast("Preview the config first", "error");
       return;
     }
@@ -554,12 +613,13 @@
     if (data.success) {
       closeChannelsPreviewModal();
       pendingChannelsContent = "";
+      pendingRestoreFilename = "";
       setChannelsFeedback(Boolean(data.success), data);
     }
   }
 
   async function startPreviewDryRun() {
-    if (!pendingChannelsContent) {
+    if (!pendingChannelsContent || channelsPreviewMode !== "edit") {
       showToast("Preview the config first", "error");
       return;
     }
@@ -568,6 +628,35 @@
     const data = await postForm("/admin/config/channels/dry-run", fd);
     if (data.success) {
       closeChannelsPreviewModal();
+    }
+  }
+
+  async function previewBackupRestore(filename) {
+    const fd = new FormData();
+    fd.append("backup_filename", filename);
+    const data = await postForm("/admin/config/channels/restore/preview", fd);
+    if (!data.success) {
+      return;
+    }
+    pendingChannelsContent = "";
+    pendingRestoreFilename = filename;
+    renderPreviewModal(data.preview, "restore");
+    openChannelsPreviewModal();
+  }
+
+  async function confirmChannelsRestore() {
+    if (!pendingRestoreFilename || channelsPreviewMode !== "restore") {
+      showToast("Preview the backup first", "error");
+      return;
+    }
+    const fd = new FormData();
+    fd.append("backup_filename", pendingRestoreFilename);
+    const data = await postForm("/admin/config/channels/restore", fd);
+    if (data.success) {
+      closeChannelsPreviewModal();
+      pendingRestoreFilename = "";
+      pendingChannelsContent = "";
+      setTimeout(() => window.location.reload(), 1000);
     }
   }
 

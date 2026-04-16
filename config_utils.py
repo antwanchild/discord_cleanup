@@ -93,6 +93,18 @@ def list_channel_backups() -> list[dict]:
     return backups
 
 
+def _find_channel_backup(filename: str) -> dict | None:
+    """Returns the newest backup entry matching the given filename."""
+    filename = filename.strip()
+    if not filename:
+        return None
+
+    for backup in list_channel_backups():
+        if backup["filename"] == filename:
+            return backup
+    return None
+
+
 def reload_channels() -> tuple[bool, str]:
     """Reloads channels.yml and updates raw_channels. Returns (success, message)."""
     import config
@@ -244,6 +256,67 @@ def preview_channels_content(content: str) -> tuple[bool, str, dict | None]:
         "message": f"channels.yml preview ready — {len(channels)} channel {label}",
     }
     return True, preview["message"], preview
+
+
+def preview_channel_restore(filename: str) -> tuple[bool, str, dict | None]:
+    """Previews restoring channels.yml from a specific backup file."""
+    backup = _find_channel_backup(filename)
+    if not backup:
+        return False, f"Backup not found — {filename}", None
+
+    try:
+        with open(backup["path"], "r") as f:
+            content = f.read()
+    except FileNotFoundError:
+        return False, f"Backup not found — {filename}", None
+    except PermissionError:
+        return False, f"Permission denied reading backup — {filename}", None
+
+    valid, message, preview = preview_channels_content(content)
+    if not valid or preview is None:
+        return False, message, None
+
+    preview["backup"] = {
+        "type": backup["type"],
+        "filename": backup["filename"],
+        "path": backup["path"],
+        "modified": backup["modified"],
+        "size_bytes": backup["size_bytes"],
+    }
+    preview["message"] = f"Restore preview ready — {backup['filename']}"
+    return True, preview["message"], preview
+
+
+def restore_channels_backup(filename: str) -> tuple[bool, str, str | None]:
+    """Restores channels.yml from a backup file and reloads the live config."""
+    import config
+
+    backup = _find_channel_backup(filename)
+    if not backup:
+        return False, f"Backup not found — {filename}", None
+
+    try:
+        with open(backup["path"], "r") as f:
+            content = f.read()
+    except FileNotFoundError:
+        return False, f"Backup not found — {filename}", None
+    except PermissionError:
+        return False, f"Permission denied reading backup — {filename}", None
+
+    success, message, current_backup_path = save_channels_content(content)
+    if not success:
+        return False, message, None
+
+    label = "entry" if len(config.raw_channels) == 1 else "entries"
+    message = f"Restored channels.yml from {backup['filename']} — {len(config.raw_channels)} channel {label}"
+    if current_backup_path:
+        message = f"{message} | Backup: {current_backup_path}"
+    log.info(
+        "channels.yml restored from backup %s%s",
+        backup["path"],
+        f" | backup={current_backup_path}" if current_backup_path else "",
+    )
+    return True, message, current_backup_path
 
 
 def save_channels_content(content: str) -> tuple[bool, str, str | None]:

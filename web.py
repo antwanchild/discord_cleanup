@@ -158,6 +158,7 @@ def dashboard():
 def config_page():
     """Config editor — retention, log level, warn unconfigured, report frequency."""
     context = _get_status_context()
+    context["channel_backups"] = list_channel_backups()[:10]
 
     # Load raw channels.yml content for the editor
     try:

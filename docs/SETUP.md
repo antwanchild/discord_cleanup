@@ -268,7 +268,7 @@ The bot includes a built-in web interface accessible on port 8080. It provides f
 
 If you publish the web UI through a reverse proxy, keep the container on an internal network and consider setting `WEB_AUTH_HEADER_NAME` and `WEB_AUTH_HEADER_VALUE` so the app only trusts requests that arrive through your proxy.
 
-On the Config page, `channels.yml` can be previewed before saving, validated without saving, and schema errors include exact line and column numbers where possible. You can also launch a dry run from the preview modal to test the proposed config without writing it to disk. Saving creates a backup of the previous file before applying changes.
+On the Config page, `channels.yml` can be previewed before saving, validated without saving, restored from a previous backup, and schema errors include exact line and column numbers where possible. You can also launch a dry run from the preview modal to test the proposed config without writing it to disk. Saving or restoring creates a backup of the previous file before applying changes.
 
 The Stats page now includes a per-channel history timeline, and the Audit page provides a read-only retention review of the live cleanup configuration.
 
@@ -277,7 +277,7 @@ The Stats page now includes a per-channel history timeline, and the Audit page p
 | Page | URL | Description |
 |------|-----|-------------|
 | Dashboard | `/` | Bot status, uptime, next run, stats summary, startup path checks, and notification fallback visibility |
-| Config | `/config` | Edit retention, log level, warn unconfigured, report frequency, report grouping, and `channels.yml` directly |
+| Config | `/config` | Edit retention, log level, warn unconfigured, report frequency, report grouping, browse backups, and `channels.yml` directly |
 | Audit | `/audit` | Read-only retention audit showing categories, overrides, deep clean, exclusions, and grouping |
 | Schedule | `/schedule` | Add and remove scheduled run times |
 | Stats | `/stats` | Full statistics breakdown — toggle between category summary, per-channel detail, and channel history, plus recent stats and channels.yml backup visibility |

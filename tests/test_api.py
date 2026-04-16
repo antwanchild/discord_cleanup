@@ -110,6 +110,61 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(status_response.get_json()["notification_fallbacks_recent"], 1)
         self.assertTrue(status_response.get_json()["startup_path_check"]["/config/data"]["ok"])
 
+    def test_admin_restore_routes_expose_backup_preview_and_restore(self):
+        config_stub = types.SimpleNamespace(log=logging.getLogger("test-admin"))
+        utils_stub = types.SimpleNamespace(
+            get_bot=lambda: None,
+            get_bot_loop=lambda: None,
+            release_run=lambda: None,
+            try_acquire_run=lambda *_a, **_k: True,
+        )
+        config_utils_stub = types.SimpleNamespace(
+            preview_channel_restore=lambda filename: (
+                True,
+                "Restore preview ready — channels-1.yml.bak",
+                {
+                    "summary": {
+                        "current": {"entries": 1, "with_notification_groups": 0, "excluded": 0, "deep_clean": 0},
+                        "proposed": {"entries": 2, "with_notification_groups": 1, "excluded": 0, "deep_clean": 1},
+                        "delta": {"entries": 1, "categories": 0, "excluded": 0, "deep_clean": 1, "with_notification_groups": 1},
+                        "counts": {"added": 1, "removed": 0, "updated": 0, "field_changes": 0},
+                    },
+                    "changes": {"added": [{"id": 2, "name": "new-channel"}], "removed": [], "updated": []},
+                    "backup": {"filename": filename, "modified": "2026-04-15 05:45:00", "size_bytes": 99, "path": "/config/backups/channels-1.yml.bak", "type": "channels"},
+                    "parsed_channels": [{"id": 1, "name": "old-channel"}],
+                },
+            ),
+            restore_channels_backup=lambda filename: (True, f"Restored channels.yml from {filename}", "/config/backups/channels-restore.yml.bak"),
+            preview_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            save_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            update_report_grouping=lambda *_a, **_k: (True, "true"),
+            validate_channels_content=lambda *_a, **_k: (True, "ok", []),
+        )
+        stats_stub = types.SimpleNamespace(reset_stats=lambda *_a, **_k: True)
+
+        with isolated_module_import(
+            "admin",
+            {
+                "config": config_stub,
+                "config_utils": config_utils_stub,
+                "utils": utils_stub,
+                "stats": stats_stub,
+            },
+        ) as admin_module:
+            app = Flask(__name__)
+            app.register_blueprint(admin_module.admin)
+            client = app.test_client()
+
+            preview_response = client.post("/admin/config/channels/restore/preview", data={"backup_filename": "channels-1.yml.bak"})
+            restore_response = client.post("/admin/config/channels/restore", data={"backup_filename": "channels-1.yml.bak"})
+
+        self.assertEqual(preview_response.status_code, 200)
+        self.assertTrue(preview_response.get_json()["success"])
+        self.assertEqual(preview_response.get_json()["preview"]["backup"]["filename"], "channels-1.yml.bak")
+        self.assertEqual(restore_response.status_code, 200)
+        self.assertTrue(restore_response.get_json()["success"])
+        self.assertEqual(restore_response.get_json()["backup_path"], "/config/backups/channels-restore.yml.bak")
+
 
 if __name__ == "__main__":
     unittest.main()

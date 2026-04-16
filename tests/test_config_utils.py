@@ -50,6 +50,38 @@ class ConfigUtilsTests(unittest.TestCase):
             changed_fields = {item["field"] for item in preview["changes"]["updated"][0]["changes"]}
             self.assertEqual(changed_fields, {"name", "days"})
 
+    def test_preview_channel_restore_reports_diff_from_backup(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            backups_dir = os.path.join(tempdir, "backups", "channels")
+            os.makedirs(backups_dir, exist_ok=True)
+
+            current_path = os.path.join(tempdir, "channels.yml")
+            with open(current_path, "w") as f:
+                f.write("channels:\n  - id: 1\n    name: old-channel\n")
+
+            backup_path = os.path.join(backups_dir, "channels-20260415-054500.yml.bak")
+            with open(backup_path, "w") as f:
+                f.write(
+                    "channels:\n"
+                    "  - id: 1\n"
+                    "    name: renamed-channel\n"
+                    "  - id: 2\n"
+                    "    name: new-channel\n"
+                )
+
+            config_stub = self._build_config_stub(tempdir)
+            config_stub.raw_channels = [{"id": 1, "name": "old-channel"}]
+
+            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+                success, message, preview = config_utils.preview_channel_restore("channels-20260415-054500.yml.bak")
+
+            self.assertTrue(success)
+            self.assertIn("Restore preview ready", message)
+            self.assertEqual(preview["backup"]["filename"], "channels-20260415-054500.yml.bak")
+            self.assertEqual(preview["summary"]["counts"]["added"], 1)
+            self.assertEqual(preview["summary"]["counts"]["updated"], 1)
+            self.assertEqual(preview["changes"]["added"][0]["name"], "new-channel")
+
     def test_update_report_grouping_updates_env_and_in_memory_config(self):
         with tempfile.TemporaryDirectory() as tempdir:
             env_path = os.path.join(tempdir, ".env.discord_cleanup")
@@ -137,6 +169,37 @@ class ConfigUtilsTests(unittest.TestCase):
             self.assertFalse(os.path.exists(old_backup))
             self.assertTrue(os.path.exists(recent_backup))
             self.assertTrue(os.path.exists(backup_path))
+
+    def test_restore_channels_backup_restores_current_file_and_creates_backup(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            channels_path = os.path.join(tempdir, "channels.yml")
+            backups_dir = os.path.join(tempdir, "backups", "channels")
+            os.makedirs(backups_dir, exist_ok=True)
+
+            current_content = "channels:\n  - id: 123\n    name: current-channel\n"
+            backup_content = "channels:\n  - id: 456\n    name: restored-channel\n"
+            with open(channels_path, "w") as f:
+                f.write(current_content)
+
+            backup_file = os.path.join(backups_dir, "channels-20260415-054500.yml.bak")
+            with open(backup_file, "w") as f:
+                f.write(backup_content)
+
+            config_stub = self._build_config_stub(tempdir)
+            config_stub.raw_channels = [{"id": 123, "name": "current-channel"}]
+
+            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+                success, message, backup_path = config_utils.restore_channels_backup("channels-20260415-054500.yml.bak")
+
+            self.assertTrue(success)
+            self.assertIn("Restored channels.yml from channels-20260415-054500.yml.bak", message)
+            self.assertIsNotNone(backup_path)
+            self.assertTrue(os.path.exists(backup_path))
+            with open(channels_path, "r") as f:
+                self.assertEqual(f.read(), backup_content)
+            with open(backup_path, "r") as f:
+                self.assertEqual(f.read(), current_content)
+            self.assertEqual(config_stub.raw_channels, [{"id": 456, "name": "restored-channel"}])
 
 
 if __name__ == "__main__":
