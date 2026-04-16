@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.10.0 - 2026-04-16
+
+### Changes
+- Add channel drilldown to stats page
+
+
 ## 5.9.0 - 2026-04-16
 
 ### Changes
