@@ -22,6 +22,8 @@ class ConfigUtilsTests(unittest.TestCase):
             REPORT_FREQUENCY="monthly",
             REPORT_GROUP_MONTHLY=True,
             REPORT_GROUP_WEEKLY=True,
+            SCHEDULE_SKIP_DATES=[],
+            SCHEDULE_SKIP_WEEKDAYS=[],
             WARN_UNCONFIGURED=False,
             CATCHUP_MISSED_RUNS=True,
             LOG_LEVEL="INFO",
@@ -114,6 +116,28 @@ class ConfigUtilsTests(unittest.TestCase):
             self.assertFalse(config_stub.REPORT_GROUP_MONTHLY)
             with open(env_path, "r") as f:
                 self.assertIn("REPORT_GROUP_MONTHLY=false", f.read())
+
+    def test_update_schedule_skip_dates_and_weekdays_updates_env_and_in_memory_config(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            env_path = os.path.join(tempdir, ".env.discord_cleanup")
+            with open(env_path, "w") as f:
+                f.write("SCHEDULE_SKIP_DATES=\nSCHEDULE_SKIP_WEEKDAYS=\n")
+
+            config_stub = self._build_config_stub(tempdir)
+            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+                success_dates, message_dates = config_utils.update_schedule_skip_dates(["2026-04-20", "2026-04-22"])
+                success_weekdays, message_weekdays = config_utils.update_schedule_skip_weekdays(["Mon", "Fri"])
+
+            self.assertTrue(success_dates)
+            self.assertEqual(message_dates, "2026-04-20,2026-04-22")
+            self.assertTrue(success_weekdays)
+            self.assertEqual(message_weekdays, "mon,fri")
+            self.assertEqual(config_stub.SCHEDULE_SKIP_DATES, ["2026-04-20", "2026-04-22"])
+            self.assertEqual(config_stub.SCHEDULE_SKIP_WEEKDAYS, ["mon", "fri"])
+            with open(env_path, "r") as f:
+                env_text = f.read()
+            self.assertIn("SCHEDULE_SKIP_DATES=2026-04-20,2026-04-22", env_text)
+            self.assertIn("SCHEDULE_SKIP_WEEKDAYS=mon,fri", env_text)
 
     def test_reload_channels_returns_validation_error(self):
         with tempfile.TemporaryDirectory() as tempdir:

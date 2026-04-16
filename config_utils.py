@@ -14,7 +14,9 @@ from file_utils import atomic_write_text
 from validation import (
     ChannelsConfigError,
     load_channels_config_file,
+    parse_date_list,
     parse_time_list,
+    parse_weekday_list,
     validate_bool,
     validate_int,
     validate_report_frequency,
@@ -353,6 +355,8 @@ def _reload_runtime_env_values() -> None:
         report_frequency = validate_report_frequency(os.getenv("REPORT_FREQUENCY", "monthly"))
         report_group_monthly = validate_bool(os.getenv("REPORT_GROUP_MONTHLY", "true"), "REPORT_GROUP_MONTHLY")
         report_group_weekly = validate_bool(os.getenv("REPORT_GROUP_WEEKLY", "true"), "REPORT_GROUP_WEEKLY")
+        schedule_skip_dates = parse_date_list(os.getenv("SCHEDULE_SKIP_DATES", ""), "SCHEDULE_SKIP_DATES")
+        schedule_skip_weekdays = parse_weekday_list(os.getenv("SCHEDULE_SKIP_WEEKDAYS", ""), "SCHEDULE_SKIP_WEEKDAYS")
     except ValueError as e:
         raise ValueError(f"Invalid runtime env value — {e}") from e
 
@@ -365,6 +369,8 @@ def _reload_runtime_env_values() -> None:
     config.REPORT_FREQUENCY = report_frequency
     config.REPORT_GROUP_MONTHLY = report_group_monthly
     config.REPORT_GROUP_WEEKLY = report_group_weekly
+    config.SCHEDULE_SKIP_DATES = schedule_skip_dates
+    config.SCHEDULE_SKIP_WEEKDAYS = schedule_skip_weekdays
     config.WARN_UNCONFIGURED = os.getenv("WARN_UNCONFIGURED", "false").lower() == "true"
     config.GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
     config.CATCHUP_MISSED_RUNS = os.getenv("CATCHUP_MISSED_RUNS", "true").lower() == "true"
@@ -783,6 +789,34 @@ def update_env_value(key: str, value: str) -> tuple[bool, str]:
             return False, str(e)
 
         return True, value
+
+
+def update_schedule_skip_dates(dates: list[str]) -> tuple[bool, str]:
+    """Updates SCHEDULE_SKIP_DATES in env and in-memory config."""
+    import config
+
+    try:
+        normalized = parse_date_list(",".join(dates), "SCHEDULE_SKIP_DATES") if dates else []
+    except ValueError as e:
+        return False, str(e)
+    success, message = update_env_value("SCHEDULE_SKIP_DATES", ",".join(normalized))
+    if success:
+        config.SCHEDULE_SKIP_DATES = normalized
+    return success, message
+
+
+def update_schedule_skip_weekdays(weekdays: list[str]) -> tuple[bool, str]:
+    """Updates SCHEDULE_SKIP_WEEKDAYS in env and in-memory config."""
+    import config
+
+    try:
+        normalized = parse_weekday_list(",".join(weekdays), "SCHEDULE_SKIP_WEEKDAYS") if weekdays else []
+    except ValueError as e:
+        return False, str(e)
+    success, message = update_env_value("SCHEDULE_SKIP_WEEKDAYS", ",".join(normalized))
+    if success:
+        config.SCHEDULE_SKIP_WEEKDAYS = normalized
+    return success, message
 
 
 def update_retention(days: int) -> tuple[bool, str]:

@@ -175,7 +175,10 @@ def config_page():
 @app.route("/schedule", methods=["GET"])
 def schedule_page():
     """Schedule management page."""
+    import config as cfg
     context = _get_status_context()
+    context["schedule_skip_dates"] = getattr(cfg, "SCHEDULE_SKIP_DATES", [])
+    context["schedule_skip_weekdays"] = getattr(cfg, "SCHEDULE_SKIP_WEEKDAYS", [])
     return render_template("schedule.html", **context)
 
 

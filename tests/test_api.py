@@ -151,6 +151,8 @@ class ApiTests(unittest.TestCase):
                     "restores": {"startup_only_changed": ["WEB_HOST"], "restart_required": True},
                 },
             ),
+            update_schedule_skip_dates=lambda dates: (True, ",".join(dates)),
+            update_schedule_skip_weekdays=lambda weekdays: (True, ",".join(weekdays)),
             restore_channels_backup=lambda filename: (True, f"Restored channels.yml from {filename}", "/config/backups/channels-restore.yml.bak"),
             restore_env_backup=lambda filename: (True, f"Restored .env.discord_cleanup from {filename}", "/config/backups/env-restore.env.bak"),
             preview_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
@@ -191,6 +193,56 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(env_restore_response.status_code, 200)
         self.assertTrue(env_restore_response.get_json()["success"])
         self.assertEqual(env_restore_response.get_json()["backup_path"], "/config/backups/env-restore.env.bak")
+
+    def test_admin_schedule_exception_routes_update_env(self):
+        config_stub = types.SimpleNamespace(
+            log=logging.getLogger("test-admin"),
+            SCHEDULE_SKIP_DATES=[],
+            SCHEDULE_SKIP_WEEKDAYS=[],
+            CLEAN_TIMES=["03:00"],
+        )
+        utils_stub = types.SimpleNamespace(
+            get_bot=lambda: None,
+            get_bot_loop=lambda: None,
+            release_run=lambda: None,
+            try_acquire_run=lambda *_a, **_k: True,
+        )
+        config_utils_stub = types.SimpleNamespace(
+            preview_channel_restore=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            preview_env_restore=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            restore_channels_backup=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            restore_env_backup=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            preview_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            save_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            update_schedule_skip_dates=lambda dates: (True, ",".join(dates)),
+            update_schedule_skip_weekdays=lambda weekdays: (True, ",".join(weekdays)),
+            update_report_grouping=lambda *_a, **_k: (True, "true"),
+            validate_channels_content=lambda *_a, **_k: (True, "ok", []),
+        )
+        stats_stub = types.SimpleNamespace(reset_stats=lambda *_a, **_k: True)
+
+        with isolated_module_import(
+            "admin",
+            {
+                "config": config_stub,
+                "config_utils": config_utils_stub,
+                "utils": utils_stub,
+                "stats": stats_stub,
+            },
+        ) as admin_module:
+            app = Flask(__name__)
+            app.register_blueprint(admin_module.admin)
+            client = app.test_client()
+
+            add_date_response = client.post("/admin/schedule/skip/date", data={"action": "add", "date": "2026-04-20"})
+            add_weekday_response = client.post("/admin/schedule/skip/weekday", data={"weekday": "fri", "enabled": "true"})
+
+        self.assertEqual(add_date_response.status_code, 200)
+        self.assertTrue(add_date_response.get_json()["success"])
+        self.assertIn("2026-04-20", add_date_response.get_json()["dates"])
+        self.assertEqual(add_weekday_response.status_code, 200)
+        self.assertTrue(add_weekday_response.get_json()["success"])
+        self.assertIn("fri", add_weekday_response.get_json()["weekdays"])
 
 
 if __name__ == "__main__":

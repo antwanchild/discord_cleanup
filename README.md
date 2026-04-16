@@ -127,7 +127,7 @@ The web UI can sit behind a reverse proxy such as Authentik, but it still defaul
 
 The Config page supports preview-before-save for `channels.yml`, validate-before-save, per-report grouping controls, a dry run from the preview modal, and restoring `channels.yml` or `.env.discord_cleanup` from recent backups. Schema errors include line and column details when possible. Saving or restoring `channels.yml` creates a backup before replacing the live file, and `.env` restores also create a fresh backup before writing.
 
-The Stats page includes a per-channel history timeline plus a click-through drilldown, and the Audit page provides a read-only retention review of the live cleanup configuration.
+The Stats page includes a per-channel history timeline plus a click-through drilldown, the Schedule page supports blackout dates and weekday skips, and the Audit page provides a read-only retention review of the live cleanup configuration.
 
 The dashboard also shows the active cleanup run owner when a run is in progress, which makes it easier to tell whether a scheduler, slash command, or web action is holding the cleanup lock. It now also surfaces the most recent startup path-check results and recent notification fallback activity. The Stats page shows the 10 most recent stats-related backups and `channels.yml` backups, and the API exposes them at `GET /api/backups/stats` and `GET /api/backups/channels`.
 

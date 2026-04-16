@@ -32,6 +32,7 @@ from notifications import (
     post_missed_run_alert, post_status_report, post_catchup_notification,
 )
 from stats import migrate_stats_categories, load_last_run, record_catchup_run
+from scheduler import _matches_schedule_exception
 from utils import (
     update_health,
     register_task,
@@ -155,6 +156,11 @@ async def cleanup_task():
         return
 
     try:
+        skipped, reason = _matches_schedule_exception(now)
+        if skipped:
+            log.info("Scheduled cleanup skipped due to configured exception (%s)", reason)
+            return
+
         # Missed run detection
         for t in CLEAN_TIMES:
             hour, minute = map(int, t.split(":"))
@@ -248,6 +254,9 @@ def _find_missed_run_time(last_run_time: datetime, now: datetime, clean_times: l
             hour, minute = map(int, t.split(":"))
             candidate = datetime(current_day.year, current_day.month, current_day.day, hour, minute)
             if last_run_time < candidate < now:
+                skipped, _reason = _matches_schedule_exception(candidate)
+                if skipped:
+                    continue
                 if missed is None or candidate > missed:
                     missed = candidate
         current_day += timedelta(days=1)

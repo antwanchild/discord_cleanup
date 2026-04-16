@@ -54,6 +54,8 @@ def _get_status_context() -> dict:
         "report_group_monthly": cfg.REPORT_GROUP_MONTHLY,
         "report_group_weekly": cfg.REPORT_GROUP_WEEKLY,
         "log_max_files":    cfg.LOG_MAX_FILES,
+        "schedule_skip_dates": getattr(cfg, "SCHEDULE_SKIP_DATES", []),
+        "schedule_skip_weekdays": getattr(cfg, "SCHEDULE_SKIP_WEEKDAYS", []),
         "stats_backup_retention_days": cfg.STATS_BACKUP_RETENTION_DAYS,
         "startup_path_check": _format_startup_path_check(),
         "notification_fallbacks_recent": len(fallbacks),

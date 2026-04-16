@@ -8,10 +8,12 @@ from dotenv import load_dotenv
 from validation import (
     ChannelsConfigError,
     load_channels_config_file,
+    parse_date_list,
     parse_time_list,
     validate_bool,
     validate_int,
     validate_report_frequency,
+    parse_weekday_list,
     validate_time_string,
 )
 
@@ -51,6 +53,10 @@ def create_default_files():
                         "CHANNELS_BACKUP_RETENTION_DAYS=10\n\n"
                         "# Number of days to keep stats.json and last_run.json backups\n"
                         "STATS_BACKUP_RETENTION_DAYS=10\n\n"
+                        "# Optional scheduled cleanup blackout dates (YYYY-MM-DD, comma-separated)\n"
+                        "SCHEDULE_SKIP_DATES=\n\n"
+                        "# Optional scheduled cleanup blackout weekdays (Mon, Tue, Wed, Thu, Fri, Sat, Sun)\n"
+                        "SCHEDULE_SKIP_WEEKDAYS=\n\n"
                         "# Log level: DEBUG, INFO, WARNING, ERROR\n"
                         "LOG_LEVEL=INFO\n\n"
                         "# Time to post monthly report on the 1st (24hr format)\n"
@@ -201,6 +207,8 @@ try:
     REPORT_FREQUENCY = validate_report_frequency(os.getenv("REPORT_FREQUENCY", "monthly"))
     REPORT_GROUP_MONTHLY = validate_bool(os.getenv("REPORT_GROUP_MONTHLY", "true"), "REPORT_GROUP_MONTHLY")
     REPORT_GROUP_WEEKLY = validate_bool(os.getenv("REPORT_GROUP_WEEKLY", "true"), "REPORT_GROUP_WEEKLY")
+    SCHEDULE_SKIP_DATES = parse_date_list(os.getenv("SCHEDULE_SKIP_DATES", ""), "SCHEDULE_SKIP_DATES")
+    SCHEDULE_SKIP_WEEKDAYS = parse_weekday_list(os.getenv("SCHEDULE_SKIP_WEEKDAYS", ""), "SCHEDULE_SKIP_WEEKDAYS")
 except ValueError as e:
     log.error(f"Invalid configuration value — {e}")
     sys.exit(1)

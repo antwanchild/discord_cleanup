@@ -1,12 +1,15 @@
 """
 scheduler.py — Schedule management and task rescheduling.
-Handles updating CLEAN_TIME in .env and rescheduling the discord.ext.tasks loop.
+Handles updating schedule config in .env and rescheduling the discord.ext.tasks loop.
 """
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from config import config_lock, CONFIG_DIR, log
 from file_utils import atomic_write_text
 from validation import validate_time_string
+
+_WEEKDAY_LABELS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 # Task reference set by cleanup_bot.py via utils.register_task
 _cleanup_task = None
@@ -18,6 +21,19 @@ def register_task_ref(cleanup_task, task_tz):
     global _cleanup_task, _task_tz
     _cleanup_task = cleanup_task
     _task_tz = task_tz
+
+
+def _matches_schedule_exception(moment: datetime) -> tuple[bool, str | None]:
+    """Checks whether a moment falls on an excluded date or weekday."""
+    import config as cfg
+
+    date_str = moment.strftime("%Y-%m-%d")
+    weekday = _WEEKDAY_LABELS[moment.weekday()]
+    if date_str in getattr(cfg, "SCHEDULE_SKIP_DATES", []):
+        return True, f"date {date_str}"
+    if weekday in getattr(cfg, "SCHEDULE_SKIP_WEEKDAYS", []):
+        return True, f"weekday {weekday}"
+    return False, None
 
 
 def get_next_run_str(cleanup_task=None, task_tz=None) -> str:
@@ -36,13 +52,15 @@ def get_next_run_str(cleanup_task=None, task_tz=None) -> str:
     for t in sorted(cfg.CLEAN_TIMES):
         hour, minute = map(int, t.split(":"))
         candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        if candidate > now:
+        if candidate > now and not _matches_schedule_exception(candidate)[0]:
             return candidate.strftime('%Y-%m-%d %I:%M %p')
 
     hour, minute = map(int, sorted(cfg.CLEAN_TIMES)[0].split(":"))
-    return (now + timedelta(days=1)).replace(
-        hour=hour, minute=minute, second=0, microsecond=0
-    ).strftime('%Y-%m-%d %I:%M %p')
+    candidate = (now + timedelta(days=1)).replace(hour=hour, minute=minute, second=0, microsecond=0)
+    while _matches_schedule_exception(candidate)[0]:
+        candidate += timedelta(days=1)
+        candidate = candidate.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return candidate.strftime('%Y-%m-%d %I:%M %p')
 
 
 def update_schedule(new_times: list) -> tuple[bool, str, str | None]:
@@ -109,3 +127,19 @@ def update_schedule(new_times: list) -> tuple[bool, str, str | None]:
 
     log.info(f"Schedule updated to: {new_value}")
     return True, new_value, reschedule_error
+
+
+def update_schedule_exceptions(skip_dates: list[str] | None = None, skip_weekdays: list[str] | None = None) -> tuple[bool, str]:
+    """Updates schedule blackout dates and weekdays in the env file."""
+    from config_utils import update_schedule_skip_dates, update_schedule_skip_weekdays
+
+    skip_dates = [] if skip_dates is None else skip_dates
+    skip_weekdays = [] if skip_weekdays is None else skip_weekdays
+
+    success, message = update_schedule_skip_dates(skip_dates)
+    if not success:
+        return False, message
+    success, message = update_schedule_skip_weekdays(skip_weekdays)
+    if not success:
+        return False, message
+    return True, f"dates={','.join(skip_dates)} | weekdays={','.join(skip_weekdays)}"

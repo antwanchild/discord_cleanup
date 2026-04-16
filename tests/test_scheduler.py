@@ -5,6 +5,7 @@ import tempfile
 import threading
 import types
 import unittest
+from datetime import datetime
 
 from tests.support import isolated_module_import
 
@@ -15,6 +16,8 @@ class SchedulerTests(unittest.TestCase):
             config_lock=threading.Lock(),
             CONFIG_DIR=config_dir,
             CLEAN_TIMES=["03:00"],
+            SCHEDULE_SKIP_DATES=[],
+            SCHEDULE_SKIP_WEEKDAYS=[],
             log=logging.getLogger("test-scheduler"),
         )
 
@@ -52,6 +55,17 @@ class SchedulerTests(unittest.TestCase):
             self.assertEqual(config_stub.CLEAN_TIMES, ["03:00"])
             with open(env_path, "r") as f:
                 self.assertEqual(f.read(), original)
+
+    def test_matches_schedule_exception_detects_dates_and_weekdays(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            config_stub = self._build_config_stub(tempdir)
+            config_stub.SCHEDULE_SKIP_DATES = ["2026-04-20"]
+            config_stub.SCHEDULE_SKIP_WEEKDAYS = ["thu"]
+
+            with isolated_module_import("scheduler", {"config": config_stub}) as scheduler:
+                self.assertTrue(scheduler._matches_schedule_exception(datetime(2026, 4, 20, 3, 0))[0])
+                self.assertTrue(scheduler._matches_schedule_exception(datetime(2026, 4, 23, 3, 0))[0])
+                self.assertFalse(scheduler._matches_schedule_exception(datetime(2026, 4, 21, 3, 0))[0])
 
 
 class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
@@ -144,7 +158,10 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             BOT_VERSION="1.0.0",
             CATCHUP_MISSED_RUNS=True,
             CLEAN_TIMES=["03:00"],
+            SCHEDULE_SKIP_DATES=[],
+            SCHEDULE_SKIP_WEEKDAYS=[],
             DATA_DIR="/config/data",
+            CONFIG_DIR="/tmp",
             HEALTH_FILE="/tmp/health",
             LOG_DIR="/config/logs",
             MISSED_RUN_THRESHOLD_MINUTES=15,
@@ -153,6 +170,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             LOG_LEVEL="INFO",
             REPORT_FREQUENCY="monthly",
             DEFAULT_RETENTION=7,
+            config_lock=threading.Lock(),
             log=logger,
         )
         cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
@@ -216,6 +234,84 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(seen, ["first", "second"])
 
+    async def test_find_missed_run_time_skips_blackout_dates(self):
+        discord_module, commands, tasks = self._discord_stubs()
+        logger = logging.getLogger("test-cleanup-bot")
+        logger.setLevel(logging.INFO)
+
+        config_stub = types.SimpleNamespace(
+            BOT_VERSION="1.0.0",
+            CATCHUP_MISSED_RUNS=True,
+            CLEAN_TIMES=["03:00"],
+            SCHEDULE_SKIP_DATES=["2026-04-20"],
+            SCHEDULE_SKIP_WEEKDAYS=[],
+            DATA_DIR="/config/data",
+            CONFIG_DIR="/tmp",
+            HEALTH_FILE="/tmp/health",
+            LOG_DIR="/config/logs",
+            MISSED_RUN_THRESHOLD_MINUTES=15,
+            STATUS_REPORT_TIME="09:00",
+            TOKEN="token",
+            LOG_LEVEL="INFO",
+            REPORT_FREQUENCY="monthly",
+            DEFAULT_RETENTION=7,
+            config_lock=threading.Lock(),
+            log=logger,
+        )
+        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        commands_stub = types.SimpleNamespace(cleanup_group=object())
+        notifications_stub = types.SimpleNamespace(
+            post_deploy_notification=lambda *a, **k: None,
+            post_startup_notification=lambda *a, **k: None,
+            post_missed_run_alert=lambda *a, **k: None,
+            post_status_report=lambda *a, **k: None,
+            post_catchup_notification=lambda *a, **k: None,
+        )
+        stats_stub = types.SimpleNamespace(
+            migrate_stats_categories=lambda *_a, **_k: None,
+            load_last_run=lambda: {"timestamp": "2026-04-19 02:00:00"},
+            record_catchup_run=lambda: None,
+        )
+        utils_stub = types.SimpleNamespace(
+            update_health=lambda: None,
+            register_task=lambda *_a, **_k: None,
+            log_restart_separator=lambda: None,
+            set_bot_loop=lambda *_a, **_k: None,
+            set_startup_path_status=lambda *_a, **_k: None,
+            is_run_in_progress=lambda: False,
+            release_run=lambda: None,
+            try_acquire_run=lambda *_a, **_k: True,
+        )
+        web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
+        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        commands_stats_stub = types.SimpleNamespace()
+
+        with isolated_module_import(
+            "cleanup_bot",
+            {
+                "config": config_stub,
+                "cleanup": cleanup_stub,
+                "commands": commands_stub,
+                "commands_stats": commands_stats_stub,
+                "file_utils": file_utils_stub,
+                "notifications": notifications_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "web": web_stub,
+                "discord": discord_module,
+                "discord.ext": types.SimpleNamespace(commands=commands, tasks=tasks),
+                "discord.ext.commands": commands,
+                "discord.ext.tasks": tasks,
+            },
+        ) as cleanup_bot:
+            result = cleanup_bot._find_missed_run_time(
+                datetime(2026, 4, 19, 2, 0, 0),
+                datetime(2026, 4, 21, 4, 0, 0),
+                ["03:00"],
+            )
+
+        self.assertEqual(result.strftime("%Y-%m-%d %H:%M:%S"), "2026-04-21 03:00:00")
+
     async def test_log_startup_path_check_reports_expected_paths(self):
         discord_module, commands, tasks = self._discord_stubs()
         logger = logging.getLogger("test-cleanup-bot-paths")
@@ -226,6 +322,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             CATCHUP_MISSED_RUNS=True,
             CLEAN_TIMES=["03:00"],
             DATA_DIR="/config/data",
+            CONFIG_DIR="/tmp",
             HEALTH_FILE="/tmp/health",
             LOG_DIR="/config/logs",
             MISSED_RUN_THRESHOLD_MINUTES=15,
@@ -234,6 +331,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             LOG_LEVEL="INFO",
             REPORT_FREQUENCY="monthly",
             DEFAULT_RETENTION=7,
+            config_lock=threading.Lock(),
             log=logger,
         )
         cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)

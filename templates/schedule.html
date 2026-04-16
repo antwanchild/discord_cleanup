@@ -40,6 +40,46 @@
 
 <div class="card">
   <div class="card-header">
+    <span class="card-title">Schedule Exceptions</span>
+  </div>
+
+  <div class="form-row" style="align-items:flex-start">
+    <label>Skipped Dates</label>
+    <div style="flex:1">
+      <div style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; margin-bottom:0.75rem">
+        <input type="date" id="skip-date-input" style="max-width:180px; height:36px">
+        <button class="btn btn-primary" onclick="addSkipDate()" style="height:36px">Add Date</button>
+      </div>
+      {% if schedule_skip_dates %}
+      <div style="display:flex; flex-wrap:wrap; gap:0.5rem">
+        {% for date in schedule_skip_dates %}
+        <span class="pill pill-brand" style="display:inline-flex; align-items:center; gap:0.5rem">
+          <span class="mono">{{ date }}</span>
+          <button class="btn btn-ghost" style="padding:0.15rem 0.4rem" onclick="removeSkipDate('{{ date }}')">Remove</button>
+        </span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p style="color:var(--text-muted); font-size:0.8rem; margin:0">No skipped dates set.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="form-row" style="align-items:flex-start">
+    <label>Skipped Weekdays</label>
+    <div style="flex:1">
+      <div style="display:flex; flex-wrap:wrap; gap:0.5rem">
+        {% for weekday, label in [("mon", "Mon"), ("tue", "Tue"), ("wed", "Wed"), ("thu", "Thu"), ("fri", "Fri"), ("sat", "Sat"), ("sun", "Sun")] %}
+        <button class="btn {{ 'btn-danger' if weekday in schedule_skip_weekdays else 'btn-ghost' }}" type="button" onclick="toggleSkipWeekday('{{ weekday }}', {{ 'false' if weekday in schedule_skip_weekdays else 'true' }})">{{ label }}</button>
+        {% endfor %}
+      </div>
+      <p style="color:var(--text-muted); font-size:0.8rem; margin:0.75rem 0 0">Click a day to skip or unskip every run on that weekday.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
     <span class="card-title">Add Run Time</span>
   </div>
   <div class="form-row">
@@ -56,6 +96,8 @@
   <h2>Schedule Help</h2>
   <h3>Run Times</h3>
   <p>Each entry is a daily cleanup run time in 24-hour format, such as 03:00 for 3 AM.</p>
+  <h3>Schedule Exceptions</h3>
+  <p>Use blackout dates for one-off skips and weekday toggles for recurring skips. When a scheduled time falls on a blackout date or weekday, the cleanup run is skipped and missed-run catchup ignores it too.</p>
   <h3>Timezone</h3>
   <p>Times use the timezone set via the <span class="mono">TZ</span> environment variable. If <span class="mono">TZ</span> is not set, the bot defaults to UTC.</p>
   <h3>Adding a Time</h3>
@@ -95,6 +137,39 @@
     if (data.success) {
       const row = document.getElementById(`row-${time.replace(":", "-")}`);
       if (row) row.remove();
+    }
+  }
+
+  async function addSkipDate() {
+    const input = document.getElementById("skip-date-input");
+    const date = input.value;
+    if (!date) { showToast("Please choose a date", "error"); return; }
+    const fd = new FormData();
+    fd.append("action", "add");
+    fd.append("date", date);
+    const data = await postForm("/admin/schedule/skip/date", fd);
+    if (data.success) {
+      window.location.reload();
+    }
+  }
+
+  async function removeSkipDate(date) {
+    const fd = new FormData();
+    fd.append("action", "remove");
+    fd.append("date", date);
+    const data = await postForm("/admin/schedule/skip/date", fd);
+    if (data.success) {
+      window.location.reload();
+    }
+  }
+
+  async function toggleSkipWeekday(weekday, enabled) {
+    const fd = new FormData();
+    fd.append("weekday", weekday);
+    fd.append("enabled", enabled);
+    const data = await postForm("/admin/schedule/skip/weekday", fd);
+    if (data.success) {
+      window.location.reload();
     }
   }
 </script>

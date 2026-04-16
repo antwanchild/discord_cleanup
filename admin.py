@@ -13,6 +13,8 @@ from config_utils import (
     restore_env_backup,
     restore_channels_backup,
     save_channels_content,
+    update_schedule_skip_dates,
+    update_schedule_skip_weekdays,
     update_report_grouping,
     validate_channels_content,
 )
@@ -297,6 +299,56 @@ def remove_schedule():
     current.remove(time_str)
     success, message, reschedule_error = update_schedule(current)
     return jsonify({"success": success, "message": message, "reschedule_error": reschedule_error})
+
+
+@admin.route("/admin/schedule/skip/date", methods=["POST"])
+def update_schedule_skip_date():
+    """Add or remove a one-off blackout date from the schedule."""
+    import config as cfg
+
+    action = request.form.get("action", "").lower().strip()
+    date_value = request.form.get("date", "").strip()
+    current = list(getattr(cfg, "SCHEDULE_SKIP_DATES", []))
+    if action not in {"add", "remove"}:
+        return jsonify({"success": False, "message": "Invalid action"}), 400
+    if not date_value:
+        return jsonify({"success": False, "message": "Date is required"}), 400
+
+    if action == "add":
+        if date_value in current:
+            return jsonify({"success": False, "message": f"{date_value} is already skipped"}), 400
+        current.append(date_value)
+        current.sort()
+    else:
+        if date_value not in current:
+            return jsonify({"success": False, "message": f"{date_value} is not a skipped date"}), 400
+        current.remove(date_value)
+
+    success, message = update_schedule_skip_dates(current)
+    return jsonify({"success": success, "message": message, "dates": current})
+
+
+@admin.route("/admin/schedule/skip/weekday", methods=["POST"])
+def update_schedule_skip_weekday():
+    """Toggle a recurring blackout weekday."""
+    import config as cfg
+
+    weekday = request.form.get("weekday", "").strip().lower()
+    enabled = request.form.get("enabled", "false").lower() == "true"
+    current = list(getattr(cfg, "SCHEDULE_SKIP_WEEKDAYS", []))
+    valid = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+    if weekday not in valid:
+        return jsonify({"success": False, "message": "Invalid weekday"}), 400
+
+    if enabled:
+        if weekday not in current:
+            current.append(weekday)
+    else:
+        if weekday in current:
+            current.remove(weekday)
+
+    success, message = update_schedule_skip_weekdays(current)
+    return jsonify({"success": success, "message": message, "weekdays": current})
 
 
 @admin.route("/admin/run/full", methods=["POST"])

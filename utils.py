@@ -26,6 +26,8 @@ from config_utils import (                          # noqa: F401
     update_warn_unconfigured,
     update_report_frequency,
     update_log_max_files,
+    update_schedule_skip_dates,
+    update_schedule_skip_weekdays,
 )
 from scheduler import (                             # noqa: F401
     get_next_run_str,

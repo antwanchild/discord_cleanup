@@ -38,6 +38,8 @@ class RunLockTests(unittest.TestCase):
             update_warn_unconfigured=_ok,
             update_report_frequency=_ok,
             update_log_max_files=_ok,
+            update_schedule_skip_dates=_ok,
+            update_schedule_skip_weekdays=_ok,
         )
 
     def _build_scheduler_stub(self):

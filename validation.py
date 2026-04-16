@@ -3,6 +3,7 @@ validation.py — Shared validation helpers for env values and channels.yml.
 """
 from __future__ import annotations
 
+from datetime import datetime
 import yaml
 from yaml.nodes import MappingNode, ScalarNode, SequenceNode
 
@@ -48,6 +49,73 @@ def parse_time_list(value: str, label: str = "CLEAN_TIME") -> list[str]:
     if not parsed:
         raise ValueError(f"{label} must contain at least one valid time")
     return parsed
+
+
+def validate_date_string(value: str, label: str) -> str:
+    """Validates a strict YYYY-MM-DD date string and returns it normalized."""
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a string in YYYY-MM-DD format")
+
+    try:
+        parsed = datetime.strptime(value.strip(), "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError(f"{label} must use YYYY-MM-DD format") from exc
+    return parsed.strftime("%Y-%m-%d")
+
+
+def parse_date_list(value: str, label: str = "SCHEDULE_SKIP_DATES") -> list[str]:
+    """Parses a comma-separated list of YYYY-MM-DD dates."""
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a comma-separated string")
+
+    parsed = [validate_date_string(item, label) for item in value.split(",") if item.strip()]
+    return parsed
+
+
+_WEEKDAY_ALIASES = {
+    "0": "mon",
+    "1": "tue",
+    "2": "wed",
+    "3": "thu",
+    "4": "fri",
+    "5": "sat",
+    "6": "sun",
+    "mon": "mon",
+    "monday": "mon",
+    "tue": "tue",
+    "tues": "tue",
+    "tuesday": "tue",
+    "wed": "wed",
+    "wednesday": "wed",
+    "thu": "thu",
+    "thur": "thu",
+    "thurs": "thu",
+    "thursday": "thu",
+    "fri": "fri",
+    "friday": "fri",
+    "sat": "sat",
+    "saturday": "sat",
+    "sun": "sun",
+    "sunday": "sun",
+}
+
+
+def validate_weekday_string(value: str, label: str) -> str:
+    """Validates a weekday string and returns a canonical three-letter label."""
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a weekday name")
+    normalized = value.strip().lower()
+    if normalized not in _WEEKDAY_ALIASES:
+        raise ValueError(f"{label} must be one of: Mon, Tue, Wed, Thu, Fri, Sat, Sun")
+    return _WEEKDAY_ALIASES[normalized]
+
+
+def parse_weekday_list(value: str, label: str = "SCHEDULE_SKIP_WEEKDAYS") -> list[str]:
+    """Parses a comma-separated list of weekday names."""
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be a comma-separated string")
+
+    return [validate_weekday_string(item, label) for item in value.split(",") if item.strip()]
 
 
 def validate_report_frequency(value: str) -> str:

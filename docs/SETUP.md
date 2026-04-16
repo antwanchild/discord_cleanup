@@ -7,6 +7,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 ## Features
 
 - Scheduled daily cleanup runs (one or more times per day)
+- Schedule exceptions for specific dates or recurring weekdays
 - Per-channel retention periods
 - Category support — clean all channels under a Discord category automatically
 - Channel exclusions
@@ -88,6 +89,8 @@ An automated Discord bot that cleans up old messages from configured channels on
 | `LOG_MAX_FILES` | ❌ | `7` | Number of daily log files to retain |
 | `CHANNELS_BACKUP_RETENTION_DAYS` | ❌ | `10` | Number of days to keep `channels.yml` backup files |
 | `STATS_BACKUP_RETENTION_DAYS` | ❌ | `10` | Number of days to keep `stats.json` and `last_run.json` backup files |
+| `SCHEDULE_SKIP_DATES` | ❌ | — | Comma-separated blackout dates in `YYYY-MM-DD` format |
+| `SCHEDULE_SKIP_WEEKDAYS` | ❌ | — | Comma-separated blackout weekdays: `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`, `Sun` |
 | `LOG_LEVEL` | ❌ | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 | `STATUS_REPORT_TIME` | ❌ | `09:00` | Time to post stats report (24hr format) |
 | `REPORT_FREQUENCY` | ❌ | `monthly` | Report frequency: `monthly`, `weekly`, or `both` |
@@ -122,6 +125,8 @@ DEFAULT_RETENTION=7
 LOG_MAX_FILES=7
 CHANNELS_BACKUP_RETENTION_DAYS=10
 STATS_BACKUP_RETENTION_DAYS=10
+SCHEDULE_SKIP_DATES=
+SCHEDULE_SKIP_WEEKDAYS=
 LOG_LEVEL=INFO
 STATUS_REPORT_TIME=09:00
 REPORT_FREQUENCY=monthly
@@ -270,7 +275,7 @@ If you publish the web UI through a reverse proxy, keep the container on an inte
 
 On the Config page, `channels.yml` can be previewed before saving, validated without saving, restored from a previous backup, and schema errors include exact line and column numbers where possible. You can also launch a dry run from the preview modal to test the proposed config without writing it to disk. The backup browser also lets you restore `.env.discord_cleanup` snapshots, with startup-only settings calling out when a restart is still needed. Saving or restoring creates a backup of the previous file before applying changes.
 
-The Stats page now includes a per-channel history timeline and drilldown view, and the Audit page provides a read-only retention review of the live cleanup configuration.
+The Stats page now includes a per-channel history timeline and drilldown view, the Schedule page can skip specific dates or weekdays, and the Audit page provides a read-only retention review of the live cleanup configuration.
 
 **Pages:**
 
@@ -279,7 +284,7 @@ The Stats page now includes a per-channel history timeline and drilldown view, a
 | Dashboard | `/` | Bot status, uptime, next run, stats summary, startup path checks, and notification fallback visibility |
 | Config | `/config` | Edit retention, log level, warn unconfigured, report frequency, report grouping, browse backups, and `channels.yml` directly |
 | Audit | `/audit` | Read-only retention audit showing categories, overrides, deep clean, exclusions, and grouping |
-| Schedule | `/schedule` | Add and remove scheduled run times |
+| Schedule | `/schedule` | Add and remove scheduled run times, blackout dates, and skipped weekdays |
 | Stats | `/stats` | Full statistics breakdown — toggle between category summary, per-channel detail, channel history, and drilldown, plus recent stats and channels.yml backup visibility |
 | Logs | `/logs` | Log viewer with file selector, search/filter controls, and color-coded entries |
 
