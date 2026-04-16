@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.0 - 2026-04-16
+
+### Changes
+- Add per-channel report controls
+
+
 ## 5.10.1 - 2026-04-16
 
 ### Changes
