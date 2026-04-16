@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.2 - 2026-04-16
+
+### Changes
+- Split config utilities into smaller modules
+
+
 ## 5.11.1 - 2026-04-16
 
 ### Changes
