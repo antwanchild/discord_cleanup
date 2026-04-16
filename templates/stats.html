@@ -294,28 +294,14 @@
 </div>
 
 <!-- Confirm reset modal -->
-<div id="reset-modal" style="
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  z-index: 500;
-  align-items: center;
-  justify-content: center;
-">
-  <div style="
-    background: var(--surface-alt);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 2rem;
-    max-width: 400px;
-    width: 90%;
-  ">
-    <h2 style="font-size:1.1rem; margin:0 0 0.5rem">⚠️ Confirm Reset</h2>
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal-box" style="position:relative; max-width:400px; width:min(92vw, 400px)">
+    <div class="modal-close-x" onclick="closeResetModal()" title="Close">✕</div>
+    <h2 style="font-size:1.1rem; margin:0 0 0.5rem">⚠️ Confirm Stats Reset</h2>
     <p id="modal-message" style="color:var(--text-muted); font-size:0.875rem; margin:0 0 1.5rem"></p>
-    <div style="display:flex; gap:0.75rem; justify-content:flex-end">
+    <div class="modal-footer" style="justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeResetModal()">Cancel</button>
-      <button class="btn btn-danger" onclick="doReset()">Confirm Reset</button>
+      <button class="btn btn-danger" onclick="doReset()">Reset Stats</button>
     </div>
   </div>
 </div>
@@ -353,8 +339,8 @@
   <p>Shows the most recent cleanup runs for each configured channel, including deleted count, run status, and trigger source.</p>
   <h3>Catchup Runs</h3>
   <p>All-time count of cleanup runs that were triggered automatically on startup because a scheduled run was missed while the bot was offline.</p>
-    <h3>Reset Stats</h3>
-    <p>Resets the chosen period back to zero. This cannot be undone.</p>
+  <h3>Reset Stats</h3>
+  <p>Clears the selected stats period back to zero. This cannot be undone.</p>
 </template>
 {% endblock %}
 
@@ -368,12 +354,11 @@
     pendingResetScope = scope;
     document.getElementById("modal-message").textContent =
       `Are you sure you want to reset ${label} stats? This cannot be undone.`;
-    const modal = document.getElementById("reset-modal");
-    modal.style.display = "flex";
+    document.getElementById("reset-modal").classList.add("open");
   }
 
   function closeResetModal() {
-    document.getElementById("reset-modal").style.display = "none";
+    document.getElementById("reset-modal").classList.remove("open");
     pendingResetScope = null;
   }
 

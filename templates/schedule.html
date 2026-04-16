@@ -9,7 +9,7 @@
     <h1>Schedule</h1>
     <div class="help-btn" onclick="openPageHelp('help-schedule')" title="Help">?</div>
   </div>
-  <p>Manage cleanup run times — changes apply immediately without a restart</p>
+  <p>Manage cleanup run times. Changes apply immediately without a restart.</p>
 </div>
 
 <div class="card">
@@ -54,14 +54,14 @@
 
 <template id="help-schedule">
   <h2>Schedule Help</h2>
-    <h3>Run Times</h3>
-    <p>Each entry is a daily cleanup run time in 24-hour format (e.g. 03:00 for 3 AM).</p>
-    <h3>Timezone</h3>
-    <p>Times use the timezone set via the TZ environment variable. If TZ is not set the bot defaults to UTC.</p>
-    <h3>Adding a Time</h3>
-    <p>Use the time picker and click Add. Duplicate times are rejected. Changes reschedule the task immediately.</p>
-    <h3>Removing a Time</h3>
-    <p>Click Remove next to any run time. The last remaining run time cannot be removed.</p>
+  <h3>Run Times</h3>
+  <p>Each entry is a daily cleanup run time in 24-hour format, such as 03:00 for 3 AM.</p>
+  <h3>Timezone</h3>
+  <p>Times use the timezone set via the <span class="mono">TZ</span> environment variable. If <span class="mono">TZ</span> is not set, the bot defaults to UTC.</p>
+  <h3>Adding a Time</h3>
+  <p>Use the time picker and click Add. Duplicate times are rejected, and new times take effect immediately.</p>
+  <h3>Removing a Time</h3>
+  <p>Click Remove next to a run time to delete it. The last remaining run time cannot be removed.</p>
 </template>
 {% endblock %}
 

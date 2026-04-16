@@ -191,7 +191,7 @@
 <div class="modal-overlay" id="channels-preview-modal">
   <div class="modal-box" style="position:relative; max-width:980px; width:min(96vw, 980px); max-height:90vh; overflow:auto">
     <div class="modal-close-x" onclick="closeChannelsPreviewModal()" title="Close">✕</div>
-    <h2 id="channels-preview-title">channels.yml Preview</h2>
+    <h2 id="channels-preview-title">Review channels.yml Changes</h2>
     <p id="channels-preview-summary" style="color:var(--text-muted); font-size:0.9rem; margin:0 0 1rem"></p>
     <div id="channels-preview-overview" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.75rem; margin-bottom:1rem"></div>
     <div id="channels-preview-diff"></div>
@@ -213,12 +213,12 @@
   <p>When enabled, the bot logs a warning for any Discord channel not listed in channels.yml.</p>
   <h3>Report Frequency</h3>
   <p>How often the automated stats report is posted. Monthly posts on the 1st, weekly posts every Monday, both does both.</p>
-  <h3>Monthly / Weekly Grouping</h3>
-  <p>Controls whether channels with the same <span class="mono">notification_group</span> value are collapsed in the monthly and weekly report embeds.</p>
+  <h3>Report Grouping</h3>
+  <p>Controls whether channels with the same <span class="mono">notification_group</span> value are combined in the monthly and weekly report embeds.</p>
   <h3>Log Files Retained</h3>
   <p>Number of daily log files to keep. Files older than this are deleted automatically.</p>
   <h3>channels.yml Editor</h3>
-  <p>Direct editor for the channel configuration file. Must be valid YAML. Use Preview Changes to review the parsed diff, then Save Changes to apply it or Dry Run to test the proposed config without saving. Validate checks syntax and schema without saving. Save creates a backup before applying changes.</p>
+  <p>Edit the channel configuration directly as valid YAML. Use Preview Changes to review the parsed diff, Save Changes to apply it, or Dry Run to test the proposed config without saving. Validate checks syntax and schema without saving. Saving creates a backup before applying changes.</p>
 </template>
 {% endblock %}
 
