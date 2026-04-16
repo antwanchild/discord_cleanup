@@ -39,7 +39,7 @@
 ## Unreleased
 
 ### Features
-- Group daily cleanup notifications by `notification_group`.
+- Keep daily cleanup notifications per-channel; reserve `notification_group` for monthly/weekly reports.
 - Add automatic stats backups with retention and backup visibility in the API/UI.
 - Add dashboard/API visibility for startup path health, channel backups, and notification fallback events.
 - Improve slash-command response resilience for large or rejected Discord embeds.

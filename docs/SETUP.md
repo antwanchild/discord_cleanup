@@ -185,7 +185,7 @@ channels:
 
 When `channels.yml` is invalid, the bot now reports schema errors with exact line and column numbers where possible, for example `channels[1].exclude must be true or false at line 3, column 14`.
 
-`notification_group` is optional and only affects the Discord monthly/weekly report embed. If multiple channels share the same value, the report combines them into a single line such as `Build Channels — 312 deleted across 3 channels`, while `stats.json`, `/cleanup stats channel`, and the web UI continue to track each channel separately.
+`notification_group` is optional and only affects the Discord monthly/weekly report embed. Daily cleanup reports stay per-channel. If multiple channels share the same value, the monthly or weekly report combines them into a single line such as `Build Channels — 312 deleted across 3 channels`, while `stats.json`, `/cleanup stats channel`, and the web UI continue to track each channel separately.
 
 ---
 

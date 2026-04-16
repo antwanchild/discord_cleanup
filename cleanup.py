@@ -120,47 +120,23 @@ def build_channel_map(guild):
     return channel_map
 
 
-def _build_grouped_breakdown_lines(channel_items: list[tuple[str, dict]], dry_run: bool = False) -> list[str]:
-    """Builds notification lines, collapsing channels that share a notification_group."""
-    grouped_entries = {}
+def _build_breakdown_lines(channel_items: list[tuple[str, dict]], dry_run: bool = False) -> list[str]:
+    """Builds per-channel notification lines for the daily cleanup report."""
+    lines = []
 
     for ch_name, stats in channel_items:
         if stats["count"] == -1:
-            grouped_entries[f"error:{ch_name}"] = f"\u3000🚫 `#{ch_name}` — skipped (missing permissions)"
+            lines.append(f"\u3000🚫 `#{ch_name}` — skipped (missing permissions)")
             continue
         if stats["count"] <= 0:
-            continue
-
-        notification_group = stats.get("notification_group")
-        if notification_group:
-            key = f"group:{notification_group}"
-            if key not in grouped_entries:
-                grouped_entries[key] = {
-                    "label": notification_group,
-                    "count": 0,
-                    "channels": [],
-                }
-            grouped_entries[key]["count"] += stats["count"]
-            grouped_entries[key]["channels"].append(ch_name)
             continue
 
         label = "would delete" if dry_run else "deleted"
         deep_tag = " 🧹deep" if stats.get("deep_clean") else ""
         override_tag = f" ({stats['days']}d ⚡override)" if stats["is_override"] else ""
-        grouped_entries[f"channel:{ch_name}"] = (
+        lines.append(
             f"\u3000🗑️ `#{ch_name}` — **{stats['count']}** {label}{override_tag}{deep_tag}"
         )
-
-    lines = []
-    for item in grouped_entries.values():
-        if isinstance(item, str):
-            lines.append(item)
-            continue
-
-        label = "would delete" if dry_run else "deleted"
-        channel_count = len(item["channels"])
-        across = f" across **{channel_count}** channels" if channel_count > 1 else ""
-        lines.append(f"\u3000🗑️ `{item['label']}` — **{item['count']}** {label}{across}")
 
     return lines
 
@@ -487,7 +463,6 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
                 dry_run=dry_run, deep_clean=ch_config.get("deep_clean", False)
             )
             stats["is_override"] = ch_config["is_override"]
-            stats["notification_group"] = ch_config.get("notification_group")
 
             if stats["count"] > 0:
                 grand_total += stats["count"]
@@ -588,12 +563,12 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
         # Build breakdown
         breakdown_lines = []
         for cat_name, cat_data in category_results.items():
-            active_lines = _build_grouped_breakdown_lines(list(cat_data["channels"].items()), dry_run=dry_run)
+            active_lines = _build_breakdown_lines(list(cat_data["channels"].items()), dry_run=dry_run)
             if active_lines:
                 breakdown_lines.append(f"📁 **{cat_name}** ({cat_data['default_days']}d default)")
                 breakdown_lines.extend(active_lines)
 
-        standalone_lines = _build_grouped_breakdown_lines(list(standalone_results.items()), dry_run=dry_run)
+        standalone_lines = _build_breakdown_lines(list(standalone_results.items()), dry_run=dry_run)
         breakdown_lines.extend([line.lstrip("\u3000") for line in standalone_lines])
 
         if not breakdown_lines:

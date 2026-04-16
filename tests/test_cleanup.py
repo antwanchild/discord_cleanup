@@ -82,7 +82,7 @@ class BuildChannelMapTests(unittest.TestCase):
         self.assertTrue(channel_map[21]["is_override"])
         self.assertEqual(channel_map[21]["days"], 3)
 
-    def test_daily_breakdown_groups_channels_by_notification_group(self):
+    def test_daily_breakdown_keeps_channels_separate(self):
         config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([])
 
         with isolated_module_import(
@@ -94,7 +94,7 @@ class BuildChannelMapTests(unittest.TestCase):
                 "discord": discord_stub,
             },
         ) as cleanup:
-            lines = cleanup._build_grouped_breakdown_lines(
+            lines = cleanup._build_breakdown_lines(
                 [
                     ("build-bot", {"count": 12, "notification_group": "Build Channels", "is_override": False, "deep_clean": False, "days": 7}),
                     ("build-docs", {"count": 8, "notification_group": "Build Channels", "is_override": False, "deep_clean": False, "days": 7}),
@@ -102,8 +102,9 @@ class BuildChannelMapTests(unittest.TestCase):
                 ]
             )
 
-        self.assertEqual(lines[0], "\u3000🗑️ `Build Channels` — **20** deleted across **2** channels")
-        self.assertEqual(lines[1], "\u3000🗑️ `#discord-cleanup-gh` — **5** deleted")
+        self.assertEqual(lines[0], "\u3000🗑️ `#build-bot` — **12** deleted")
+        self.assertEqual(lines[1], "\u3000🗑️ `#build-docs` — **8** deleted")
+        self.assertEqual(lines[2], "\u3000🗑️ `#discord-cleanup-gh` — **5** deleted")
 
     def test_purge_all_channel_returns_specific_forbidden_error(self):
         config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([])
