@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.10.1 - 2026-04-16
+
+### Changes
+- Add schedule exceptions
+
+
 ## 5.10.0 - 2026-04-16
 
 ### Changes
