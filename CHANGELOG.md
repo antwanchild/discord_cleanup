@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.4 - 2026-04-20
+
+### Changes
+- Extract config page script
+
+
 ## 5.11.3 - 2026-04-20
 
 ### Changes
