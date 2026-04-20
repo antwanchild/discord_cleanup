@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.3 - 2026-04-20
+
+### Changes
+- Update module split comment
+
+
 ## 5.11.2 - 2026-04-16
 
 ### Changes
