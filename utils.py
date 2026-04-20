@@ -1,7 +1,7 @@
 """
 utils.py — Bot state management, health checks, uptime, and logging helpers.
 
-Config file updates → config_utils.py
+Config file updates → config_backups.py / config_channels.py / config_settings.py
 Schedule management → scheduler.py
 """
 import os
