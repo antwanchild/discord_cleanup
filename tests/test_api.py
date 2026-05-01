@@ -114,7 +114,23 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(status_response.get_json()["startup_path_check"]["/config/data"]["ok"])
 
     def test_admin_restore_routes_expose_backup_preview_and_restore(self):
-        config_stub = types.SimpleNamespace(log=logging.getLogger("test-admin"))
+        config_stub = types.SimpleNamespace(
+            BOT_VERSION="1.0.0",
+            CLEAN_TIMES=["03:00"],
+            DEFAULT_RETENTION=7,
+            DATA_DIR="/tmp",
+            HEALTH_FILE="/tmp/health",
+            LOG_CHANNEL_ID=1,
+            LOG_DIR="/tmp",
+            LOG_MAX_FILES=7,
+            LOG_LEVEL="INFO",
+            RETRY_DELAY=300,
+            STATS_FILE="/tmp/stats.json",
+            WARN_UNCONFIGURED=False,
+            config_lock=None,
+            log=logging.getLogger("test-admin"),
+            raw_channels=[],
+        )
         utils_stub = types.SimpleNamespace(
             get_bot=lambda: None,
             get_bot_loop=lambda: None,
