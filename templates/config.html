@@ -121,7 +121,7 @@
 <div class="card">
   <div class="card-header">
     <span class="card-title">channels.yml</span>
-    <span style="color:var(--text-muted); font-size:0.75rem; margin-left:0.5rem">Preview changes, validate before saving, and create an automatic backup on write</span>
+    <span style="color:var(--text-muted); font-size:0.75rem; margin-left:0.5rem">Validate checks syntax only. Preview Changes opens the review modal where Save Changes actually writes the file and creates a backup.</span>
     <button class="btn btn-ghost" onclick="validateChannels()" style="margin-left:auto">Validate</button>
     <button class="btn btn-primary" onclick="previewChannels()">Preview Changes</button>
   </div>
@@ -157,7 +157,7 @@
   </div>
   <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; margin-top:0.5rem; color:var(--text-muted); font-size:0.75rem;">
     <span id="channels-editor-meta">Line 1, Column 1</span>
-    <span>Schema errors report exact line and column when possible.</span>
+    <span>Edit here, then use Preview Changes and Save Changes in the modal to write updates.</span>
   </div>
   <div id="channels-feedback" style="
     display:none;
@@ -291,7 +291,7 @@
   <h3>Backups</h3>
   <p>The backup browser shows recent channels.yml and .env.discord_cleanup snapshots. Preview a restore first, then restore the snapshot to replace the live config. The current file is backed up automatically before the restore is written, and startup-only env settings may require a restart.</p>
   <h3>channels.yml Editor</h3>
-  <p>Edit the channel configuration directly as valid YAML. Use Preview Changes to review the parsed diff, Save Changes to apply it, or Dry Run to test the proposed config without saving. Validate checks syntax and schema without saving. Saving creates a backup before applying changes.</p>
+  <p>Edit the channel configuration directly as valid YAML. Validate checks syntax and schema without saving. Preview Changes opens the review modal, where Save Changes applies the file and creates a backup. Dry Run tests the proposed config without saving.</p>
 </template>
 {% endblock %}
 
