@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.9 - 2026-05-01
+
+### Changes
+- Clarify channels.yml save flow
+
+
 ## 5.11.8 - 2026-05-01
 
 ### Changes
