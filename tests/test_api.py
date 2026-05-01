@@ -179,7 +179,13 @@ class ApiTests(unittest.TestCase):
             update_report_grouping=lambda *_a, **_k: (True, "true"),
             validate_channels_content=lambda *_a, **_k: (True, "ok", []),
         )
-        stats_stub = types.SimpleNamespace(reset_stats=lambda *_a, **_k: True)
+        stats_stub = types.SimpleNamespace(
+            reset_stats=lambda *_a, **_k: True,
+            record_channel_history=lambda *_a, **_k: None,
+            update_stats=lambda *_a, **_k: None,
+            load_stats=lambda *_a, **_k: {},
+            save_last_run=lambda *_a, **_k: None,
+        )
 
         with isolated_module_import(
             "admin",
