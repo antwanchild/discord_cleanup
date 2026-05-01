@@ -134,6 +134,9 @@ class ApiTests(unittest.TestCase):
         utils_stub = types.SimpleNamespace(
             get_bot=lambda: None,
             get_bot_loop=lambda: None,
+            get_next_run_str=lambda: "tomorrow",
+            setup_run_log=lambda *_a, **_k: None,
+            update_health=lambda *_a, **_k: None,
             release_run=lambda: None,
             try_acquire_run=lambda *_a, **_k: True,
         )
