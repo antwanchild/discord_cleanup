@@ -354,7 +354,7 @@ def _reload_runtime_env_values() -> None:
                 log_channel_id = getattr(config, "LOG_CHANNEL_ID", 0) or 0
             config.LOG_CHANNEL_ID = int(log_channel_id)
         except ValueError:
-            pass
+            log.warning("Invalid LOG_CHANNEL_ID in environment — keeping existing value")
     if hasattr(config, "REPORT_CHANNEL_ID"):
         try:
             report_channel_id = os.getenv("REPORT_CHANNEL_ID")
@@ -362,7 +362,7 @@ def _reload_runtime_env_values() -> None:
                 report_channel_id = getattr(config, "REPORT_CHANNEL_ID", 0) or 0
             config.REPORT_CHANNEL_ID = int(report_channel_id)
         except ValueError:
-            pass
+            log.warning("Invalid REPORT_CHANNEL_ID in environment — keeping existing value")
 
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:

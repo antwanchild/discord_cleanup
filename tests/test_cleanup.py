@@ -167,6 +167,57 @@ class BuildChannelMapTests(unittest.TestCase):
         self.assertEqual(result["count"], 0)
         self.assertEqual(result["error"], "Forbidden — check bot permissions")
 
+    def test_run_cleanup_ignores_save_last_run_io_failures(self):
+        config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([])
+        config_stub.LOG_CHANNEL_ID = 1
+
+        class DummyEmbed:
+            def __init__(self, title=None, description=None, color=None, timestamp=None):
+                self.title = title
+                self.description = description
+                self.color = color
+                self.timestamp = timestamp
+                self._footer = {}
+
+            def add_field(self, *, name, value, inline=False):
+                return None
+
+            def set_footer(self, *, text):
+                self._footer = {"text": text}
+                return self
+
+        discord_stub.Embed = DummyEmbed
+        save_last_run_stub = lambda *_a, **_k: (_ for _ in ()).throw(OSError("disk full"))
+        stats_stub.save_last_run = save_last_run_stub
+        stats_stub.update_stats = lambda *_a, **_k: None
+        stats_stub.record_channel_history = lambda *_a, **_k: None
+        stats_stub.load_stats = lambda: {
+            "all_time": {"deleted": 0, "runs": 0},
+            "rolling_30": {"deleted": 0, "runs": 0},
+            "monthly": {"deleted": 0, "runs": 0},
+        }
+        utils_stub.setup_run_log = lambda *_a, **_k: None
+        utils_stub.update_health = lambda *_a, **_k: None
+        utils_stub.get_next_run_str = lambda: "tomorrow"
+        notifications_stub = types.SimpleNamespace(
+            safe_send_embed=lambda *_a, **_k: True,
+        )
+
+        with isolated_module_import(
+            "cleanup",
+            {
+                "config": config_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "discord": discord_stub,
+                "notifications": notifications_stub,
+            },
+        ) as cleanup:
+            bot = types.SimpleNamespace(get_channel=lambda _channel_id: object())
+            guild = types.SimpleNamespace(name="test-guild", get_channel=lambda *_a, **_k: None)
+
+            asyncio.run(cleanup.run_cleanup(bot, guild, raw_channels=[]))
+
 
 if __name__ == "__main__":
     unittest.main()

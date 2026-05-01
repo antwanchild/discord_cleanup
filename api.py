@@ -173,7 +173,7 @@ def api_logs_latest():
             "lines_returned": data["lines_returned"],
             "lines": data["lines"],
         })
-    except Exception as e:
+    except OSError as e:
         return _internal_error_response("Could not serve latest log API", e)
 
 
@@ -233,7 +233,7 @@ def api_logs_list():
     try:
         files = list_cleanup_logs_with_sizes()
         return jsonify({"total": len(files), "files": files})
-    except Exception as e:
+    except OSError as e:
         return _internal_error_response("Could not list logs API", e)
 
 
@@ -254,5 +254,5 @@ def api_logs_file(filename):
         })
     except FileNotFoundError:
         return jsonify({"error": "Log file not found"}), 404
-    except Exception as e:
+    except OSError as e:
         return _internal_error_response("Could not serve log file API", e)

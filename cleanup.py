@@ -416,9 +416,9 @@ async def purge_all_channel(channel) -> dict:
         except discord.errors.HTTPException as e:
             log.error(f"HTTP error during bulk purge on #{channel.name} — {e}")
             return {"count": total_deleted, "error": f"HTTP error during bulk purge: {e}"}
-        except Exception as e:
+        except Exception:
             log.exception(f"Unexpected error during bulk purge on #{channel.name}")
-            return {"count": total_deleted, "error": str(e)}
+            return {"count": total_deleted, "error": "Unexpected error during bulk purge"}
 
     # Individual delete for messages older than 14 days
     while True:
@@ -442,18 +442,18 @@ async def purge_all_channel(channel) -> dict:
                     return {"count": total_deleted, "error": "Forbidden — check bot permissions"}
                 except discord.errors.HTTPException as e:
                     log.warning(f"HTTP error deleting message in #{channel.name} — {e}")
-                except Exception as e:
+                except Exception:
                     log.exception(f"Unexpected error deleting message in #{channel.name}")
-                    return {"count": total_deleted, "error": str(e)}
+                    return {"count": total_deleted, "error": "Unexpected error deleting message"}
         except discord.Forbidden:
             log.error(f"Forbidden fetching messages during individual purge on #{channel.name} — check bot permissions")
             return {"count": total_deleted, "error": "Forbidden — check bot permissions"}
         except discord.errors.HTTPException as e:
             log.error(f"HTTP error during individual purge on #{channel.name} — {e}")
             return {"count": total_deleted, "error": f"HTTP error during individual purge: {e}"}
-        except Exception as e:
+        except Exception:
             log.exception(f"Unexpected error during individual purge on #{channel.name}")
-            return {"count": total_deleted, "error": str(e)}
+            return {"count": total_deleted, "error": "Unexpected error during individual purge"}
 
     log.info(f"Full purge complete on #{channel.name} — deleted {total_deleted} messages")
     return {"count": total_deleted, "error": None}
@@ -615,7 +615,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
                     for k, v in sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:5]
                 ],
             })
-        except Exception as e:
+        except (OSError, ValueError) as e:
             log.warning(f"Could not save last run summary — {e}")
         stats_data = load_stats()
         log.info(

@@ -16,9 +16,9 @@ class ApiTests(unittest.TestCase):
             get_run_owner=lambda: None,
             get_startup_path_status=lambda: {"/config/data": (True, "OK")},
             is_run_in_progress=lambda: False,
-            list_cleanup_logs_with_sizes=lambda: (_ for _ in ()).throw(RuntimeError("sensitive path info")),
-            read_cleanup_log=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("boom")),
-            read_latest_cleanup_log=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("sensitive path info")),
+            list_cleanup_logs_with_sizes=lambda: (_ for _ in ()).throw(OSError("sensitive path info")),
+            read_cleanup_log=lambda *_a, **_k: (_ for _ in ()).throw(OSError("boom")),
+            read_latest_cleanup_log=lambda *_a, **_k: (_ for _ in ()).throw(OSError("sensitive path info")),
         )
 
     def _stats_stub(self):
@@ -50,10 +50,13 @@ class ApiTests(unittest.TestCase):
             client = app.test_client()
 
             stats_response = client.get("/api/stats")
+            logs_list_response = client.get("/api/logs")
             logs_response = client.get("/api/logs/latest")
 
         self.assertEqual(stats_response.status_code, 500)
         self.assertEqual(stats_response.get_json()["error"], "Internal server error")
+        self.assertEqual(logs_list_response.status_code, 500)
+        self.assertEqual(logs_list_response.get_json()["error"], "Internal server error")
         self.assertEqual(logs_response.status_code, 500)
         self.assertEqual(logs_response.get_json()["error"], "Internal server error")
 

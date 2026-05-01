@@ -6,5 +6,5 @@ try:
         ts = datetime.fromisoformat(f.read().strip())
     age = (datetime.now() - ts).total_seconds()
     sys.exit(0 if age < 300 else 1)
-except Exception:
+except (OSError, ValueError):
     sys.exit(1)

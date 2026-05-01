@@ -363,7 +363,7 @@ def load_stats(strict: bool = False) -> dict:
     try:
         with open(STATS_FILE, "r") as f:
             return _normalize_stats_payload(json.load(f))
-    except Exception as e:
+    except (OSError, ValueError, json.JSONDecodeError) as e:
         backup_hint = _latest_backup_path("stats")
         message = f"Could not load stats file — {e}"
         if backup_hint:
@@ -389,7 +389,7 @@ def save_stats(stats: dict):
         _prune_old_stats_backups()
         if backup_path:
             log.info("Saved stats file with backup: %s", backup_path)
-    except Exception as e:
+    except (OSError, ValueError) as e:
         log.warning(f"Could not save stats file — {e}")
 
 
@@ -556,7 +556,7 @@ def save_last_run(data: dict):
         _prune_old_stats_backups()
         if backup_path:
             log.info("Saved last run summary with backup: %s", backup_path)
-    except Exception as e:
+    except (OSError, ValueError) as e:
         log.warning(f"Could not save last run summary — {e}")
 
 
@@ -568,7 +568,7 @@ def load_last_run() -> dict:
     try:
         with open(path, "r") as f:
             return _normalize_last_run_payload(json.load(f))
-    except Exception as e:
+    except (OSError, ValueError, json.JSONDecodeError) as e:
         backup_hint = _latest_backup_path("last_run")
         message = f"Could not load last run summary — {e}"
         if backup_hint:

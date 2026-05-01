@@ -15,6 +15,7 @@ from config import (
     CONFIG_DIR, log
 )
 from config_utils import list_channel_backups, list_env_backups
+from validation import validate_int
 from utils import (
     get_bot, get_run_owner, is_run_in_progress,
     read_cleanup_log, read_latest_cleanup_log,
@@ -32,12 +33,24 @@ app.register_blueprint(api)
 app.register_blueprint(admin)
 
 WEB_HOST = os.getenv("WEB_HOST", "0.0.0.0")
-WEB_PORT = int(os.getenv("WEB_PORT", 8080))
+WEB_PORT = validate_int(os.getenv("WEB_PORT", 8080), "WEB_PORT", 1, 65535)
 WEB_AUTH_HEADER_NAME = os.getenv("WEB_AUTH_HEADER_NAME", "").strip()
 WEB_AUTH_HEADER_VALUE = os.getenv("WEB_AUTH_HEADER_VALUE", "")
-ADMIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("ADMIN_RATE_LIMIT_WINDOW_SECONDS", 60))
-ADMIN_RATE_LIMIT_MAX_REQUESTS = int(os.getenv("ADMIN_RATE_LIMIT_MAX_REQUESTS", 20))
-RUN_RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RUN_RATE_LIMIT_MAX_REQUESTS", 5))
+ADMIN_RATE_LIMIT_WINDOW_SECONDS = validate_int(
+    os.getenv("ADMIN_RATE_LIMIT_WINDOW_SECONDS", 60),
+    "ADMIN_RATE_LIMIT_WINDOW_SECONDS",
+    1,
+)
+ADMIN_RATE_LIMIT_MAX_REQUESTS = validate_int(
+    os.getenv("ADMIN_RATE_LIMIT_MAX_REQUESTS", 20),
+    "ADMIN_RATE_LIMIT_MAX_REQUESTS",
+    1,
+)
+RUN_RATE_LIMIT_MAX_REQUESTS = validate_int(
+    os.getenv("RUN_RATE_LIMIT_MAX_REQUESTS", 5),
+    "RUN_RATE_LIMIT_MAX_REQUESTS",
+    1,
+)
 
 if bool(WEB_AUTH_HEADER_NAME) != bool(WEB_AUTH_HEADER_VALUE):
     raise RuntimeError("WEB_AUTH_HEADER_NAME and WEB_AUTH_HEADER_VALUE must either both be set or both be empty")
@@ -165,7 +178,7 @@ def config_page():
     try:
         with open(f"{CONFIG_DIR}/channels.yml", "r") as f:
             context["channels_yml"] = f.read()
-    except Exception:
+    except OSError:
         log.exception("Could not load channels.yml for config page")
         context["channels_yml"] = ""
 
@@ -191,7 +204,7 @@ def logs_page():
         context["log_file"] = data["log_file"]
         context["available_logs"] = data["available_logs"]
         context["log_entries"] = data["lines"]
-    except Exception as e:
+    except OSError as e:
         log.warning(f"Could not read log file for web UI — {e}")
         context["log_entries"] = []
     return render_template("logs.html", **context)
@@ -209,7 +222,7 @@ def view_log(filename):
     except FileNotFoundError:
         context["available_logs"] = read_latest_cleanup_log(lines_requested=0)["available_logs"]
         context["log_entries"] = []
-    except Exception as e:
+    except OSError as e:
         log.warning(f"Could not read log file {filename} for web UI — {e}")
         context["log_entries"] = []
     return render_template("logs.html", **context)
