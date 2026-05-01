@@ -132,7 +132,7 @@ The Config page supports preview-before-save for `channels.yml`, validate-before
 
 The Stats page includes a per-channel history timeline plus a click-through drilldown, the Schedule page supports blackout dates and weekday skips, and the Audit page provides a read-only retention review of the live cleanup configuration.
 
-The dashboard also shows the active cleanup run owner when a run is in progress, which makes it easier to tell whether a scheduler, slash command, or web action is holding the cleanup lock. It now also surfaces the most recent startup path-check results and recent notification fallback activity. The Stats page shows the 10 most recent stats-related backups and `channels.yml` backups, and the API exposes them at `GET /api/backups/stats` and `GET /api/backups/channels`.
+The dashboard also shows the active cleanup run owner when a run is in progress, which makes it easier to tell whether a scheduler, slash command, or web action is holding the cleanup lock. It now also surfaces the most recent startup path-check results and recent notification fallback activity. The Stats page shows the 10 most recent stats and last-run backups, plus `channels.yml` backups, and the API exposes them at `GET /api/backups/stats` and `GET /api/backups/channels`.
 
 Regression tests cover validation, schedule persistence, config reloads, and run-lock behavior. See the `tests/` directory for the current suite.
 
