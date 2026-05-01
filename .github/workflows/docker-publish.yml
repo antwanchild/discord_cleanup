@@ -50,6 +50,8 @@ jobs:
           python3 -m pip install -r requirements.txt pytest
 
       - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
 
       - name: Lint and security check
