@@ -112,7 +112,7 @@ class ConfigUtilsTests(unittest.TestCase):
                 success, message = config_utils.update_report_grouping("monthly", False)
 
             self.assertTrue(success)
-            self.assertEqual(message, "false")
+            self.assertEqual(message, "Monthly grouping disabled")
             self.assertFalse(config_stub.REPORT_GROUP_MONTHLY)
             with open(env_path, "r") as f:
                 self.assertIn("REPORT_GROUP_MONTHLY=false", f.read())
@@ -129,15 +129,46 @@ class ConfigUtilsTests(unittest.TestCase):
                 success_weekdays, message_weekdays = config_utils.update_schedule_skip_weekdays(["Mon", "Fri"])
 
             self.assertTrue(success_dates)
-            self.assertEqual(message_dates, "2026-04-20,2026-04-22")
+            self.assertEqual(message_dates, "Schedule blackout dates updated")
             self.assertTrue(success_weekdays)
-            self.assertEqual(message_weekdays, "mon,fri")
+            self.assertEqual(message_weekdays, "Schedule blackout weekdays updated")
             self.assertEqual(config_stub.SCHEDULE_SKIP_DATES, ["2026-04-20", "2026-04-22"])
             self.assertEqual(config_stub.SCHEDULE_SKIP_WEEKDAYS, ["mon", "fri"])
             with open(env_path, "r") as f:
                 env_text = f.read()
             self.assertIn("SCHEDULE_SKIP_DATES=2026-04-20,2026-04-22", env_text)
             self.assertIn("SCHEDULE_SKIP_WEEKDAYS=mon,fri", env_text)
+
+    def test_update_config_settings_return_human_readable_messages(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            env_path = os.path.join(tempdir, ".env.discord_cleanup")
+            with open(env_path, "w") as f:
+                f.write(
+                    "DEFAULT_RETENTION=7\n"
+                    "LOG_LEVEL=INFO\n"
+                    "WARN_UNCONFIGURED=false\n"
+                    "REPORT_FREQUENCY=monthly\n"
+                    "LOG_MAX_FILES=7\n"
+                )
+
+            config_stub = self._build_config_stub(tempdir)
+            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+                retention_success, retention_message = config_utils.update_retention(14)
+                log_success, log_message = config_utils.update_log_level("warning")
+                warn_success, warn_message = config_utils.update_warn_unconfigured(True)
+                frequency_success, frequency_message = config_utils.update_report_frequency("weekly")
+                max_files_success, max_files_message = config_utils.update_log_max_files(30)
+
+            self.assertTrue(retention_success)
+            self.assertEqual(retention_message, "Default retention updated to 14 days")
+            self.assertTrue(log_success)
+            self.assertEqual(log_message, "Log level updated to WARNING")
+            self.assertTrue(warn_success)
+            self.assertEqual(warn_message, "Warn unconfigured enabled")
+            self.assertTrue(frequency_success)
+            self.assertEqual(frequency_message, "Report frequency updated to weekly")
+            self.assertTrue(max_files_success)
+            self.assertEqual(max_files_message, "Log retention updated to 30 days")
 
     def test_reload_channels_returns_validation_error(self):
         with tempfile.TemporaryDirectory() as tempdir:

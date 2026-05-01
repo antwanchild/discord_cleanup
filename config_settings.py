@@ -16,6 +16,7 @@ def update_schedule_skip_dates(dates: list[str]) -> tuple[bool, str]:
     success, message = update_env_value("SCHEDULE_SKIP_DATES", ",".join(normalized))
     if success:
         config.SCHEDULE_SKIP_DATES = normalized
+        return True, "Schedule blackout dates updated"
     return success, message
 
 
@@ -31,6 +32,7 @@ def update_schedule_skip_weekdays(weekdays: list[str]) -> tuple[bool, str]:
     success, message = update_env_value("SCHEDULE_SKIP_WEEKDAYS", ",".join(normalized))
     if success:
         config.SCHEDULE_SKIP_WEEKDAYS = normalized
+        return True, "Schedule blackout weekdays updated"
     return success, message
 
 
@@ -40,6 +42,7 @@ def update_retention(days: int) -> tuple[bool, str]:
     success, message = update_env_value("DEFAULT_RETENTION", str(days))
     if success:
         config.DEFAULT_RETENTION = days
+        return True, f"Default retention updated to {days} days"
     return success, message
 
 
@@ -58,6 +61,7 @@ def update_log_level(level: str) -> tuple[bool, str]:
         logging.getLogger().setLevel(new_level)
         for h in logging.getLogger().handlers:
             h.setLevel(new_level)
+        return True, f"Log level updated to {level.upper()}"
     return success, message
 
 
@@ -68,6 +72,7 @@ def update_warn_unconfigured(enabled: bool) -> tuple[bool, str]:
     success, message = update_env_value("WARN_UNCONFIGURED", value)
     if success:
         config.WARN_UNCONFIGURED = enabled
+        return True, f"Warn unconfigured {'enabled' if enabled else 'disabled'}"
     return success, message
 
 
@@ -80,6 +85,7 @@ def update_report_frequency(frequency: str) -> tuple[bool, str]:
     success, message = update_env_value("REPORT_FREQUENCY", frequency.lower())
     if success:
         config.REPORT_FREQUENCY = frequency.lower()
+        return True, f"Report frequency updated to {frequency.lower()}"
     return success, message
 
 
@@ -99,6 +105,8 @@ def update_report_grouping(scope: str, enabled: bool) -> tuple[bool, str]:
             config.REPORT_GROUP_MONTHLY = enabled
         else:
             config.REPORT_GROUP_WEEKLY = enabled
+        label = "monthly" if scope == "monthly" else "weekly"
+        return True, f"{label.capitalize()} grouping {'enabled' if enabled else 'disabled'}"
     return success, message
 
 
@@ -110,4 +118,5 @@ def update_log_max_files(days: int) -> tuple[bool, str]:
     success, message = update_env_value("LOG_MAX_FILES", str(days))
     if success:
         config.LOG_MAX_FILES = days
+        return True, f"Log retention updated to {days} days"
     return success, message
