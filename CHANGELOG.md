@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.8 - 2026-05-01
+
+### Changes
+- Make config save toasts human readable
+
+
 ## 5.11.7 - 2026-05-01
 
 ### Changes
