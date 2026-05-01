@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.5 - 2026-05-01
+
+### Changes
+- Fix admin preview test stubs
+
+
 ## 5.11.4 - 2026-04-20
 
 ### Changes
