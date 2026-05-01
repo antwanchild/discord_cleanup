@@ -191,7 +191,7 @@
 <div class="card">
   <div class="card-header">
     <span class="card-title">Environment Backups</span>
-    <span style="color:var(--text-muted); font-size:0.75rem; margin-left:0.5rem">Preview and restore previous .env.discord_cleanup snapshots. Restores create a fresh backup of the current file first, and startup-only settings may still require a restart.</span>
+    <span style="color:var(--text-muted); font-size:0.75rem; margin-left:0.5rem">Preview and restore previous .env.discord_cleanup snapshots. Backups are created when .env settings are saved or restored, and startup-only settings may still require a restart.</span>
   </div>
   {% if env_backups %}
   <table>
@@ -218,7 +218,7 @@
   </table>
   <p style="color:var(--text-muted); font-size:0.75rem; margin:0.75rem 0 0">Showing the 10 most recent .env backups.</p>
   {% else %}
-  <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No .env backups yet.</p>
+  <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No .env backups yet. Save a .env setting or restore a backup to create the first snapshot.</p>
   {% endif %}
 </div>
 
