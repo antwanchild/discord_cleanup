@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.6 - 2026-05-01
+
+### Changes
+- Clarify stats backup wording
+
+
 ## 5.11.5 - 2026-05-01
 
 ### Changes
