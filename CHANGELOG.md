@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.7 - 2026-05-01
+
+### Changes
+- Clarify env backup empty state
+
+
 ## 5.11.6 - 2026-05-01
 
 ### Changes
