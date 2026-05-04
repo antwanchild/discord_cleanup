@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.12 - 2026-05-04
+
+### Changes
+- Restore report config import
+
+
 ## 5.11.11 - 2026-05-04
 
 ### Changes
