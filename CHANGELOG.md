@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.11 - 2026-05-04
+
+### Changes
+- Make scheduled reports frequency aware
+
+
 ## 5.11.10 - 2026-05-04
 
 ### Changes
