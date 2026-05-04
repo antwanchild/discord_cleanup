@@ -29,9 +29,10 @@ import commands_stats
 from file_utils import atomic_write_text
 from notifications import (
     post_deploy_notification, post_startup_notification,
-    post_missed_run_alert, post_status_report, post_catchup_notification,
+    post_missed_monthly_report_notification, post_missed_run_alert,
+    post_status_report, post_catchup_notification,
 )
-from stats import migrate_stats_categories, load_last_run, record_catchup_run
+from stats import migrate_stats_categories, load_last_run, load_report_state, record_catchup_run
 from scheduler import _matches_schedule_exception
 from utils import (
     update_health,
@@ -93,6 +94,36 @@ def build_report_time(tz):
 
 task_times, TASK_TZ = build_task_times()
 report_time = build_report_time(TASK_TZ)
+
+
+def _report_state_month_key(moment: datetime) -> str:
+    """Returns the YYYY-MM key used to track monthly report delivery."""
+    return moment.strftime("%Y-%m")
+
+
+def _monthly_report_sent_for_current_month(moment: datetime) -> bool:
+    """Checks whether the current month's monthly report has already been posted."""
+    report_state = load_report_state()
+    monthly = report_state.get("monthly", {}) if isinstance(report_state, dict) else {}
+    return monthly.get("last_sent") == _report_state_month_key(moment)
+
+
+def _monthly_report_is_due(moment: datetime) -> bool:
+    """Returns True when the monthly report should have already been posted."""
+    if REPORT_FREQUENCY not in {"monthly", "both"}:
+        return False
+    if _monthly_report_sent_for_current_month(moment):
+        return False
+
+    scheduled = datetime(
+        moment.year,
+        moment.month,
+        1,
+        report_time.hour,
+        report_time.minute,
+        tzinfo=TASK_TZ,
+    )
+    return moment >= scheduled
 
 
 async def _run_per_guild(guilds, action, action_name: str):
@@ -307,6 +338,43 @@ async def _check_and_catchup_missed_run(bot, guild):
         log.exception("Missed-run catchup check failed unexpectedly")
 
 
+async def _check_and_catchup_monthly_report(bot):
+    """Checks on startup whether the monthly report for the current month was missed."""
+    try:
+        if not CATCHUP_MISSED_RUNS:
+            log.debug("CATCHUP_MISSED_RUNS is disabled — skipping monthly report catchup")
+            return
+
+        now = datetime.now(TASK_TZ)
+        if not _monthly_report_is_due(now):
+            log.debug("No missed monthly report detected")
+            return
+
+        if is_run_in_progress():
+            log.warning("Monthly report catchup skipped because another operation is already running")
+            return
+        if not try_acquire_run("monthly-report-catchup"):
+            log.warning("Monthly report catchup skipped because another operation is already running")
+            return
+
+        try:
+            log.info(
+                "Missed monthly report detected for %s — triggering catchup report",
+                now.strftime("%Y-%m"),
+            )
+            missed_month = now.strftime("%B %Y")
+            await post_missed_monthly_report_notification(bot, missed_month)
+            await _run_per_guild(
+                bot.guilds,
+                lambda guild: post_status_report(bot, guild, "monthly"),
+                "Monthly report",
+            )
+        finally:
+            release_run()
+    except Exception:
+        log.exception("Monthly report catchup check failed unexpectedly")
+
+
 # --- Events ---
 
 @bot.event
@@ -347,6 +415,7 @@ async def on_ready():
     # Fire catchup check as a background task — runs after on_ready without blocking it
     for guild in bot.guilds:
         asyncio.create_task(_check_and_catchup_missed_run(bot, guild))
+    asyncio.create_task(_check_and_catchup_monthly_report(bot))
 
 
 @bot.event

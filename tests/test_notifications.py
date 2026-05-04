@@ -52,7 +52,7 @@ class NotificationGroupingTests(unittest.TestCase):
             ),
         )
         file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *a, **k: None)
-        stats_stub = types.SimpleNamespace(load_stats=lambda: {})
+        stats_stub = types.SimpleNamespace(load_stats=lambda: {}, record_monthly_report_sent=lambda *_a, **_k: None)
         utils_stub = types.SimpleNamespace(get_next_run_str=lambda: "tomorrow")
         return config_stub, file_utils_stub, stats_stub, utils_stub, self._discord_stub()
 
@@ -252,6 +252,50 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertFalse(result)
         self.assertEqual(len(channel.calls), 1)
         self.assertIn("embed", channel.calls[0])
+
+    def test_post_missed_monthly_report_notification_posts_to_report_channel(self):
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+
+        with isolated_module_import(
+            "notifications",
+            {
+                "config": config_stub,
+                "file_utils": file_utils_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "discord": discord_stub,
+            },
+        ) as notifications:
+            class Channel:
+                def __init__(self):
+                    self.calls = []
+
+                async def send(self, **kwargs):
+                    self.calls.append(kwargs)
+                    return None
+
+            class Bot:
+                def __init__(self, channel):
+                    self.channel = channel
+
+                def get_channel(self, channel_id):
+                    return self.channel if channel_id == config_stub.REPORT_CHANNEL_ID else None
+
+            channel = Channel()
+            bot = Bot(channel)
+            guild = types.SimpleNamespace(name="Test Guild")
+
+            asyncio.run(
+                notifications.post_missed_monthly_report_notification(
+                    bot,
+                    "May 2026",
+                )
+            )
+
+        self.assertEqual(len(channel.calls), 1)
+        self.assertIn("embed", channel.calls[0])
+        self.assertEqual(channel.calls[0]["embed"].title, "⚠️ Monthly Report Missed")
+        self.assertIn("May 2026", channel.calls[0]["embed"].description)
 
     def test_load_recent_changelog_entries_reads_markdown_changelog(self):
         config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()

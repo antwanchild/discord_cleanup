@@ -16,7 +16,7 @@ from config import (
     log
 )
 from file_utils import atomic_write_text
-from stats import load_stats
+from stats import load_stats, record_monthly_report_sent
 from utils import get_next_run_str
 
 EMBED_TITLE_LIMIT = 256
@@ -371,6 +371,35 @@ async def post_deploy_notification(bot, guild):
     )
 
 
+async def post_missed_monthly_report_notification(bot, missed_month: str):
+    """Posts a notification when the monthly report was missed and is being caught up."""
+    report_channel = bot.get_channel(REPORT_CHANNEL_ID)
+    if not report_channel:
+        log.warning("Could not post missed monthly report notification — report channel not found")
+        return
+
+    embed = discord.Embed(
+        title="⚠️ Monthly Report Missed",
+        description=(
+            f"📅 Missed report period: **{missed_month}**\n\n"
+            "The monthly report was not posted on schedule. "
+            "Sending the catchup report now."
+        ),
+        color=0xFFA500,
+        timestamp=datetime.now(),
+    )
+    embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
+    await safe_send_embed(
+        report_channel,
+        embed,
+        fallback_text=(
+            f"Monthly report missed for {missed_month}, but the full embed could not be delivered."
+        ),
+        context="missed monthly report notification",
+    )
+    log.warning("Missed monthly report notification posted for %s", missed_month)
+
+
 async def post_status_report(bot, guild, label: str = "monthly"):
     """Posts a scheduled stats report to the report channel."""
     from cleanup import build_channel_map
@@ -444,6 +473,8 @@ async def post_status_report(bot, guild, label: str = "monthly"):
         fallback_text=f"{title} generated for {guild.name}, but the full embed could not be delivered. Check logs or the web UI for details.",
         context=f"{label} status report",
     )
+    if label == "monthly":
+        record_monthly_report_sent()
     log.info(f"{label.capitalize()} status report posted")
 
 

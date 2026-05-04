@@ -16,6 +16,7 @@ logger = logging.getLogger("discord-cleanup")
 STATS_BACKUP_DIRNAME = "backups"
 STATS_BACKUP_SUBDIR = "stats"
 LAST_RUN_BACKUP_SUBDIR = "last-run"
+REPORT_STATE_FILE = os.path.join(DATA_DIR, "report_state.json")
 
 
 class StatsLoadError(RuntimeError):
@@ -558,6 +559,66 @@ def save_last_run(data: dict):
             log.info("Saved last run summary with backup: %s", backup_path)
     except (OSError, ValueError) as e:
         log.warning(f"Could not save last run summary — {e}")
+
+
+def _normalize_report_state_payload(payload) -> dict:
+    """Normalizes persisted report state to the current schema."""
+    if not isinstance(payload, dict):
+        return {}
+
+    monthly = payload.get("monthly", {})
+    if not isinstance(monthly, dict):
+        monthly = {}
+
+    normalized = {}
+    last_sent = str(monthly.get("last_sent") or "").strip()
+    if last_sent:
+        normalized["last_sent"] = last_sent
+
+    last_sent_at = monthly.get("last_sent_at")
+    if isinstance(last_sent_at, str) and last_sent_at.strip():
+        normalized["last_sent_at"] = _coerce_timestamp(last_sent_at, last_sent_at.strip())
+
+    return {"monthly": normalized} if normalized else {}
+
+
+def load_report_state() -> dict:
+    """Loads monthly report state. Returns an empty structure if not found."""
+    if not os.path.exists(REPORT_STATE_FILE):
+        return {}
+    try:
+        with open(REPORT_STATE_FILE, "r") as f:
+            return _normalize_report_state_payload(json.load(f))
+    except (OSError, ValueError, json.JSONDecodeError) as e:
+        log.warning(f"Could not load report state — {e}")
+        return {}
+
+
+def record_monthly_report_sent(sent_at: datetime | None = None):
+    """Marks the current month as having posted a monthly report."""
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except PermissionError:
+        log.error(f"Could not create {DATA_DIR} — check directory permissions.")
+        return
+
+    moment = sent_at or datetime.now()
+    state = load_report_state()
+    current_month = state.get("monthly", {}).get("last_sent") if isinstance(state, dict) else None
+    target_month = moment.strftime("%Y-%m")
+    if current_month == target_month:
+        return
+
+    state["monthly"] = {
+        "last_sent": target_month,
+        "last_sent_at": moment.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+    try:
+        atomic_write_text(REPORT_STATE_FILE, json.dumps(state, indent=2))
+        log.info("Monthly report state recorded for %s", state["monthly"]["last_sent"])
+    except (OSError, ValueError) as e:
+        log.warning(f"Could not save report state — {e}")
 
 
 def load_last_run() -> dict:
