@@ -15,6 +15,7 @@ from config import (
     MISSED_RUN_THRESHOLD_MINUTES, REPORT_CHANNEL_ID, WARN_UNCONFIGURED,
     log
 )
+import config as cfg
 from file_utils import atomic_write_text
 from stats import load_stats, record_report_sent
 from utils import get_next_run_str
