@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.10 - 2026-05-04
+
+### Changes
+- Add monthly report catchup notification
+
+
 ## 5.11.9 - 2026-05-01
 
 ### Changes
