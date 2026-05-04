@@ -83,7 +83,7 @@ An automated Discord bot that cleans up old messages from configured channels on
 |----------|----------|---------|-------------|
 | `DISCORD_TOKEN` | ✅ | — | Bot token from Discord Developer Portal |
 | `LOG_CHANNEL_ID` | ✅ | — | Channel ID where cleanup reports are posted |
-| `REPORT_CHANNEL_ID` | ✅ | — | Channel ID where monthly reports are posted |
+| `REPORT_CHANNEL_ID` | ✅ | — | Channel ID where scheduled reports are posted |
 | `CLEAN_TIME` | ✅ | `03:00` | Comma-separated run times in 24hr format e.g. `03:00` or `03:00,12:00` |
 | `DEFAULT_RETENTION` | ❌ | `7` | Default message retention in days |
 | `LOG_MAX_FILES` | ❌ | `7` | Number of daily log files to retain |
@@ -386,7 +386,7 @@ After each cleanup run the bot updates a `stats.json` file in `/config/data` tra
 - **Current month** — resets on the 1st of each month
 - **All time** — never resets, cumulative totals since first run
 
-Stats are available on demand via `/cleanup stats view` and as an automated monthly report posted to the report channel on the 1st of each month.
+Stats are available on demand via `/cleanup stats view` and as automated scheduled reports posted to the report channel on the 1st of each month, every Monday, or both depending on `REPORT_FREQUENCY`.
 
 The bot also creates timestamped backups of `stats.json` and `last_run.json` before replacing existing files. These backups are kept in `/config/data/backups/stats` and `/config/data/backups/last-run`, and are pruned automatically after `STATS_BACKUP_RETENTION_DAYS`.
 

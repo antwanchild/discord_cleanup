@@ -179,6 +179,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             post_deploy_notification=lambda *a, **k: None,
             post_startup_notification=lambda *a, **k: None,
             post_missed_monthly_report_notification=lambda *a, **k: None,
+            post_missed_weekly_report_notification=lambda *a, **k: None,
             post_missed_run_alert=lambda *a, **k: None,
             post_status_report=lambda *a, **k: None,
             post_catchup_notification=lambda *a, **k: None,
@@ -188,6 +189,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             load_last_run=lambda: None,
             load_report_state=lambda: {},
             record_catchup_run=lambda: None,
+            record_report_sent=lambda *_a, **_k: None,
             record_monthly_report_sent=lambda *_a, **_k: None,
         )
         utils_stub = types.SimpleNamespace(
@@ -267,6 +269,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             post_deploy_notification=lambda *a, **k: None,
             post_startup_notification=lambda *a, **k: None,
             post_missed_monthly_report_notification=lambda *a, **k: None,
+            post_missed_weekly_report_notification=lambda *a, **k: None,
             post_missed_run_alert=lambda *a, **k: None,
             post_status_report=lambda *a, **k: None,
             post_catchup_notification=lambda *a, **k: None,
@@ -276,6 +279,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             load_last_run=lambda: {"timestamp": "2026-04-19 02:00:00"},
             load_report_state=lambda: {},
             record_catchup_run=lambda: None,
+            record_report_sent=lambda *_a, **_k: None,
             record_monthly_report_sent=lambda *_a, **_k: None,
         )
         utils_stub = types.SimpleNamespace(
@@ -356,6 +360,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             post_deploy_notification=lambda *a, **k: None,
             post_startup_notification=lambda *a, **k: None,
             post_missed_monthly_report_notification=post_missed_monthly_report_notification,
+            post_missed_weekly_report_notification=lambda *a, **k: None,
             post_missed_run_alert=lambda *a, **k: None,
             post_status_report=post_status_report,
             post_catchup_notification=lambda *a, **k: None,
@@ -365,6 +370,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             load_last_run=lambda: None,
             load_report_state=lambda: {},
             record_catchup_run=lambda: None,
+            record_report_sent=lambda *_a, **_k: None,
             record_monthly_report_sent=lambda *_a, **_k: None,
         )
         utils_stub = types.SimpleNamespace(
@@ -406,6 +412,188 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(missed_notices, ["May 2026"])
         self.assertEqual(posted, [("alpha", "monthly")])
 
+    async def test_monthly_report_catchup_handles_both_labels(self):
+        discord_module, commands, tasks = self._discord_stubs()
+        logger = logging.getLogger("test-cleanup-bot-report-both")
+        logger.setLevel(logging.INFO)
+
+        config_stub = types.SimpleNamespace(
+            BOT_VERSION="1.0.0",
+            CATCHUP_MISSED_RUNS=True,
+            CLEAN_TIMES=["03:00"],
+            SCHEDULE_SKIP_DATES=[],
+            SCHEDULE_SKIP_WEEKDAYS=[],
+            DATA_DIR="/config/data",
+            CONFIG_DIR="/tmp",
+            HEALTH_FILE="/tmp/health",
+            LOG_DIR="/config/logs",
+            MISSED_RUN_THRESHOLD_MINUTES=15,
+            STATUS_REPORT_TIME="09:00",
+            TOKEN="token",
+            LOG_LEVEL="INFO",
+            REPORT_FREQUENCY="both",
+            DEFAULT_RETENTION=7,
+            config_lock=threading.Lock(),
+            log=logger,
+        )
+        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        commands_stub = types.SimpleNamespace(cleanup_group=object())
+        notices = []
+        posts = []
+
+        async def post_missed_monthly_report_notification(bot, missed_period):
+            notices.append(("monthly", missed_period))
+
+        async def post_missed_weekly_report_notification(bot, missed_period):
+            notices.append(("weekly", missed_period))
+
+        async def post_status_report(bot, guild, label="monthly"):
+            posts.append((guild.name, label))
+
+        notifications_stub = types.SimpleNamespace(
+            post_deploy_notification=lambda *a, **k: None,
+            post_startup_notification=lambda *a, **k: None,
+            post_missed_monthly_report_notification=post_missed_monthly_report_notification,
+            post_missed_weekly_report_notification=post_missed_weekly_report_notification,
+            post_missed_run_alert=lambda *a, **k: None,
+            post_status_report=post_status_report,
+            post_catchup_notification=lambda *a, **k: None,
+        )
+        stats_stub = types.SimpleNamespace(
+            migrate_stats_categories=lambda *_a, **_k: None,
+            load_last_run=lambda: None,
+            load_report_state=lambda: {},
+            record_catchup_run=lambda: None,
+            record_report_sent=lambda *_a, **_k: None,
+            record_monthly_report_sent=lambda *_a, **_k: None,
+        )
+        utils_stub = types.SimpleNamespace(
+            update_health=lambda: None,
+            register_task=lambda *_a, **_k: None,
+            log_restart_separator=lambda: None,
+            set_bot_loop=lambda *_a, **_k: None,
+            set_startup_path_status=lambda *_a, **_k: None,
+            is_run_in_progress=lambda: False,
+            release_run=lambda: None,
+            try_acquire_run=lambda *_a, **_k: True,
+        )
+        web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
+        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        commands_stats_stub = types.SimpleNamespace()
+
+        with isolated_module_import(
+            "cleanup_bot",
+            {
+                "config": config_stub,
+                "cleanup": cleanup_stub,
+                "commands": commands_stub,
+                "commands_stats": commands_stats_stub,
+                "file_utils": file_utils_stub,
+                "notifications": notifications_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "web": web_stub,
+                "discord": discord_module,
+                "discord.ext": types.SimpleNamespace(commands=commands, tasks=tasks),
+                "discord.ext.commands": commands,
+                "discord.ext.tasks": tasks,
+            },
+        ) as cleanup_bot:
+            cleanup_bot._report_labels_due = lambda _moment: ["monthly", "weekly"]
+            cleanup_bot._missed_report_period_text = lambda label, _moment: f"{label}-period"
+            cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
+            await cleanup_bot._check_and_catchup_monthly_report(cleanup_bot.bot)
+
+        self.assertEqual(notices, [("monthly", "monthly-period"), ("weekly", "weekly-period")])
+        self.assertEqual(posts, [("alpha", "monthly"), ("alpha", "weekly")])
+
+    async def test_report_labels_due_respects_frequency_setting(self):
+        discord_module, commands, tasks = self._discord_stubs()
+        logger = logging.getLogger("test-cleanup-bot-report-due")
+        logger.setLevel(logging.INFO)
+
+        config_stub = types.SimpleNamespace(
+            BOT_VERSION="1.0.0",
+            CATCHUP_MISSED_RUNS=True,
+            CLEAN_TIMES=["03:00"],
+            SCHEDULE_SKIP_DATES=[],
+            SCHEDULE_SKIP_WEEKDAYS=[],
+            DATA_DIR="/config/data",
+            CONFIG_DIR="/tmp",
+            HEALTH_FILE="/tmp/health",
+            LOG_DIR="/config/logs",
+            MISSED_RUN_THRESHOLD_MINUTES=15,
+            STATUS_REPORT_TIME="09:00",
+            TOKEN="token",
+            LOG_LEVEL="INFO",
+            REPORT_FREQUENCY="monthly",
+            DEFAULT_RETENTION=7,
+            config_lock=threading.Lock(),
+            log=logger,
+        )
+        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        commands_stub = types.SimpleNamespace(cleanup_group=object())
+        notifications_stub = types.SimpleNamespace(
+            post_deploy_notification=lambda *a, **k: None,
+            post_startup_notification=lambda *a, **k: None,
+            post_missed_monthly_report_notification=lambda *a, **k: None,
+            post_missed_weekly_report_notification=lambda *a, **k: None,
+            post_missed_run_alert=lambda *a, **k: None,
+            post_status_report=lambda *a, **k: None,
+            post_catchup_notification=lambda *a, **k: None,
+        )
+        stats_stub = types.SimpleNamespace(
+            migrate_stats_categories=lambda *_a, **_k: None,
+            load_last_run=lambda: None,
+            load_report_state=lambda: {},
+            record_catchup_run=lambda: None,
+            record_report_sent=lambda *_a, **_k: None,
+            record_monthly_report_sent=lambda *_a, **_k: None,
+        )
+        utils_stub = types.SimpleNamespace(
+            update_health=lambda: None,
+            register_task=lambda *_a, **_k: None,
+            log_restart_separator=lambda: None,
+            set_bot_loop=lambda *_a, **_k: None,
+            set_startup_path_status=lambda *_a, **_k: None,
+            is_run_in_progress=lambda: False,
+            release_run=lambda: None,
+            try_acquire_run=lambda *_a, **_k: True,
+        )
+        web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
+        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        commands_stats_stub = types.SimpleNamespace()
+
+        with isolated_module_import(
+            "cleanup_bot",
+            {
+                "config": config_stub,
+                "cleanup": cleanup_stub,
+                "commands": commands_stub,
+                "commands_stats": commands_stats_stub,
+                "file_utils": file_utils_stub,
+                "notifications": notifications_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "web": web_stub,
+                "discord": discord_module,
+                "discord.ext": types.SimpleNamespace(commands=commands, tasks=tasks),
+                "discord.ext.commands": commands,
+                "discord.ext.tasks": tasks,
+            },
+        ) as cleanup_bot:
+            cleanup_bot.load_report_state = lambda: {}
+            config_stub.REPORT_FREQUENCY = "monthly"
+            monthly_labels = cleanup_bot._report_labels_due(cleanup_bot.datetime(2026, 6, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ))
+            config_stub.REPORT_FREQUENCY = "weekly"
+            weekly_labels = cleanup_bot._report_labels_due(cleanup_bot.datetime(2026, 6, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ))
+            config_stub.REPORT_FREQUENCY = "both"
+            both_labels = cleanup_bot._report_labels_due(cleanup_bot.datetime(2026, 6, 1, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ))
+
+        self.assertEqual(monthly_labels, ["monthly"])
+        self.assertEqual(weekly_labels, ["weekly"])
+        self.assertEqual(both_labels, ["monthly", "weekly"])
+
     async def test_monthly_report_catchup_skips_when_current_month_already_sent(self):
         discord_module, commands, tasks = self._discord_stubs()
         logger = logging.getLogger("test-cleanup-bot-report-skip")
@@ -440,6 +628,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             post_deploy_notification=lambda *a, **k: None,
             post_startup_notification=lambda *a, **k: None,
             post_missed_monthly_report_notification=lambda *a, **k: None,
+            post_missed_weekly_report_notification=lambda *a, **k: None,
             post_missed_run_alert=lambda *a, **k: None,
             post_status_report=post_status_report,
             post_catchup_notification=lambda *a, **k: None,
@@ -449,6 +638,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             load_last_run=lambda: None,
             load_report_state=lambda: {"monthly": {"last_sent": "2026-05"}},
             record_catchup_run=lambda: None,
+            record_report_sent=lambda *_a, **_k: None,
             record_monthly_report_sent=lambda *_a, **_k: None,
         )
         utils_stub = types.SimpleNamespace(
@@ -522,6 +712,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             post_deploy_notification=lambda *a, **k: None,
             post_startup_notification=lambda *a, **k: None,
             post_missed_monthly_report_notification=lambda *a, **k: None,
+            post_missed_weekly_report_notification=lambda *a, **k: None,
             post_missed_run_alert=lambda *a, **k: None,
             post_status_report=post_status_report,
             post_catchup_notification=lambda *a, **k: None,
@@ -531,6 +722,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             load_last_run=lambda: None,
             load_report_state=lambda: {},
             record_catchup_run=lambda: None,
+            record_report_sent=lambda *_a, **_k: None,
             record_monthly_report_sent=lambda *_a, **_k: None,
         )
         utils_stub = types.SimpleNamespace(
@@ -600,6 +792,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             post_deploy_notification=lambda *a, **k: None,
             post_startup_notification=lambda *a, **k: None,
             post_missed_monthly_report_notification=lambda *a, **k: None,
+            post_missed_weekly_report_notification=lambda *a, **k: None,
             post_missed_run_alert=lambda *a, **k: None,
             post_status_report=lambda *a, **k: None,
             post_catchup_notification=lambda *a, **k: None,
@@ -609,6 +802,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             load_last_run=lambda: None,
             load_report_state=lambda: {},
             record_catchup_run=lambda: None,
+            record_report_sent=lambda *_a, **_k: None,
             record_monthly_report_sent=lambda *_a, **_k: None,
         )
         utils_stub = types.SimpleNamespace(

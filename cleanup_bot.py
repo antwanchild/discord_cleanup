@@ -20,7 +20,7 @@ warnings.filterwarnings("ignore", message=".*davey.*")
 from config import (
     BOT_VERSION, CATCHUP_MISSED_RUNS, CLEAN_TIMES, DATA_DIR, HEALTH_FILE,
     MISSED_RUN_THRESHOLD_MINUTES, STATUS_REPORT_TIME, TOKEN, LOG_DIR, LOG_LEVEL,
-    REPORT_FREQUENCY, log
+    log
 )
 import config as cfg
 from cleanup import run_cleanup, validate_channels
@@ -30,6 +30,7 @@ from file_utils import atomic_write_text
 from notifications import (
     post_deploy_notification, post_startup_notification,
     post_missed_monthly_report_notification, post_missed_run_alert,
+    post_missed_weekly_report_notification,
     post_status_report, post_catchup_notification,
 )
 from stats import migrate_stats_categories, load_last_run, load_report_state, record_catchup_run
@@ -101,21 +102,29 @@ def _report_state_month_key(moment: datetime) -> str:
     return moment.strftime("%Y-%m")
 
 
-def _monthly_report_sent_for_current_month(moment: datetime) -> bool:
+def _report_state_week_key(moment: datetime) -> str:
+    """Returns the ISO week key used to track weekly report delivery."""
+    iso_year, iso_week, _weekday = moment.isocalendar()
+    return f"{iso_year}-W{iso_week:02d}"
+
+
+def _report_sent_for_current_month(moment: datetime) -> bool:
     """Checks whether the current month's monthly report has already been posted."""
     report_state = load_report_state()
     monthly = report_state.get("monthly", {}) if isinstance(report_state, dict) else {}
     return monthly.get("last_sent") == _report_state_month_key(moment)
 
 
-def _monthly_report_is_due(moment: datetime) -> bool:
-    """Returns True when the monthly report should have already been posted."""
-    if REPORT_FREQUENCY not in {"monthly", "both"}:
-        return False
-    if _monthly_report_sent_for_current_month(moment):
-        return False
+def _report_sent_for_current_week(moment: datetime) -> bool:
+    """Checks whether the current week's weekly report has already been posted."""
+    report_state = load_report_state()
+    weekly = report_state.get("weekly", {}) if isinstance(report_state, dict) else {}
+    return weekly.get("last_sent") == _report_state_week_key(moment)
 
-    scheduled = datetime(
+
+def _month_report_due_time(moment: datetime) -> datetime:
+    """Returns the scheduled time for the monthly report in the current month."""
+    return datetime(
         moment.year,
         moment.month,
         1,
@@ -123,7 +132,52 @@ def _monthly_report_is_due(moment: datetime) -> bool:
         report_time.minute,
         tzinfo=TASK_TZ,
     )
-    return moment >= scheduled
+
+
+def _week_report_due_time(moment: datetime) -> datetime:
+    """Returns the scheduled time for the weekly report in the current ISO week."""
+    monday = moment - timedelta(days=moment.weekday())
+    return datetime(
+        monday.year,
+        monday.month,
+        monday.day,
+        report_time.hour,
+        report_time.minute,
+        tzinfo=TASK_TZ,
+    )
+
+
+def _report_labels_due(moment: datetime) -> list[str]:
+    """Returns the report labels that should have already posted by now."""
+    import config
+
+    freq = config.REPORT_FREQUENCY
+    labels = []
+
+    if freq in {"monthly", "both"} and not _report_sent_for_current_month(moment) and moment >= _month_report_due_time(moment):
+        labels.append("monthly")
+    if freq in {"weekly", "both"} and not _report_sent_for_current_week(moment) and moment >= _week_report_due_time(moment):
+        labels.append("weekly")
+    return labels
+
+
+def _missed_report_period_text(label: str, moment: datetime) -> str:
+    """Returns a human-readable period description for missed report notifications."""
+    if label == "monthly":
+        return moment.strftime("%B %Y")
+    if label == "weekly":
+        return f"week of {_week_report_due_time(moment).strftime('%Y-%m-%d')}"
+    return moment.strftime("%Y-%m-%d")
+
+
+def _monthly_report_is_due(moment: datetime) -> bool:
+    """Returns True when the monthly report should have already been posted."""
+    return "monthly" in _report_labels_due(moment)
+
+
+def _weekly_report_is_due(moment: datetime) -> bool:
+    """Returns True when the weekly report should have already been posted."""
+    return "weekly" in _report_labels_due(moment)
 
 
 async def _run_per_guild(guilds, action, action_name: str):
@@ -223,25 +277,14 @@ async def cleanup_task():
 @tasks.loop(time=report_time)
 async def monthly_report_task():
     """Posts scheduled reports based on REPORT_FREQUENCY setting."""
-    import config
     try:
         now = datetime.now(TASK_TZ)
-        is_first_of_month = now.day == 1
-        is_monday = now.weekday() == 0  # 0 = Monday
-        freq = config.REPORT_FREQUENCY
-
-        should_post = (
-            (freq == "monthly" and is_first_of_month) or
-            (freq == "weekly" and is_monday) or
-            (freq == "both" and (is_first_of_month or is_monday))
-        )
-
-        if should_post:
-            label = "monthly" if is_first_of_month else "weekly"
+        labels = _report_labels_due(now)
+        for label in labels:
             log.info(f"{label.capitalize()} report triggered — posting now")
             await _run_per_guild(
                 bot.guilds,
-                lambda guild: post_status_report(bot, guild, label),
+                lambda guild, report_label=label: post_status_report(bot, guild, report_label),
                 f"{label.capitalize()} report",
             )
     except Exception:
@@ -339,40 +382,46 @@ async def _check_and_catchup_missed_run(bot, guild):
 
 
 async def _check_and_catchup_monthly_report(bot):
-    """Checks on startup whether the monthly report for the current month was missed."""
+    """Checks on startup whether scheduled reports were missed and posts catchups."""
     try:
         if not CATCHUP_MISSED_RUNS:
-            log.debug("CATCHUP_MISSED_RUNS is disabled — skipping monthly report catchup")
+            log.debug("CATCHUP_MISSED_RUNS is disabled — skipping report catchup")
             return
 
         now = datetime.now(TASK_TZ)
-        if not _monthly_report_is_due(now):
-            log.debug("No missed monthly report detected")
+        labels = _report_labels_due(now)
+        if not labels:
+            log.debug("No missed reports detected")
             return
 
         if is_run_in_progress():
-            log.warning("Monthly report catchup skipped because another operation is already running")
+            log.warning("Report catchup skipped because another operation is already running")
             return
         if not try_acquire_run("monthly-report-catchup"):
-            log.warning("Monthly report catchup skipped because another operation is already running")
+            log.warning("Report catchup skipped because another operation is already running")
             return
 
         try:
-            log.info(
-                "Missed monthly report detected for %s — triggering catchup report",
-                now.strftime("%Y-%m"),
-            )
-            missed_month = now.strftime("%B %Y")
-            await post_missed_monthly_report_notification(bot, missed_month)
-            await _run_per_guild(
-                bot.guilds,
-                lambda guild: post_status_report(bot, guild, "monthly"),
-                "Monthly report",
-            )
+            for label in labels:
+                missed_period = _missed_report_period_text(label, now)
+                log.info(
+                    "Missed %s report detected for %s — triggering catchup report",
+                    label,
+                    missed_period,
+                )
+                if label == "monthly":
+                    await post_missed_monthly_report_notification(bot, missed_period)
+                elif label == "weekly":
+                    await post_missed_weekly_report_notification(bot, missed_period)
+                await _run_per_guild(
+                    bot.guilds,
+                    lambda guild, report_label=label: post_status_report(bot, guild, report_label),
+                    f"{label.capitalize()} report",
+                )
         finally:
             release_run()
     except Exception:
-        log.exception("Monthly report catchup check failed unexpectedly")
+        log.exception("Report catchup check failed unexpectedly")
 
 
 # --- Events ---

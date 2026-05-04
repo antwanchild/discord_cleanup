@@ -16,7 +16,7 @@ from config import (
     log
 )
 from file_utils import atomic_write_text
-from stats import load_stats, record_monthly_report_sent
+from stats import load_stats, record_report_sent
 from utils import get_next_run_str
 
 EMBED_TITLE_LIMIT = 256
@@ -371,18 +371,23 @@ async def post_deploy_notification(bot, guild):
     )
 
 
-async def post_missed_monthly_report_notification(bot, missed_month: str):
-    """Posts a notification when the monthly report was missed and is being caught up."""
+def _report_label_title(label: str) -> str:
+    """Returns a human-friendly report label for notification titles."""
+    return "Monthly" if label == "monthly" else "Weekly"
+
+
+async def post_missed_report_notification(bot, label: str, missed_period: str):
+    """Posts a notification when a scheduled report was missed and is being caught up."""
     report_channel = bot.get_channel(REPORT_CHANNEL_ID)
     if not report_channel:
-        log.warning("Could not post missed monthly report notification — report channel not found")
+        log.warning("Could not post missed %s report notification — report channel not found", label)
         return
 
     embed = discord.Embed(
-        title="⚠️ Monthly Report Missed",
+        title=f"⚠️ {_report_label_title(label)} Report Missed",
         description=(
-            f"📅 Missed report period: **{missed_month}**\n\n"
-            "The monthly report was not posted on schedule. "
+            f"📅 Missed report period: **{missed_period}**\n\n"
+            f"The {_report_label_title(label).lower()} report was not posted on schedule. "
             "Sending the catchup report now."
         ),
         color=0xFFA500,
@@ -393,11 +398,21 @@ async def post_missed_monthly_report_notification(bot, missed_month: str):
         report_channel,
         embed,
         fallback_text=(
-            f"Monthly report missed for {missed_month}, but the full embed could not be delivered."
+            f"{_report_label_title(label)} report missed for {missed_period}, but the full embed could not be delivered."
         ),
-        context="missed monthly report notification",
+        context=f"missed {label} report notification",
     )
-    log.warning("Missed monthly report notification posted for %s", missed_month)
+    log.warning("Missed %s report notification posted for %s", label, missed_period)
+
+
+async def post_missed_monthly_report_notification(bot, missed_month: str):
+    """Compatibility wrapper for monthly missed-report notifications."""
+    await post_missed_report_notification(bot, "monthly", missed_month)
+
+
+async def post_missed_weekly_report_notification(bot, missed_week: str):
+    """Compatibility wrapper for weekly missed-report notifications."""
+    await post_missed_report_notification(bot, "weekly", missed_week)
 
 
 async def post_status_report(bot, guild, label: str = "monthly"):
@@ -474,7 +489,9 @@ async def post_status_report(bot, guild, label: str = "monthly"):
         context=f"{label} status report",
     )
     if label == "monthly":
-        record_monthly_report_sent()
+        record_report_sent("monthly")
+    elif label == "weekly":
+        record_report_sent("weekly")
     log.info(f"{label.capitalize()} status report posted")
 
 
