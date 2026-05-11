@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.13 - 2026-05-11
+
+### Changes
+- Add report frequency both regression test
+
+
 ## 5.11.12 - 2026-05-04
 
 ### Changes
