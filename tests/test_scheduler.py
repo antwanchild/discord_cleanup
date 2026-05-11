@@ -594,6 +594,92 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(weekly_labels, ["weekly"])
         self.assertEqual(both_labels, ["monthly", "weekly"])
 
+    async def test_monthly_report_task_posts_both_labels_when_both_are_due(self):
+        discord_module, commands, tasks = self._discord_stubs()
+        logger = logging.getLogger("test-cleanup-bot-report-task-both")
+        logger.setLevel(logging.INFO)
+
+        config_stub = types.SimpleNamespace(
+            BOT_VERSION="1.0.0",
+            CATCHUP_MISSED_RUNS=True,
+            CLEAN_TIMES=["03:00"],
+            SCHEDULE_SKIP_DATES=[],
+            SCHEDULE_SKIP_WEEKDAYS=[],
+            DATA_DIR="/config/data",
+            CONFIG_DIR="/tmp",
+            HEALTH_FILE="/tmp/health",
+            LOG_DIR="/config/logs",
+            MISSED_RUN_THRESHOLD_MINUTES=15,
+            STATUS_REPORT_TIME="09:00",
+            TOKEN="token",
+            LOG_LEVEL="INFO",
+            REPORT_FREQUENCY="both",
+            DEFAULT_RETENTION=7,
+            config_lock=threading.Lock(),
+            log=logger,
+        )
+        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        commands_stub = types.SimpleNamespace(cleanup_group=object())
+        posts = []
+
+        async def post_status_report(bot, guild, label="monthly"):
+            posts.append((guild.name, label))
+
+        notifications_stub = types.SimpleNamespace(
+            post_deploy_notification=lambda *a, **k: None,
+            post_startup_notification=lambda *a, **k: None,
+            post_missed_monthly_report_notification=lambda *a, **k: None,
+            post_missed_weekly_report_notification=lambda *a, **k: None,
+            post_missed_run_alert=lambda *a, **k: None,
+            post_status_report=post_status_report,
+            post_catchup_notification=lambda *a, **k: None,
+        )
+        stats_stub = types.SimpleNamespace(
+            migrate_stats_categories=lambda *_a, **_k: None,
+            load_last_run=lambda: None,
+            load_report_state=lambda: {},
+            record_catchup_run=lambda: None,
+            record_report_sent=lambda *_a, **_k: None,
+            record_monthly_report_sent=lambda *_a, **_k: None,
+        )
+        utils_stub = types.SimpleNamespace(
+            update_health=lambda: None,
+            register_task=lambda *_a, **_k: None,
+            log_restart_separator=lambda: None,
+            set_bot_loop=lambda *_a, **_k: None,
+            set_startup_path_status=lambda *_a, **_k: None,
+            is_run_in_progress=lambda: False,
+            release_run=lambda: None,
+            try_acquire_run=lambda *_a, **_k: True,
+        )
+        web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
+        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        commands_stats_stub = types.SimpleNamespace()
+
+        with isolated_module_import(
+            "cleanup_bot",
+            {
+                "config": config_stub,
+                "cleanup": cleanup_stub,
+                "commands": commands_stub,
+                "commands_stats": commands_stats_stub,
+                "file_utils": file_utils_stub,
+                "notifications": notifications_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "web": web_stub,
+                "discord": discord_module,
+                "discord.ext": types.SimpleNamespace(commands=commands, tasks=tasks),
+                "discord.ext.commands": commands,
+                "discord.ext.tasks": tasks,
+            },
+        ) as cleanup_bot:
+            cleanup_bot._report_labels_due = lambda _moment: ["monthly", "weekly"]
+            cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
+            await cleanup_bot.monthly_report_task()
+
+        self.assertEqual(posts, [("alpha", "monthly"), ("alpha", "weekly")])
+
     async def test_monthly_report_catchup_skips_when_current_month_already_sent(self):
         discord_module, commands, tasks = self._discord_stubs()
         logger = logging.getLogger("test-cleanup-bot-report-skip")
