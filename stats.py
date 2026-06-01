@@ -18,6 +18,7 @@ STATS_BACKUP_DIRNAME = "backups"
 STATS_BACKUP_SUBDIR = "stats"
 LAST_RUN_BACKUP_SUBDIR = "last-run"
 REPORT_STATE_FILE = os.path.join(DATA_DIR, "report_state.json")
+MONTHLY_REPORT_SOURCE_FILE = os.path.join(DATA_DIR, "monthly_report_source.json")
 
 
 class StatsLoadError(RuntimeError):
@@ -128,6 +129,29 @@ def _normalize_month_summary(value, default_reset: str) -> dict | None:
         "channels": _normalize_channel_stats(value.get("channels", {})),
         "reset": _coerce_reset_date(value.get("reset"), default_reset),
     }
+
+
+def _normalize_monthly_report_source_payload(payload) -> dict:
+    """Normalizes the frozen monthly report source payload."""
+    if not isinstance(payload, dict):
+        return {}
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    normalized = {
+        "display": _normalize_month_summary(payload.get("display"), default_reset=datetime.now().strftime("%Y-%m-%d")),
+        "comparison": _normalize_month_summary(payload.get("comparison"), default_reset=datetime.now().strftime("%Y-%m-%d")),
+    }
+    captured_at = payload.get("captured_at")
+    if isinstance(captured_at, str) and captured_at.strip():
+        normalized["captured_at"] = _coerce_timestamp(captured_at, now)
+    else:
+        normalized["captured_at"] = now
+
+    month_key = str(payload.get("month_key") or "").strip()
+    if month_key:
+        normalized["month_key"] = month_key
+
+    return normalized
 
 
 def _coerce_timestamp(value: str | None, default: str) -> str:
@@ -483,6 +507,12 @@ def update_stats(channel_results: dict, run_context: dict | None = None):
     if now.month != monthly_reset.month or now.year != monthly_reset.year:
         log.info("Resetting monthly stats")
         previous_last_month = stats.get("last_month")
+        completed_month = {
+            "runs": stats["monthly"]["runs"],
+            "deleted": stats["monthly"]["deleted"],
+            "channels": deepcopy(stats["monthly"].get("channels", {})),
+            "reset": stats["monthly"]["reset"],
+        }
         if previous_last_month:
             stats["previous_month"] = {
                 "runs": previous_last_month["runs"],
@@ -492,12 +522,13 @@ def update_stats(channel_results: dict, run_context: dict | None = None):
             }
         else:
             stats["previous_month"] = None
-        stats["last_month"] = {
-            "runs": stats["monthly"]["runs"],
-            "deleted": stats["monthly"]["deleted"],
-            "channels": deepcopy(stats["monthly"].get("channels", {})),
-            "reset": stats["monthly"]["reset"]
-        }
+        stats["last_month"] = deepcopy(completed_month)
+        save_monthly_report_source({
+            "display": completed_month,
+            "comparison": stats.get("previous_month"),
+            "captured_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "month_key": completed_month["reset"][:7],
+        })
         stats["monthly"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}
 
     total_deleted = sum(v["count"] for v in channel_results.values() if v["count"] > 0)
@@ -565,9 +596,11 @@ def reset_stats(scope: str) -> bool:
         log.info("Rolling 30-day stats reset by user")
     elif scope == "monthly":
         stats["monthly"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now}
+        clear_monthly_report_source()
         log.info("Monthly stats reset by user")
     elif scope == "all":
         stats = _empty_stats()
+        clear_monthly_report_source()
         log.info("All stats reset by user")
     else:
         return False
@@ -664,6 +697,94 @@ def _normalize_report_state_payload(payload) -> dict:
         if period:
             normalized[label] = period
     return normalized
+
+
+def _monthly_report_source_from_stats(stats: dict) -> dict | None:
+    """Builds the frozen monthly report source from a stats payload."""
+    if not isinstance(stats, dict):
+        return None
+
+    monthly = _normalize_stats_bucket(stats.get("monthly", {}), default_reset=datetime.now().strftime("%Y-%m-%d"))
+    last_month = _normalize_month_summary(stats.get("last_month"), default_reset=datetime.now().strftime("%Y-%m-%d"))
+    previous_month = _normalize_month_summary(stats.get("previous_month"), default_reset=datetime.now().strftime("%Y-%m-%d"))
+
+    display = monthly
+    comparison = last_month
+    if last_month and last_month.get("channels") and not monthly.get("channels"):
+        display = last_month
+        comparison = previous_month
+
+    if not display.get("channels"):
+        return None
+
+    source = {
+        "display": deepcopy(display),
+        "captured_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "month_key": display.get("reset", "")[:7],
+    }
+    if comparison and comparison.get("channels"):
+        source["comparison"] = deepcopy(comparison)
+    return source
+
+
+def save_monthly_report_source(source: dict) -> None:
+    """Persists the frozen monthly report source."""
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except PermissionError:
+        log.error(f"Could not create {DATA_DIR} — check directory permissions.")
+        return
+
+    normalized = _normalize_monthly_report_source_payload(source)
+    if not normalized.get("display", {}).get("channels"):
+        return
+
+    try:
+        atomic_write_text(MONTHLY_REPORT_SOURCE_FILE, json.dumps(normalized, indent=2))
+    except (OSError, ValueError) as e:
+        log.warning(f"Could not save monthly report source — {e}")
+
+
+def clear_monthly_report_source() -> None:
+    """Deletes the frozen monthly report source, if present."""
+    try:
+        os.remove(MONTHLY_REPORT_SOURCE_FILE)
+    except FileNotFoundError:
+        return
+    except OSError as e:
+        log.warning(f"Could not clear monthly report source — {e}")
+
+
+def load_monthly_report_source() -> dict | None:
+    """Loads the frozen monthly report source, deriving it from backup when needed."""
+    def _derive_from_stats_payload(payload: dict | None) -> dict | None:
+        source = _monthly_report_source_from_stats(payload or {})
+        if source:
+            save_monthly_report_source(source)
+        return source
+
+    if os.path.exists(MONTHLY_REPORT_SOURCE_FILE):
+        try:
+            with open(MONTHLY_REPORT_SOURCE_FILE, "r") as f:
+                payload = json.load(f)
+            normalized = _normalize_monthly_report_source_payload(payload)
+            if normalized.get("display", {}).get("channels"):
+                return normalized
+        except (OSError, ValueError, json.JSONDecodeError):
+            pass
+
+    backup_path = _latest_backup_path("stats")
+    if backup_path:
+        backup_stats = _load_stats_backup(backup_path)
+        derived = _derive_from_stats_payload(backup_stats)
+        if derived:
+            return derived
+
+    try:
+        current_stats = load_stats(strict=False, repair_snapshots=False)
+    except StatsLoadError:
+        current_stats = None
+    return _derive_from_stats_payload(current_stats)
 
 
 def load_report_state() -> dict:

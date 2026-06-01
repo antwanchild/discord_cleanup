@@ -57,6 +57,7 @@ class NotificationGroupingTests(unittest.TestCase):
         file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *a, **k: None)
         stats_stub = types.SimpleNamespace(
             load_stats=lambda: {},
+            load_monthly_report_source=lambda: None,
             record_report_sent=lambda *_a, **_k: None,
             record_monthly_report_sent=lambda *_a, **_k: None,
         )
@@ -388,6 +389,12 @@ class NotificationGroupingTests(unittest.TestCase):
                 "file_utils": file_utils_stub,
                 "stats": types.SimpleNamespace(
                     load_stats=lambda: report_payload,
+                    load_monthly_report_source=lambda: {
+                        "display": report_payload["last_month"],
+                        "comparison": report_payload["previous_month"],
+                        "captured_at": "2026-06-01 03:00:00",
+                        "month_key": "2026-05",
+                    },
                     record_report_sent=lambda *_a, **_k: None,
                 ),
                 "utils": utils_stub,

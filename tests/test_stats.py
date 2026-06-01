@@ -193,6 +193,7 @@ class StatsTests(unittest.TestCase):
     def test_update_stats_rollover_preserves_last_month_snapshot(self):
         with tempfile.TemporaryDirectory() as tempdir:
             stats_path = os.path.join(tempdir, "stats.json")
+            source_path = os.path.join(tempdir, "monthly_report_source.json")
             with open(stats_path, "w") as f:
                 json.dump(
                     {
@@ -238,6 +239,55 @@ class StatsTests(unittest.TestCase):
             self.assertEqual(payload["monthly"]["runs"], 1)
             self.assertEqual(payload["monthly"]["deleted"], 2)
             self.assertEqual(payload["monthly"]["channels"]["101"]["count"], 2)
+            self.assertTrue(os.path.exists(source_path))
+            with open(source_path, "r") as f:
+                source = json.load(f)
+            self.assertEqual(source["display"]["deleted"], 11)
+            self.assertEqual(source["display"]["channels"]["101"]["count"], 7)
+            self.assertEqual(source["comparison"]["deleted"], 8)
+            self.assertEqual(source["comparison"]["channels"]["202"]["count"], 5)
+            self.assertEqual(source["month_key"], "2026-05")
+
+    def test_load_monthly_report_source_rebuilds_from_latest_backup(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            stats_path = os.path.join(tempdir, "stats.json")
+            backups_dir = os.path.join(tempdir, "backups", "stats")
+            os.makedirs(backups_dir, exist_ok=True)
+
+            with open(stats_path, "w") as f:
+                json.dump({"all_time": {"runs": 1}, "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": "2026-06-01"}}, f)
+
+            with open(os.path.join(backups_dir, "stats-20260601-090000.json.bak"), "w") as f:
+                json.dump(
+                    {
+                        "all_time": {"runs": 1, "deleted": 9, "catchup_runs": 0, "channels": {}},
+                        "rolling_30": {"runs": 1, "deleted": 9, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+                        "monthly": {
+                            "runs": 33,
+                            "deleted": 8640,
+                            "catchup_runs": 0,
+                            "channels": {"101": {"name": "notifications-kometa", "count": 1342, "category": "Standalone"}},
+                            "reset": "2026-05-01",
+                        },
+                        "last_month": {
+                            "runs": 4,
+                            "deleted": 8186,
+                            "channels": {"202": {"name": "crowdsec", "count": 649, "category": "Standalone"}},
+                            "reset": "2026-04-01",
+                        },
+                    },
+                    f,
+                )
+
+            with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
+                source = stats.load_monthly_report_source()
+
+            self.assertIsNotNone(source)
+            self.assertEqual(source["display"]["deleted"], 8640)
+            self.assertEqual(source["display"]["channels"]["101"]["count"], 1342)
+            self.assertEqual(source["comparison"]["deleted"], 8186)
+            self.assertEqual(source["comparison"]["channels"]["202"]["count"], 649)
+            self.assertTrue(os.path.exists(os.path.join(tempdir, "monthly_report_source.json")))
 
     def test_save_stats_creates_backup_when_replacing_existing_file(self):
         with tempfile.TemporaryDirectory() as tempdir:

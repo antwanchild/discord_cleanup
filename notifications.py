@@ -17,7 +17,7 @@ from config import (
 )
 import config as cfg
 from file_utils import atomic_write_text
-from stats import load_stats, record_report_sent
+from stats import load_monthly_report_source, load_stats, record_report_sent
 from utils import get_next_run_str
 
 EMBED_TITLE_LIMIT = 256
@@ -430,14 +430,17 @@ async def post_status_report(bot, guild, label: str = "monthly"):
     last_month = stats.get("last_month")
     previous_month = stats.get("previous_month")
 
-    # If monthly stats were reset today, the cleanup already ran before the report.
-    # Display last month's completed data instead of the partial current-month data.
-    today = datetime.now().strftime("%Y-%m-%d")
+    # Monthly reports are rendered from a frozen source snapshot whenever available.
     display = monthly
     comparison = last_month
-    if label == "monthly" and last_month and monthly.get("reset") == today:
-        display = last_month
-        comparison = previous_month
+    if label == "monthly":
+        report_source = load_monthly_report_source()
+        if report_source and report_source.get("display", {}).get("channels"):
+            display = report_source["display"]
+            comparison = report_source.get("comparison") or {}
+        elif last_month and monthly.get("reset") == datetime.now().strftime("%Y-%m-%d"):
+            display = last_month
+            comparison = previous_month
 
     channels = display.get("channels", {})
     channel_map = build_channel_map(guild)
