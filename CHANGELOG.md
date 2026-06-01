@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.21 - 2026-06-01
+
+### Changes
+- Backfill monthly comparison from backup
+
+
 ## 5.11.20 - 2026-06-01
 
 ### Changes
