@@ -785,16 +785,24 @@ def load_monthly_report_source() -> dict | None:
     """Loads the frozen monthly report source, deriving it from backup when needed."""
     current_month_key = datetime.now().strftime("%Y-%m")
 
-    def _is_complete_monthly_source(source: dict | None) -> bool:
-        if not isinstance(source, dict):
-            return False
-        display = source.get("display") or {}
-        comparison = source.get("comparison") or {}
-        return bool(display.get("channels")) and bool(comparison.get("channels"))
-
     def _derive_from_stats_payload(payload: dict | None) -> dict | None:
         source = _monthly_report_source_from_stats(payload or {})
         if source:
+            save_monthly_report_source(source)
+        return source
+
+    def _backfill_comparison(source: dict) -> dict:
+        if source.get("comparison", {}).get("deleted"):
+            return source
+        backup_path = _latest_monthly_report_backup_path(current_month_key)
+        if not backup_path:
+            return source
+        backup_stats = _load_stats_backup(backup_path)
+        if not backup_stats:
+            return source
+        comparison = backup_stats.get("last_month") or {}
+        if comparison.get("deleted") is not None:
+            source["comparison"] = deepcopy(comparison)
             save_monthly_report_source(source)
         return source
 
@@ -803,12 +811,8 @@ def load_monthly_report_source() -> dict | None:
             with open(MONTHLY_REPORT_SOURCE_FILE, "r") as f:
                 payload = json.load(f)
             normalized = _normalize_monthly_report_source_payload(payload)
-            if (
-                normalized.get("display", {}).get("channels")
-                and normalized.get("month_key") != current_month_key
-                and _is_complete_monthly_source(normalized)
-            ):
-                return normalized
+            if normalized.get("display", {}).get("channels") and normalized.get("month_key") != current_month_key:
+                return _backfill_comparison(normalized)
         except (OSError, ValueError, json.JSONDecodeError):
             pass
 
@@ -817,13 +821,16 @@ def load_monthly_report_source() -> dict | None:
         backup_stats = _load_stats_backup(backup_path)
         derived = _derive_from_stats_payload(backup_stats)
         if derived:
-            return derived
+            return _backfill_comparison(derived)
 
     try:
         current_stats = load_stats(strict=False, repair_snapshots=False)
     except StatsLoadError:
         current_stats = None
-    return _derive_from_stats_payload(current_stats)
+    derived = _derive_from_stats_payload(current_stats)
+    if derived:
+        return _backfill_comparison(derived)
+    return None
 
 
 def load_report_state() -> dict:
