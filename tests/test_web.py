@@ -137,6 +137,7 @@ class WebConfigTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Repair Monthly Snapshot", response.data)
+        self.assertIn(b"Repair + Repost Monthly Report", response.data)
 
 
 if __name__ == "__main__":

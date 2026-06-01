@@ -385,6 +385,7 @@
   </p>
   <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center">
     <button class="btn btn-primary" onclick="confirmRepair()">Repair Monthly Snapshot</button>
+    <button class="btn btn-ghost" onclick="confirmRepairAndRepost()">Repair + Repost Monthly Report</button>
   </div>
 </div>
 
@@ -474,6 +475,19 @@
   </div>
 </div>
 
+<!-- Confirm repair + repost modal -->
+<div class="modal-overlay" id="repair-repost-modal">
+  <div class="modal-box" style="position:relative; max-width:440px; width:min(92vw, 440px)">
+    <div class="modal-close-x" onclick="closeRepairAndRepostModal()" title="Close">✕</div>
+    <h2 style="font-size:1.1rem; margin:0 0 0.5rem">🛠️ Confirm Repair + Repost</h2>
+    <p id="repair-repost-modal-message" style="color:var(--text-muted); font-size:0.875rem; margin:0 0 1.5rem"></p>
+    <div class="modal-footer" style="justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeRepairAndRepostModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doRepairAndRepost()">Repair + Repost</button>
+    </div>
+  </div>
+</div>
+
 <!-- Reset periods -->
 <div class="card">
   <div class="card-header">
@@ -521,6 +535,7 @@
   const HISTORY_CHANNELS = {{ history_channels | tojson }};
   let pendingResetScope = null;
   let pendingRepair = false;
+  let pendingRepairAndRepost = false;
 
   function confirmReset(scope, label) {
     pendingResetScope = scope;
@@ -561,6 +576,26 @@
     const fd = new FormData();
     const data = await postForm("/admin/api/stats/repair", fd);
     if (data.repaired) setTimeout(() => window.location.reload(), 1000);
+  }
+
+  function confirmRepairAndRepost() {
+    pendingRepairAndRepost = true;
+    document.getElementById("repair-repost-modal-message").textContent =
+      "This will repair the monthly snapshot if needed and immediately repost the monthly report to the report channel. Continue?";
+    document.getElementById("repair-repost-modal").classList.add("open");
+  }
+
+  function closeRepairAndRepostModal() {
+    document.getElementById("repair-repost-modal").classList.remove("open");
+    pendingRepairAndRepost = false;
+  }
+
+  async function doRepairAndRepost() {
+    if (!pendingRepairAndRepost) return;
+    closeRepairAndRepostModal();
+    const fd = new FormData();
+    const data = await postForm("/admin/api/stats/repair-and-repost", fd);
+    if (data.success) setTimeout(() => window.location.reload(), 1000);
   }
 
   function setView(view) {

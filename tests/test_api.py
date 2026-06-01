@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import types
 import unittest
@@ -272,6 +273,73 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(response.get_json()["success"])
         self.assertTrue(response.get_json()["repaired"])
         self.assertIn("repaired", response.get_json()["message"].lower())
+
+    def test_admin_stats_repair_and_repost_route_schedules_monthly_report(self):
+        config_stub = types.SimpleNamespace(
+            log=logging.getLogger("test-admin"),
+            SCHEDULE_SKIP_DATES=[],
+            SCHEDULE_SKIP_WEEKDAYS=[],
+            CLEAN_TIMES=["03:00"],
+        )
+        utils_stub = types.SimpleNamespace(
+            get_bot=lambda: types.SimpleNamespace(guilds=[types.SimpleNamespace(name="alpha")]),
+            get_bot_loop=lambda: object(),
+            release_run=lambda: None,
+            try_acquire_run=lambda *_a, **_k: True,
+        )
+        config_utils_stub = types.SimpleNamespace(
+            preview_channel_restore=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            preview_env_restore=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            restore_channels_backup=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            restore_env_backup=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            preview_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            save_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("unused")),
+            update_schedule_skip_dates=lambda dates: (True, ",".join(dates)),
+            update_schedule_skip_weekdays=lambda weekdays: (True, ",".join(weekdays)),
+            update_report_grouping=lambda *_a, **_k: (True, "true"),
+            validate_channels_content=lambda *_a, **_k: (True, "ok", []),
+        )
+        stats_stub = types.SimpleNamespace(
+            reset_stats=lambda *_a, **_k: True,
+            repair_stats_snapshots=lambda: (True, "Monthly stats snapshots repaired from backup"),
+        )
+        notifications_stub = types.SimpleNamespace(
+            post_status_report=lambda *a, **k: asyncio.sleep(0),
+        )
+        captured = {}
+
+        def fake_run_coroutine_threadsafe(coro, loop):
+            captured["loop"] = loop
+            asyncio.run(coro)
+            return types.SimpleNamespace(result=lambda: None)
+
+        with isolated_module_import(
+            "admin",
+            {
+                "config": config_stub,
+                "config_utils": config_utils_stub,
+                "notifications": notifications_stub,
+                "utils": utils_stub,
+                "stats": stats_stub,
+            },
+        ) as admin_module:
+            original_runner = admin_module.asyncio.run_coroutine_threadsafe
+            admin_module.asyncio.run_coroutine_threadsafe = fake_run_coroutine_threadsafe
+            try:
+                app = Flask(__name__)
+                app.register_blueprint(admin_module.admin)
+                client = app.test_client()
+
+                response = client.post("/admin/api/stats/repair-and-repost")
+            finally:
+                admin_module.asyncio.run_coroutine_threadsafe = original_runner
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+        self.assertTrue(payload["repaired"])
+        self.assertTrue(payload["reported"])
+        self.assertIn("report repost scheduled", payload["message"].lower())
 
     def test_admin_schedule_exception_routes_update_env(self):
         config_stub = types.SimpleNamespace(

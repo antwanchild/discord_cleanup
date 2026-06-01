@@ -503,3 +503,53 @@ def stats_repair():
         "repaired": repaired,
         "message": message,
     })
+
+
+@admin.route("/admin/api/stats/repair-and-repost", methods=["POST"])
+def stats_repair_and_repost():
+    """Repair missing monthly stats snapshots and repost the monthly report."""
+    from notifications import post_status_report
+
+    repaired, repair_message = repair_stats_snapshots()
+    if repair_message.startswith("Could not load stats safely"):
+        return jsonify({
+            "success": False,
+            "message": repair_message,
+            "repaired": False,
+            "reported": False,
+        }), 500
+
+    bot = get_bot()
+    loop = get_bot_loop()
+    if not bot or not loop:
+        return jsonify({"success": False, "message": "Bot is not ready yet", "repaired": repaired, "reported": False}), 503
+    if not bot.guilds:
+        return jsonify({"success": False, "message": "Bot is not in any guilds", "repaired": repaired, "reported": False}), 503
+
+    guild = bot.guilds[0]
+
+    async def _run():
+        await post_status_report(bot, guild, "monthly")
+
+    try:
+        asyncio.run_coroutine_threadsafe(_run(), loop)
+    except Exception:
+        log.exception("Failed to schedule monthly report repost from web UI")
+        return jsonify({
+            "success": False,
+            "message": "Could not schedule monthly report repost",
+            "repaired": repaired,
+            "reported": False,
+        }), 500
+
+    log.info(
+        "Monthly report repost requested via web UI | repaired=%s | repair_message=%s",
+        repaired,
+        repair_message,
+    )
+    return jsonify({
+        "success": True,
+        "message": f"Monthly report repost scheduled — {repair_message}",
+        "repaired": repaired,
+        "reported": True,
+    })
