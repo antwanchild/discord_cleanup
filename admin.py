@@ -24,7 +24,7 @@ from utils import (
     release_run,
     try_acquire_run,
 )
-from stats import reset_stats
+from stats import repair_stats_snapshots, reset_stats
 
 admin = Blueprint("admin", __name__)
 
@@ -491,3 +491,16 @@ def stats_reset():
         log.info(f"Stats reset via web UI — scope: {scope}")
         return jsonify({"success": True, "message": f"{label} stats have been reset"})
     return jsonify({"success": False, "message": "Reset failed — invalid scope"}), 400
+
+
+@admin.route("/admin/api/stats/repair", methods=["POST"])
+def stats_repair():
+    """Repair missing monthly stats snapshots from the latest backup."""
+    repaired, message = repair_stats_snapshots()
+    status_code = 200 if repaired else 200
+    log.info("Stats repair requested via web UI | repaired=%s | message=%s", repaired, message)
+    return jsonify({
+        "success": repaired,
+        "repaired": repaired,
+        "message": message,
+    }), status_code

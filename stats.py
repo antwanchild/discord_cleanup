@@ -6,6 +6,7 @@ all_time, rolling_30, and monthly.
 import json
 import os
 import logging
+from copy import deepcopy
 from datetime import datetime, timedelta
 
 import config as cfg
@@ -54,6 +55,7 @@ def _empty_stats():
         "rolling_30": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}, "reset": now},
         "monthly": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}, "reset": now},
         "last_month": None,
+        "previous_month": None,
         "channel_history": {},
     }
 
@@ -114,8 +116,8 @@ def _normalize_stats_bucket(bucket, default_reset: str | None = None) -> dict:
     return normalized
 
 
-def _normalize_last_month(value, default_reset: str) -> dict | None:
-    """Normalizes the optional last_month summary."""
+def _normalize_month_summary(value, default_reset: str) -> dict | None:
+    """Normalizes an optional month summary for monthly reporting."""
     if value is None:
         return None
     if not isinstance(value, dict):
@@ -123,6 +125,7 @@ def _normalize_last_month(value, default_reset: str) -> dict | None:
     return {
         "runs": _coerce_non_negative_int(value.get("runs", 0)),
         "deleted": _coerce_non_negative_int(value.get("deleted", 0)),
+        "channels": _normalize_channel_stats(value.get("channels", {})),
         "reset": _coerce_reset_date(value.get("reset"), default_reset),
     }
 
@@ -178,7 +181,8 @@ def _normalize_stats_payload(payload) -> dict:
         "all_time": _normalize_stats_bucket(payload.get("all_time", {})),
         "rolling_30": _normalize_stats_bucket(payload.get("rolling_30", {}), default_reset=now),
         "monthly": _normalize_stats_bucket(payload.get("monthly", {}), default_reset=now),
-        "last_month": _normalize_last_month(payload.get("last_month"), default_reset=now),
+        "last_month": _normalize_month_summary(payload.get("last_month"), default_reset=now),
+        "previous_month": _normalize_month_summary(payload.get("previous_month"), default_reset=now),
         "channel_history": _normalize_channel_history(payload.get("channel_history", {})),
     }
 
@@ -242,6 +246,49 @@ def _latest_backup_path(backup_type: str) -> str | None:
                 newest = path
                 newest_mtime = modified
     return newest
+
+
+def _load_stats_backup(path: str) -> dict | None:
+    """Loads and normalizes a stats backup from disk."""
+    try:
+        with open(path, "r") as f:
+            return _normalize_stats_payload(json.load(f))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+
+
+def _repair_monthly_snapshots_from_backup(stats: dict) -> bool:
+    """Backfills monthly snapshots from the most recent stats backup when needed."""
+    current_last_month = stats.get("last_month") or {}
+    current_previous_month = stats.get("previous_month") or {}
+
+    needs_last_month = not current_last_month.get("channels")
+    needs_previous_month = not current_previous_month.get("channels")
+    if not needs_last_month and not needs_previous_month:
+        return False
+
+    backup_path = _latest_backup_path("stats")
+    if not backup_path:
+        return False
+
+    backup_stats = _load_stats_backup(backup_path)
+    if not backup_stats:
+        return False
+
+    changed = False
+    backup_last_month = backup_stats.get("monthly") or {}
+    if needs_last_month and backup_last_month.get("channels"):
+        stats["last_month"] = deepcopy(backup_last_month)
+        changed = True
+
+    backup_previous_month = backup_stats.get("last_month") or {}
+    if needs_previous_month and backup_previous_month.get("channels"):
+        stats["previous_month"] = deepcopy(backup_previous_month)
+        changed = True
+
+    if changed:
+        log.info("Monthly stats snapshot repaired from latest backup: %s", backup_path)
+    return changed
 
 
 def _prune_old_stats_backups() -> None:
@@ -345,7 +392,7 @@ def _backup_existing_file(path: str, prefix: str, backup_type: str, new_content:
         return None
 
 
-def load_stats(strict: bool = False) -> dict:
+def load_stats(strict: bool = False, repair_snapshots: bool = True) -> dict:
     """Loads stats from disk.
 
     Missing files return an empty structure. When ``strict`` is true, existing but
@@ -363,7 +410,7 @@ def load_stats(strict: bool = False) -> dict:
         return _empty_stats()
     try:
         with open(STATS_FILE, "r") as f:
-            return _normalize_stats_payload(json.load(f))
+            stats = _normalize_stats_payload(json.load(f))
     except (OSError, ValueError, json.JSONDecodeError) as e:
         backup_hint = _latest_backup_path("stats")
         message = f"Could not load stats file — {e}"
@@ -373,6 +420,23 @@ def load_stats(strict: bool = False) -> dict:
         if strict:
             raise StatsLoadError(message) from e
         return _empty_stats()
+    if repair_snapshots and _repair_monthly_snapshots_from_backup(stats):
+        save_stats(stats)
+    return stats
+
+
+def repair_stats_snapshots() -> tuple[bool, str]:
+    """Repairs missing monthly snapshots from the latest stats backup if possible."""
+    try:
+        stats = load_stats(strict=True, repair_snapshots=False)
+    except StatsLoadError as e:
+        return False, f"Could not load stats safely — {e}"
+
+    if _repair_monthly_snapshots_from_backup(stats):
+        save_stats(stats)
+        return True, "Monthly stats snapshots repaired from backup"
+
+    return False, "No stats repair was needed"
 
 
 def save_stats(stats: dict):
@@ -418,9 +482,20 @@ def update_stats(channel_results: dict, run_context: dict | None = None):
     monthly_reset = datetime.strptime(stats["monthly"]["reset"], "%Y-%m-%d")
     if now.month != monthly_reset.month or now.year != monthly_reset.year:
         log.info("Resetting monthly stats")
+        previous_last_month = stats.get("last_month")
+        if previous_last_month:
+            stats["previous_month"] = {
+                "runs": previous_last_month["runs"],
+                "deleted": previous_last_month["deleted"],
+                "channels": deepcopy(previous_last_month.get("channels", {})),
+                "reset": previous_last_month["reset"],
+            }
+        else:
+            stats["previous_month"] = None
         stats["last_month"] = {
             "runs": stats["monthly"]["runs"],
             "deleted": stats["monthly"]["deleted"],
+            "channels": deepcopy(stats["monthly"].get("channels", {})),
             "reset": stats["monthly"]["reset"]
         }
         stats["monthly"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}

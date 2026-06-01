@@ -70,7 +70,20 @@ Full stats payload — all-time, rolling 30-day, monthly, and per-channel breakd
   "last_month": {
     "runs": 28,
     "deleted": 3102,
+    "channels": {
+      "1234567890": {
+        "name": "radarr-movies",
+        "count": 2171,
+        "category": "Radarr"
+      }
+    },
     "reset": "2026-02-01"
+  },
+  "previous_month": {
+    "runs": 25,
+    "deleted": 2891,
+    "channels": {},
+    "reset": "2026-01-01"
   }
 }
 ```

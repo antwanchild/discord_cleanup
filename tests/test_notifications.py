@@ -3,6 +3,7 @@ import os
 import tempfile
 import types
 import unittest
+from datetime import datetime
 
 from tests.support import isolated_module_import
 
@@ -44,6 +45,8 @@ class NotificationGroupingTests(unittest.TestCase):
             LOG_CHANNEL_ID=1,
             MISSED_RUN_THRESHOLD_MINUTES=15,
             REPORT_CHANNEL_ID=2,
+            REPORT_GROUP_MONTHLY=True,
+            REPORT_GROUP_WEEKLY=True,
             WARN_UNCONFIGURED=False,
             log=types.SimpleNamespace(
                 info=lambda *a, **k: None,
@@ -343,6 +346,91 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertIn("embed", channel.calls[0])
         self.assertEqual(channel.calls[0]["embed"].title, "⚠️ Weekly Report Missed")
         self.assertIn("2026-04-27", channel.calls[0]["embed"].description)
+
+    def test_post_status_report_uses_snapshot_after_month_reset(self):
+        config_stub, file_utils_stub, _, utils_stub, discord_stub = self._module_stubs()
+
+        report_payload = {
+            "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": "2026-06-01"},
+            "last_month": {
+                "runs": 33,
+                "deleted": 8640,
+                "channels": {
+                    "101": {"name": "notifications-kometa", "count": 1342, "category": "Standalone"},
+                    "102": {"name": "crowdsec", "count": 649, "category": "Standalone"},
+                },
+                "reset": "2026-05-01",
+            },
+            "previous_month": {
+                "runs": 4,
+                "deleted": 8186,
+                "channels": {},
+                "reset": "2026-04-01",
+            },
+        }
+
+        cleanup_stub = types.SimpleNamespace(
+            build_channel_map=lambda guild: {
+                101: {"notification_group": "Build Channels"},
+                102: {},
+            }
+        )
+
+        class FixedDateTime:
+            @staticmethod
+            def now(*_args, **_kwargs):
+                return datetime(2026, 6, 1, 9, 0, 0)
+
+        with isolated_module_import(
+            "notifications",
+            {
+                "config": config_stub,
+                "file_utils": file_utils_stub,
+                "stats": types.SimpleNamespace(
+                    load_stats=lambda: report_payload,
+                    record_report_sent=lambda *_a, **_k: None,
+                ),
+                "utils": utils_stub,
+                "discord": discord_stub,
+                "cleanup": cleanup_stub,
+            },
+        ) as notifications:
+            class Channel:
+                def __init__(self):
+                    self.calls = []
+
+                async def send(self, **kwargs):
+                    self.calls.append(kwargs)
+                    return None
+
+            class Bot:
+                def __init__(self, channel):
+                    self.channel = channel
+
+                def get_channel(self, channel_id):
+                    return self.channel if channel_id == config_stub.REPORT_CHANNEL_ID else None
+
+            channel = Channel()
+            original_datetime = notifications.datetime
+            notifications.datetime = FixedDateTime
+            try:
+                asyncio.run(
+                    notifications.post_status_report(
+                        Bot(channel),
+                        types.SimpleNamespace(name="Antwanchild"),
+                        "monthly",
+                    )
+                )
+            finally:
+                notifications.datetime = original_datetime
+
+        self.assertEqual(len(channel.calls), 1)
+        embed = channel.calls[0]["embed"]
+        self.assertIn("📈 vs last month: **+454** (8186 → 8640)", embed.description)
+        self.assertIn("📋 Active channels: **2**", embed.description)
+        self.assertEqual(embed._fields[0]["name"], "🏆 Top Groups")
+        self.assertIn("`Build Channels` — **1342** deleted across **1** channels", embed._fields[0]["value"])
+        self.assertIn("`#crowdsec` — **649** deleted", embed._fields[0]["value"])
 
     def test_load_recent_changelog_entries_reads_markdown_changelog(self):
         config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()

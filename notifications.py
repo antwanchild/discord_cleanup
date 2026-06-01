@@ -428,24 +428,27 @@ async def post_status_report(bot, guild, label: str = "monthly"):
     stats = load_stats()
     monthly = stats.get("monthly", {})
     last_month = stats.get("last_month")
+    previous_month = stats.get("previous_month")
 
     # If monthly stats were reset today, the cleanup already ran before the report.
     # Display last month's completed data instead of the partial current-month data.
     today = datetime.now().strftime("%Y-%m-%d")
     display = monthly
+    comparison = last_month
     if label == "monthly" and last_month and monthly.get("reset") == today:
         display = last_month
+        comparison = previous_month
 
     channels = display.get("channels", {})
     channel_map = build_channel_map(guild)
     group_notification_groups = cfg.REPORT_GROUP_MONTHLY if label == "monthly" else cfg.REPORT_GROUP_WEEKLY
     leaderboard = _build_notification_leaderboard(channels, channel_map, limit=10, group_notification_groups=group_notification_groups)
 
-    # Build diff string — only meaningful when showing current month vs prior month
+    # Build diff string using the prior period that matches the displayed month.
     diff_str = ""
-    if last_month and display is monthly:
-        prev = last_month.get("deleted", 0)
-        curr = monthly.get("deleted", 0)
+    if comparison:
+        prev = comparison.get("deleted", 0)
+        curr = display.get("deleted", 0)
         delta = curr - prev
         if delta > 0:
             diff_str = f"\n📈 vs last month: **+{delta}** ({prev} → {curr})"
