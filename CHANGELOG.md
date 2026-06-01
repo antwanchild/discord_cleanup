@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.20 - 2026-06-01
+
+### Changes
+- Surface monthly repost failures
+
+
 ## 5.11.19 - 2026-06-01
 
 ### Changes
