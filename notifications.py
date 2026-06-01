@@ -489,17 +489,21 @@ async def post_status_report(bot, guild, label: str = "monthly"):
         embed.add_field(name="🏆 Top Groups", value="No messages deleted this period", inline=False)
 
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-    await safe_send_embed(
+    sent = await safe_send_embed(
         report_channel,
         embed,
         fallback_text=f"{title} generated for {guild.name}, but the full embed could not be delivered. Check logs or the web UI for details.",
         context=f"{label} status report",
     )
-    if label == "monthly":
-        record_report_sent("monthly")
-    elif label == "weekly":
-        record_report_sent("weekly")
+    if sent:
+        if label == "monthly":
+            record_report_sent("monthly")
+        elif label == "weekly":
+            record_report_sent("weekly")
+    else:
+        log.warning("%s status report did not send successfully", label.capitalize())
     log.info(f"{label.capitalize()} status report posted")
+    return sent
 
 
 async def post_schedule_notification(bot, guild, old_times: list, new_times: list, changed_by: str):

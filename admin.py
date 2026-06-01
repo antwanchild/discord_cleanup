@@ -529,15 +529,24 @@ def stats_repair_and_repost():
     guild = bot.guilds[0]
 
     async def _run():
-        await post_status_report(bot, guild, "monthly")
+        return await post_status_report(bot, guild, "monthly")
 
     try:
-        asyncio.run_coroutine_threadsafe(_run(), loop)
+        future = asyncio.run_coroutine_threadsafe(_run(), loop)
+        posted = future.result(timeout=20)
     except Exception:
         log.exception("Failed to schedule monthly report repost from web UI")
         return jsonify({
             "success": False,
             "message": "Could not schedule monthly report repost",
+            "repaired": repaired,
+            "reported": False,
+        }), 500
+
+    if not posted:
+        return jsonify({
+            "success": False,
+            "message": "Monthly report was scheduled but did not send successfully",
             "repaired": repaired,
             "reported": False,
         }), 500

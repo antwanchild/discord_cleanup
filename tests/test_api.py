@@ -304,14 +304,13 @@ class ApiTests(unittest.TestCase):
             repair_stats_snapshots=lambda: (True, "Monthly stats snapshots repaired from backup"),
         )
         notifications_stub = types.SimpleNamespace(
-            post_status_report=lambda *a, **k: asyncio.sleep(0),
+            post_status_report=lambda *a, **k: asyncio.sleep(0, result=True),
         )
         captured = {}
 
         def fake_run_coroutine_threadsafe(coro, loop):
             captured["loop"] = loop
-            asyncio.run(coro)
-            return types.SimpleNamespace(result=lambda: None)
+            return types.SimpleNamespace(result=lambda timeout=None: asyncio.run(coro))
 
         with isolated_module_import(
             "admin",
