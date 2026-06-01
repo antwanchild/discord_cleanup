@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.22 - 2026-06-01
+
+### Changes
+- Queue monthly repost without waiting
+
+
 ## 5.11.21 - 2026-06-01
 
 ### Changes
