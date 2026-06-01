@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.18 - 2026-06-01
+
+### Changes
+- Prefer pre-reset backup for monthly report replay
+
+
 ## 5.11.17 - 2026-06-01
 
 ### Changes
