@@ -792,7 +792,8 @@ def load_monthly_report_source() -> dict | None:
         return source
 
     def _backfill_comparison(source: dict) -> dict:
-        if source.get("comparison", {}).get("deleted"):
+        comparison = source.get("comparison") or {}
+        if comparison.get("deleted"):
             return source
         backup_path = _latest_monthly_report_backup_path(current_month_key)
         if not backup_path:
