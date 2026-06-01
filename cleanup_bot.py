@@ -164,7 +164,9 @@ def _report_labels_due(moment: datetime) -> list[str]:
 def _missed_report_period_text(label: str, moment: datetime) -> str:
     """Returns a human-readable period description for missed report notifications."""
     if label == "monthly":
-        return moment.strftime("%B %Y")
+        # The missed monthly report always refers to the month that just closed.
+        prior_month = moment.replace(day=1) - timedelta(days=1)
+        return prior_month.strftime("%B %Y")
     if label == "weekly":
         return f"week of {_week_report_due_time(moment).strftime('%Y-%m-%d')}"
     return moment.strftime("%Y-%m-%d")
