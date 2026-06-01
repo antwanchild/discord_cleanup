@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.15 - 2026-06-01
+
+### Changes
+- Add stats repair button to web UI
+
+
 ## 5.11.14 - 2026-06-01
 
 ### Changes
