@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.23 - 2026-06-01
+
+### Changes
+- Handle missing monthly comparison safely
+
+
 ## 5.11.22 - 2026-06-01
 
 ### Changes
