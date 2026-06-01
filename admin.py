@@ -497,10 +497,9 @@ def stats_reset():
 def stats_repair():
     """Repair missing monthly stats snapshots from the latest backup."""
     repaired, message = repair_stats_snapshots()
-    status_code = 200 if repaired else 200
     log.info("Stats repair requested via web UI | repaired=%s | message=%s", repaired, message)
     return jsonify({
-        "success": repaired,
+        "success": True,
         "repaired": repaired,
         "message": message,
-    }), status_code
+    })

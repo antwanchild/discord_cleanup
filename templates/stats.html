@@ -375,6 +375,19 @@
   </div>
 </div>
 
+<!-- Stats repair -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Repair Snapshot</span>
+  </div>
+  <p style="color:var(--text-muted); font-size:0.875rem; margin:0 0 0.75rem">
+    Rebuild the monthly report snapshot from the latest stats backup so the next report can include the full breakdown.
+  </p>
+  <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center">
+    <button class="btn btn-primary" onclick="confirmRepair()">Repair Monthly Snapshot</button>
+  </div>
+</div>
+
 <div class="card">
   <div class="card-header">
     <span class="card-title">Stats &amp; Last-Run Backups</span>
@@ -448,6 +461,19 @@
   </div>
 </div>
 
+<!-- Confirm repair modal -->
+<div class="modal-overlay" id="repair-modal">
+  <div class="modal-box" style="position:relative; max-width:420px; width:min(92vw, 420px)">
+    <div class="modal-close-x" onclick="closeRepairModal()" title="Close">✕</div>
+    <h2 style="font-size:1.1rem; margin:0 0 0.5rem">🛠️ Confirm Stats Repair</h2>
+    <p id="repair-modal-message" style="color:var(--text-muted); font-size:0.875rem; margin:0 0 1.5rem"></p>
+    <div class="modal-footer" style="justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeRepairModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doRepair()">Repair Snapshot</button>
+    </div>
+  </div>
+</div>
+
 <!-- Reset periods -->
 <div class="card">
   <div class="card-header">
@@ -494,6 +520,7 @@
   const STORAGE_HISTORY = "dcb-stats-history";
   const HISTORY_CHANNELS = {{ history_channels | tojson }};
   let pendingResetScope = null;
+  let pendingRepair = false;
 
   function confirmReset(scope, label) {
     pendingResetScope = scope;
@@ -514,6 +541,26 @@
     fd.append("scope", pendingResetScope);
     const data = await postForm("/admin/api/stats/reset", fd);
     if (data.success) setTimeout(() => window.location.reload(), 1000);
+  }
+
+  function confirmRepair() {
+    pendingRepair = true;
+    document.getElementById("repair-modal-message").textContent =
+      "This will try to rebuild the monthly snapshot from the latest available stats backup. Continue?";
+    document.getElementById("repair-modal").classList.add("open");
+  }
+
+  function closeRepairModal() {
+    document.getElementById("repair-modal").classList.remove("open");
+    pendingRepair = false;
+  }
+
+  async function doRepair() {
+    if (!pendingRepair) return;
+    closeRepairModal();
+    const fd = new FormData();
+    const data = await postForm("/admin/api/stats/repair", fd);
+    if (data.repaired) setTimeout(() => window.location.reload(), 1000);
   }
 
   function setView(view) {
