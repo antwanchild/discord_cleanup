@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.14 - 2026-06-01
+
+### Changes
+- Fix missed monthly report period label
+
+
 ## 5.11.13 - 2026-05-11
 
 ### Changes
