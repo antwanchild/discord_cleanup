@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.19 - 2026-06-01
+
+### Changes
+- Require comparison snapshot for monthly report replay
+
+
 ## 5.11.18 - 2026-06-01
 
 ### Changes
