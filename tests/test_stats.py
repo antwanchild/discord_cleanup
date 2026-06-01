@@ -257,7 +257,47 @@ class StatsTests(unittest.TestCase):
             with open(stats_path, "w") as f:
                 json.dump({"all_time": {"runs": 1}, "monthly": {"runs": 0, "deleted": 0, "channels": {}, "reset": "2026-06-01"}}, f)
 
+            with open(os.path.join(tempdir, "monthly_report_source.json"), "w") as f:
+                json.dump(
+                    {
+                        "display": {
+                            "runs": 1,
+                            "deleted": 156,
+                            "channels": {"999": {"name": "wrong", "count": 1, "category": "Standalone"}},
+                            "reset": "2026-06-01",
+                        },
+                        "comparison": None,
+                        "captured_at": "2026-06-01 09:00:00",
+                        "month_key": "2026-06",
+                    },
+                    f,
+                )
+
             with open(os.path.join(backups_dir, "stats-20260601-090000.json.bak"), "w") as f:
+                json.dump(
+                    {
+                        "all_time": {"runs": 1, "deleted": 9, "catchup_runs": 0, "channels": {}},
+                        "rolling_30": {"runs": 1, "deleted": 9, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+                        "monthly": {
+                            "runs": 1,
+                            "deleted": 156,
+                            "catchup_runs": 0,
+                            "channels": {"999": {"name": "wrong", "count": 1, "category": "Standalone"}},
+                            "reset": "2026-06-01",
+                        },
+                        "last_month": {
+                            "runs": 33,
+                            "deleted": 8640,
+                            "channels": {
+                                "101": {"name": "notifications-kometa", "count": 1342, "category": "Standalone"}
+                            },
+                            "reset": "2026-05-01",
+                        },
+                    },
+                    f,
+                )
+
+            with open(os.path.join(backups_dir, "stats-20260531-054744.json.bak"), "w") as f:
                 json.dump(
                     {
                         "all_time": {"runs": 1, "deleted": 9, "catchup_runs": 0, "channels": {}},

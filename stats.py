@@ -272,6 +272,32 @@ def _latest_backup_path(backup_type: str) -> str | None:
     return newest
 
 
+def _latest_monthly_report_backup_path(reference_month_key: str | None = None) -> str | None:
+    """Returns the newest stats backup that still contains the just-closed monthly snapshot."""
+    reference_month_key = reference_month_key or datetime.now().strftime("%Y-%m")
+    for backup_path in sorted(
+        (
+            os.path.join(backup_dir, filename)
+            for backup_dir in _stats_backup_dirs("stats")
+            for filename in (os.listdir(backup_dir) if os.path.isdir(backup_dir) else [])
+            if filename.startswith("stats-") and filename.endswith(".json.bak")
+        ),
+        key=lambda path: os.path.getmtime(path) if os.path.exists(path) else 0,
+        reverse=True,
+    ):
+        backup_stats = _load_stats_backup(backup_path)
+        if not backup_stats:
+            continue
+        monthly = backup_stats.get("monthly") or {}
+        if not monthly.get("channels"):
+            continue
+        month_key = str(monthly.get("reset") or "")[:7]
+        if month_key == reference_month_key:
+            continue
+        return backup_path
+    return None
+
+
 def _load_stats_backup(path: str) -> dict | None:
     """Loads and normalizes a stats backup from disk."""
     try:
@@ -757,6 +783,8 @@ def clear_monthly_report_source() -> None:
 
 def load_monthly_report_source() -> dict | None:
     """Loads the frozen monthly report source, deriving it from backup when needed."""
+    current_month_key = datetime.now().strftime("%Y-%m")
+
     def _derive_from_stats_payload(payload: dict | None) -> dict | None:
         source = _monthly_report_source_from_stats(payload or {})
         if source:
@@ -768,12 +796,12 @@ def load_monthly_report_source() -> dict | None:
             with open(MONTHLY_REPORT_SOURCE_FILE, "r") as f:
                 payload = json.load(f)
             normalized = _normalize_monthly_report_source_payload(payload)
-            if normalized.get("display", {}).get("channels"):
+            if normalized.get("display", {}).get("channels") and normalized.get("month_key") != current_month_key:
                 return normalized
         except (OSError, ValueError, json.JSONDecodeError):
             pass
 
-    backup_path = _latest_backup_path("stats")
+    backup_path = _latest_monthly_report_backup_path(current_month_key)
     if backup_path:
         backup_stats = _load_stats_backup(backup_path)
         derived = _derive_from_stats_payload(backup_stats)
