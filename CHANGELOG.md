@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.17 - 2026-06-01
+
+### Changes
+- Freeze monthly report source at rollover
+
+
 ## 5.11.16 - 2026-06-01
 
 ### Changes
