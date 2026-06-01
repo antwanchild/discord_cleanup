@@ -306,11 +306,18 @@ class ApiTests(unittest.TestCase):
         notifications_stub = types.SimpleNamespace(
             post_status_report=lambda *a, **k: asyncio.sleep(0, result=True),
         )
-        captured = {}
+        class FakeFuture:
+            def __init__(self, result):
+                self._result = result
+
+            def add_done_callback(self, callback):
+                callback(self)
+
+            def result(self):
+                return self._result
 
         def fake_run_coroutine_threadsafe(coro, loop):
-            captured["loop"] = loop
-            return types.SimpleNamespace(result=lambda timeout=None: asyncio.run(coro))
+            return FakeFuture(asyncio.run(coro))
 
         with isolated_module_import(
             "admin",
@@ -338,7 +345,7 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(payload["success"])
         self.assertTrue(payload["repaired"])
         self.assertTrue(payload["reported"])
-        self.assertIn("report repost scheduled", payload["message"].lower())
+        self.assertIn("report repost queued", payload["message"].lower())
 
     def test_admin_schedule_exception_routes_update_env(self):
         config_stub = types.SimpleNamespace(
