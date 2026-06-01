@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.16 - 2026-06-01
+
+### Changes
+- Add monthly report repair and repost action
+
+
 ## 5.11.15 - 2026-06-01
 
 ### Changes
