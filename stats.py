@@ -785,6 +785,13 @@ def load_monthly_report_source() -> dict | None:
     """Loads the frozen monthly report source, deriving it from backup when needed."""
     current_month_key = datetime.now().strftime("%Y-%m")
 
+    def _is_complete_monthly_source(source: dict | None) -> bool:
+        if not isinstance(source, dict):
+            return False
+        display = source.get("display") or {}
+        comparison = source.get("comparison") or {}
+        return bool(display.get("channels")) and bool(comparison.get("channels"))
+
     def _derive_from_stats_payload(payload: dict | None) -> dict | None:
         source = _monthly_report_source_from_stats(payload or {})
         if source:
@@ -796,7 +803,11 @@ def load_monthly_report_source() -> dict | None:
             with open(MONTHLY_REPORT_SOURCE_FILE, "r") as f:
                 payload = json.load(f)
             normalized = _normalize_monthly_report_source_payload(payload)
-            if normalized.get("display", {}).get("channels") and normalized.get("month_key") != current_month_key:
+            if (
+                normalized.get("display", {}).get("channels")
+                and normalized.get("month_key") != current_month_key
+                and _is_complete_monthly_source(normalized)
+            ):
                 return normalized
         except (OSError, ValueError, json.JSONDecodeError):
             pass
