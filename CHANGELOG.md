@@ -1,5 +1,22 @@
 # Changelog
 
+## 5.11.24 - 2026-06-02
+
+### Changes
+- Bump gitleaks/gitleaks-action from 2 to 3
+- Bumps [gitleaks/gitleaks-action](https://github.com/gitleaks/gitleaks-action) from 2 to 3.
+- [Release notes](https://github.com/gitleaks/gitleaks-action/releases)
+- [Commits](https://github.com/gitleaks/gitleaks-action/compare/v2...v3)
+- ---
+- updated-dependencies:
+- dependency-name: gitleaks/gitleaks-action
+- dependency-version: '3'
+- dependency-type: direct:production
+- update-type: version-update:semver-major
+- ...
+- Signed-off-by: dependabot[bot] <support@github.com>
+
+
 ## 5.11.23 - 2026-06-01
 
 ### Changes
