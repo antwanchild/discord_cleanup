@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.25 - 2026-06-17
+
+### Changes
+- Pin Python dependencies
+
+
 ## 5.11.24 - 2026-06-02
 
 ### Changes
