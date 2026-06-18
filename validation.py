@@ -214,7 +214,7 @@ def _parse_channel_entry(node, index: int) -> dict:
     if id_pair is None:
         raise _schema_error(f"{label} is missing required key 'id'", node)
 
-    item = {"id": _scalar_int(id_pair[1], f"{label}.id", 1)}
+    item: dict[str, object] = {"id": _scalar_int(id_pair[1], f"{label}.id", 1)}
 
     if "name" in mapping:
         item["name"] = _scalar_string(mapping["name"][1], f"{label}.name")

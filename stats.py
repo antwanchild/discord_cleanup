@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 import config as cfg
 from config import DATA_DIR, STATS_FILE, log
-from file_utils import atomic_write_json, atomic_write_text
+from file_utils import atomic_write_text
 
 logger = logging.getLogger("discord-cleanup")
 STATS_BACKUP_DIRNAME = "backups"
@@ -137,7 +137,7 @@ def _normalize_monthly_report_source_payload(payload) -> dict:
         return {}
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    normalized = {
+    normalized: dict[str, object] = {
         "display": _normalize_month_summary(payload.get("display"), default_reset=datetime.now().strftime("%Y-%m-%d")),
         "comparison": _normalize_month_summary(payload.get("comparison"), default_reset=datetime.now().strftime("%Y-%m-%d")),
     }
@@ -171,7 +171,7 @@ def _normalize_channel_history(history) -> dict:
     if not isinstance(history, dict):
         return {}
 
-    normalized = {}
+    normalized: dict[str, list[dict[str, object]]] = {}
     for ch_id, entries in history.items():
         if not isinstance(entries, list):
             continue
@@ -246,7 +246,7 @@ def _normalize_last_run_payload(payload) -> dict | None:
 def _latest_backup_path(backup_type: str) -> str | None:
     """Returns the newest backup path for the given type, if any."""
     newest = None
-    newest_mtime = None
+    newest_mtime: float = -1.0
     prefixes = {"stats": "stats-", "last_run": "last-run-"}
     prefix = prefixes.get(backup_type)
     if not prefix:
@@ -885,7 +885,7 @@ def record_report_sent(label: str, sent_at: datetime | None = None):
         log.warning(f"Could not save report state — {e}")
 
 
-def load_last_run() -> dict:
+def load_last_run() -> dict | None:
     """Loads last run summary. Returns None if not found."""
     path = os.path.join(DATA_DIR, "last_run.json")
     if not os.path.exists(path):

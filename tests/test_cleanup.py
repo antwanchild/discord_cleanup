@@ -187,7 +187,9 @@ class BuildChannelMapTests(unittest.TestCase):
                 return self
 
         discord_stub.Embed = DummyEmbed
-        save_last_run_stub = lambda *_a, **_k: (_ for _ in ()).throw(OSError("disk full"))
+        def save_last_run_stub(*_a, **_k):
+            raise OSError("disk full")
+
         stats_stub.save_last_run = save_last_run_stub
         stats_stub.update_stats = lambda *_a, **_k: None
         stats_stub.record_channel_history = lambda *_a, **_k: None

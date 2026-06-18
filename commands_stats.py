@@ -2,6 +2,8 @@
 commands_stats.py — /cleanup stats subcommands: view, channel, and reset.
 Registered as a subgroup of cleanup_group from commands.py.
 """
+from __future__ import annotations
+
 import discord
 from discord import app_commands
 from datetime import datetime
@@ -18,6 +20,10 @@ stats_group = app_commands.Group(name="stats", description="Cleanup statistics c
 @app_commands.checks.has_permissions(administrator=True)
 async def stats_view(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
+    guild = interaction.guild
+    if guild is None:
+        await interaction.followup.send("⛔ This command can only be used in a server.", ephemeral=True)
+        return
     stats = load_stats()
     all_time = stats.get("all_time", {})
     rolling_30 = stats.get("rolling_30", {})
@@ -31,7 +37,7 @@ async def stats_view(interaction: discord.Interaction):
     embed = discord.Embed(
         title="📊 Cleanup Statistics",
         description=(
-            f"🏠 Server: **{interaction.guild.name}**\n\n"
+            f"🏠 Server: **{guild.name}**\n\n"
             f"**📅 Last 30 Days** (since {rolling_30.get('reset', 'N/A')})\n"
             f"\u3000🔁 Runs: **{rolling_30.get('runs', 0)}**\n"
             f"\u3000🗑️ Deleted: **{rolling_30.get('deleted', 0)}**\n\n"
@@ -98,7 +104,7 @@ async def stats_channel(interaction: discord.Interaction, channel: discord.TextC
 
 
 class StatsResetView(discord.ui.View):
-    def __init__(self, scope: str, user: discord.User):
+    def __init__(self, scope: str, user: discord.User | discord.Member):
         super().__init__(timeout=30)
         self.scope = scope
         self.user = user

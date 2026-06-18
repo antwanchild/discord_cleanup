@@ -5,7 +5,7 @@ import types
 import unittest
 from datetime import datetime
 
-from tests.support import isolated_module_import
+from tests.support import isolated_module_import, set_module_attr
 
 
 class NotificationGroupingTests(unittest.TestCase):
@@ -291,7 +291,6 @@ class NotificationGroupingTests(unittest.TestCase):
 
             channel = Channel()
             bot = Bot(channel)
-            guild = types.SimpleNamespace(name="Test Guild")
 
             asyncio.run(
                 notifications.post_missed_monthly_report_notification(
@@ -419,7 +418,7 @@ class NotificationGroupingTests(unittest.TestCase):
 
             channel = Channel()
             original_datetime = notifications.datetime
-            notifications.datetime = FixedDateTime
+            set_module_attr(notifications, "datetime", FixedDateTime)
             try:
                 asyncio.run(
                     notifications.post_status_report(
@@ -429,7 +428,7 @@ class NotificationGroupingTests(unittest.TestCase):
                     )
                 )
             finally:
-                notifications.datetime = original_datetime
+                set_module_attr(notifications, "datetime", original_datetime)
 
         self.assertEqual(len(channel.calls), 1)
         embed = channel.calls[0]["embed"]

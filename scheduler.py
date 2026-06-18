@@ -38,7 +38,6 @@ def _matches_schedule_exception(moment: datetime) -> tuple[bool, str | None]:
 
 def get_next_run_str(cleanup_task=None, task_tz=None) -> str:
     """Returns the next scheduled run time as a formatted string."""
-    import os
     from datetime import datetime, timedelta
     import config as cfg
 

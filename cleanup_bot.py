@@ -14,9 +14,6 @@ import os
 import logging
 import tempfile
 
-warnings.filterwarnings("ignore", message=".*PyNaCl.*")
-warnings.filterwarnings("ignore", message=".*davey.*")
-
 from config import (
     BOT_VERSION, CATCHUP_MISSED_RUNS, CLEAN_TIMES, DATA_DIR, HEALTH_FILE,
     MISSED_RUN_THRESHOLD_MINUTES, STATUS_REPORT_TIME, TOKEN, LOG_DIR, LOG_LEVEL,
@@ -25,7 +22,6 @@ from config import (
 import config as cfg
 from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
-import commands_stats
 from file_utils import atomic_write_text
 from notifications import (
     post_deploy_notification, post_startup_notification,
@@ -47,6 +43,9 @@ from utils import (
 )
 from web import start_web_thread
 
+warnings.filterwarnings("ignore", message=".*PyNaCl.*")
+warnings.filterwarnings("ignore", message=".*davey.*")
+
 # --- Discord logging suppression ---
 discord_log_level = logging.DEBUG if LOG_LEVEL == "DEBUG" else logging.WARNING
 logging.getLogger("discord").setLevel(discord_log_level)
@@ -62,7 +61,9 @@ intents.message_content = True
 intents.guilds = True
 intents.messages = True
 
-bot = commands.Bot(command_prefix=None, intents=intents)
+# Slash-command bot: keep a no-op prefix callable so Pylance accepts the type
+# and the lightweight test stubs do not need discord.py helpers.
+bot = commands.Bot(command_prefix=lambda *_args, **_kwargs: (), intents=intents)
 
 
 # --- Scheduler Setup ---
@@ -514,7 +515,10 @@ signal.signal(signal.SIGINT, handle_shutdown)
 # --- Entry Point ---
 
 def main():
-    asyncio.run(bot.start(TOKEN))
+    token = TOKEN
+    if token is None:
+        raise RuntimeError("DISCORD_TOKEN is not set")
+    asyncio.run(bot.start(token))
 
 
 if __name__ == "__main__":

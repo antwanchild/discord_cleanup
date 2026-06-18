@@ -11,7 +11,6 @@ from config_backups import (
     _find_channel_backup,
     _channel_backup_dirs,
     _prune_old_channel_backups,
-    list_channel_backups,
 )
 from file_utils import atomic_write_text
 from validation import ChannelsConfigError, load_channels_config_file

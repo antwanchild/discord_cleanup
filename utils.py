@@ -8,11 +8,10 @@ import os
 import logging
 import threading
 from datetime import datetime, timedelta
-from file_utils import atomic_write_json, atomic_write_text
+from file_utils import atomic_write_text
 
 from config import (
-    config_lock,
-    BOT_START_TIME, BOT_VERSION, CLEAN_TIMES, CONFIG_DIR,
+    BOT_START_TIME, BOT_VERSION, CLEAN_TIMES,
     HEALTH_FILE, LOG_DIR, LOG_MAX_FILES,
     LOG_LEVEL, numeric_level, formatter, logger, log
 )

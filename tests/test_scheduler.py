@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import os
 import tempfile
@@ -7,7 +6,7 @@ import types
 import unittest
 from datetime import datetime
 
-from tests.support import isolated_module_import
+from tests.support import isolated_module_import, set_module_attr
 
 
 class SchedulerTests(unittest.TestCase):
@@ -405,7 +404,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            cleanup_bot._monthly_report_is_due = lambda _moment: True
+            set_module_attr(cleanup_bot, "_monthly_report_is_due", lambda _moment: True)
             cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
             await cleanup_bot._check_and_catchup_monthly_report(cleanup_bot.bot)
 
@@ -499,8 +498,8 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            cleanup_bot._report_labels_due = lambda _moment: ["monthly", "weekly"]
-            cleanup_bot._missed_report_period_text = lambda label, _moment: f"{label}-period"
+            set_module_attr(cleanup_bot, "_report_labels_due", lambda _moment: ["monthly", "weekly"])
+            set_module_attr(cleanup_bot, "_missed_report_period_text", lambda label, _moment: f"{label}-period")
             cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
             await cleanup_bot._check_and_catchup_monthly_report(cleanup_bot.bot)
 
@@ -582,7 +581,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            cleanup_bot.load_report_state = lambda: {}
+            set_module_attr(cleanup_bot, "load_report_state", lambda: {})
             config_stub.REPORT_FREQUENCY = "monthly"
             monthly_labels = cleanup_bot._report_labels_due(cleanup_bot.datetime(2026, 6, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ))
             config_stub.REPORT_FREQUENCY = "weekly"
@@ -674,7 +673,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            cleanup_bot._report_labels_due = lambda _moment: ["monthly", "weekly"]
+            set_module_attr(cleanup_bot, "_report_labels_due", lambda _moment: ["monthly", "weekly"])
             cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
             await cleanup_bot.monthly_report_task()
 
@@ -759,7 +758,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            cleanup_bot._monthly_report_is_due = lambda _moment: False
+            set_module_attr(cleanup_bot, "_monthly_report_is_due", lambda _moment: False)
             cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
             await cleanup_bot._check_and_catchup_monthly_report(cleanup_bot.bot)
 
@@ -843,11 +842,11 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            cleanup_bot.load_report_state = lambda: {"monthly": {"last_sent": "2026-04"}}
+            set_module_attr(cleanup_bot, "load_report_state", lambda: {"monthly": {"last_sent": "2026-04"}})
             self.assertTrue(cleanup_bot._monthly_report_is_due(cleanup_bot.datetime(2026, 5, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ)))
-            cleanup_bot.load_report_state = lambda: {"monthly": {"last_sent": "2026-05"}}
+            set_module_attr(cleanup_bot, "load_report_state", lambda: {"monthly": {"last_sent": "2026-05"}})
             self.assertFalse(cleanup_bot._monthly_report_is_due(cleanup_bot.datetime(2026, 5, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ)))
-            cleanup_bot.load_report_state = lambda: {}
+            set_module_attr(cleanup_bot, "load_report_state", lambda: {})
             self.assertFalse(cleanup_bot._monthly_report_is_due(cleanup_bot.datetime(2026, 5, 1, 8, 59, 0, tzinfo=cleanup_bot.TASK_TZ)))
 
     async def test_log_startup_path_check_reports_expected_paths(self):
@@ -923,8 +922,8 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            cleanup_bot._probe_writable_directory = lambda path: (True, "OK")
-            cleanup_bot._probe_writable_file = lambda path: (False, "denied")
+            set_module_attr(cleanup_bot, "_probe_writable_directory", lambda path: (True, "OK"))
+            set_module_attr(cleanup_bot, "_probe_writable_file", lambda path: (False, "denied"))
 
             checks = cleanup_bot.log_startup_path_check()
 

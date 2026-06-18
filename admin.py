@@ -39,8 +39,10 @@ def _with_error_location(message: str, success: bool = False, **extra):
     return jsonify(payload)
 
 
-def _augment_preview_with_effective_counts(preview: dict) -> dict:
+def _augment_preview_with_effective_counts(preview: dict | None) -> dict | None:
     """Adds live-vs-proposed cleanup target counts when the bot is available."""
+    if preview is None:
+        return None
     try:
         from cleanup import build_channel_map
     except ModuleNotFoundError:
@@ -463,7 +465,10 @@ def preview_dry_run():
 
     async def _run():
         try:
-            await run_cleanup(bot, guild, dry_run=True, triggered_by="web UI preview", raw_channels=preview["parsed_channels"])
+            parsed_channels = preview.get("parsed_channels") if preview else None
+            if not isinstance(parsed_channels, list):
+                return
+            await run_cleanup(bot, guild, dry_run=True, triggered_by="web UI preview", raw_channels=parsed_channels)
         finally:
             release_run()
 

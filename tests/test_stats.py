@@ -6,7 +6,7 @@ import types
 import unittest
 from datetime import datetime
 
-from tests.support import isolated_module_import
+from tests.support import isolated_module_import, set_module_attr
 
 
 class StatsTests(unittest.TestCase):
@@ -223,12 +223,12 @@ class StatsTests(unittest.TestCase):
 
             with isolated_module_import("stats", {"config": self._config_stub(tempdir)}) as stats:
                 original_datetime = stats.datetime
-                stats.datetime = FixedDateTime
+                set_module_attr(stats, "datetime", FixedDateTime)
                 try:
                     stats.update_stats({"101": {"name": "plex", "count": 2, "category": "Media"}})
                     payload = stats.load_stats(strict=True)
                 finally:
-                    stats.datetime = original_datetime
+                    set_module_attr(stats, "datetime", original_datetime)
 
             self.assertEqual(payload["last_month"]["runs"], 3)
             self.assertEqual(payload["last_month"]["deleted"], 11)

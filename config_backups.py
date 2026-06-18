@@ -411,7 +411,7 @@ def preview_env_restore(filename: str) -> tuple[bool, str, dict | None]:
 
     try:
         with open(backup["path"], "r") as f:
-            proposed_content = f.read()
+            f.read()
     except FileNotFoundError:
         return False, f"Backup not found — {filename}", None
     except PermissionError:
@@ -430,13 +430,14 @@ def preview_env_restore(filename: str) -> tuple[bool, str, dict | None]:
         "modified": backup["modified"],
         "size_bytes": backup["size_bytes"],
     }
-    diff["restores"] = {
+    restores: dict[str, object] = {
         "startup_only_changed": sorted(
             key for key in set(current_values) | set(proposed_values)
             if key in _STARTUP_ONLY_ENV_KEYS and current_values.get(key, "") != proposed_values.get(key, "")
         ),
     }
-    diff["restores"]["restart_required"] = bool(diff["restores"]["startup_only_changed"])
+    restores["restart_required"] = bool(restores["startup_only_changed"])
+    diff["restores"] = restores
     diff["message"] = f"Restore preview ready — {backup['filename']}"
     return True, diff["message"], diff
 

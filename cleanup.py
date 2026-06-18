@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 
 import config as cfg
 from config import (
-    BOT_VERSION, CLEAN_TIMES, DEFAULT_RETENTION, LOG_CHANNEL_ID,
+    BOT_VERSION, DEFAULT_RETENTION, LOG_CHANNEL_ID,
     RETRY_DELAY, WARN_UNCONFIGURED, log
 )
 from stats import record_channel_history, update_stats, load_stats, save_last_run
@@ -301,6 +301,9 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
         except asyncio.CancelledError:
             log.info(f"#{channel.name} — task cancelled, stopping")
             break
+        except discord.Forbidden:
+            log.error(f"#{channel.name} — Forbidden. Check bot permissions.")
+            return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old, "deep_clean": deep_clean, "error": "Forbidden — check bot permissions"}
         except discord.errors.HTTPException as e:
             if e.status == 429:
                 rate_limit_count += 1
@@ -310,9 +313,6 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
             else:
                 log.error(f"#{channel.name} — HTTP error during bulk delete: {e}")
                 break
-        except discord.Forbidden:
-            log.error(f"#{channel.name} — Forbidden. Check bot permissions.")
-            return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old, "deep_clean": deep_clean, "error": "Forbidden — check bot permissions"}
 
     # Deep clean — individual deletion for messages older than 14 days
     if deep_clean:
@@ -345,6 +345,9 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                         except asyncio.CancelledError:
                             log.info(f"#{channel.name} — task cancelled during deep clean")
                             break
+                        except discord.Forbidden:
+                            log.error(f"#{channel.name} — Forbidden during deep clean.")
+                            break
                         except discord.errors.HTTPException as e:
                             if e.status == 429:
                                 rate_limit_count += 1
@@ -353,9 +356,6 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                                 await asyncio.sleep(retry_after)
                             else:
                                 log.error(f"#{channel.name} — HTTP error during deep clean: {e}")
-                        except discord.Forbidden:
-                            log.error(f"#{channel.name} — Forbidden during deep clean.")
-                            break
                     log.info(f"#{channel.name} — deep clean batch | Deleted: {deep_deleted}")
                     await asyncio.sleep(2)
 
@@ -694,7 +694,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             color=color,
             timestamp=run_end
         )
-        page_label = f"📋 Category Summary" if total_pages == 1 else f"📋 Category Summary (1/{total_pages})"
+        page_label = "📋 Category Summary" if total_pages == 1 else f"📋 Category Summary (1/{total_pages})"
         first_embed.add_field(name=page_label, value="\n".join(chunks[0]), inline=False)
         if total_pages == 1:
             first_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
