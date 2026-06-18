@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.26 - 2026-06-18
+
+### Changes
+- Fix repo-wide Pylance issues
+
+
 ## 5.11.25 - 2026-06-17
 
 ### Changes
