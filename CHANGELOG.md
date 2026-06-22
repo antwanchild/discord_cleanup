@@ -1,5 +1,23 @@
 # Changelog
 
+## 5.11.27 - 2026-06-22
+
+### Changes
+- Bump actions/checkout from 6 to 7
+- Bumps [actions/checkout](https://github.com/actions/checkout) from 6 to 7.
+- [Release notes](https://github.com/actions/checkout/releases)
+- [Changelog](https://github.com/actions/checkout/blob/main/CHANGELOG.md)
+- [Commits](https://github.com/actions/checkout/compare/v6...v7)
+- ---
+- updated-dependencies:
+- dependency-name: actions/checkout
+- dependency-version: '7'
+- dependency-type: direct:production
+- update-type: version-update:semver-major
+- ...
+- Signed-off-by: dependabot[bot] <support@github.com>
+
+
 ## 5.11.26 - 2026-06-18
 
 ### Changes
