@@ -171,6 +171,9 @@
       Showing {{ selected_history_channel.name }} · {{ selected_history_channel.history_total }} recorded run{{ 's' if selected_history_channel.history_total != 1 else '' }}
     {% endif %}
   </div>
+  <div id="drilldown-debug" style="color:var(--text-muted); font-size:0.75rem; margin:-0.25rem 0 1rem">
+    selected: {{ (selected_history_channel or history_channels[0]).id }}
+  </div>
   {% if history_channels_fallback %}
   <p style="color:var(--text-muted); font-size:0.75rem; margin:0 0 1rem">Live channel config is not loaded, so this view is based on stored stats history only.</p>
   {% endif %}
@@ -596,6 +599,10 @@
     const status = document.getElementById("drilldown-status");
     if (status) {
       status.textContent = `Showing ${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
+    }
+    const debug = document.getElementById("drilldown-debug");
+    if (debug) {
+      debug.textContent = `selected: ${data.id}`;
     }
     document.querySelectorAll("#drilldown-preview .drilldown-pane").forEach(pane => {
       pane.style.display = String(pane.dataset.channelId) === String(data.id) ? "grid" : "none";
