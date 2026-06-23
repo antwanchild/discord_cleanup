@@ -792,9 +792,6 @@
     if (!data) {
       if (empty) empty.style.display = "";
       if (status) status.textContent = "";
-      if (preview) {
-        preview.innerHTML = '<p style="color:var(--text-muted); font-size:0.875rem; margin:0">Select a channel to inspect its current config and recent run history.</p>';
-      }
       return;
     }
     if (empty) empty.style.display = "none";
