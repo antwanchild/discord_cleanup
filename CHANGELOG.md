@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.60 - 2026-06-23
+
+### Changes
+- Serve drilldown as partial
+
+
 ## 5.11.59 - 2026-06-23
 
 ### Changes
