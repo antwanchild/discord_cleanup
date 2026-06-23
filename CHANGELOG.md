@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.56 - 2026-06-23
+
+### Changes
+- Stabilize drilldown updates
+
+
 ## 5.11.55 - 2026-06-23
 
 ### Changes
