@@ -981,9 +981,16 @@
     .breakdown-scrollbox thead th {
       position: sticky;
       top: 0;
-      z-index: 2;
+      z-index: 5;
       background: var(--surface-alt);
-      box-shadow: inset 0 -1px 0 var(--border);
+      background-clip: padding-box;
+      box-shadow: 0 1px 0 var(--border), 0 10px 18px rgba(0, 0, 0, 0.06);
+      padding-top: 0.9rem;
+      padding-bottom: 0.9rem;
+    }
+
+    .breakdown-scrollbox thead tr {
+      background: var(--surface-alt);
     }
 
     .breakdown-scrollbox tbody tr:last-child td {
