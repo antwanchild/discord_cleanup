@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.73 - 2026-06-23
+
+### Changes
+- Layer sticky breakdown headers above rows
+
+
 ## 5.11.72 - 2026-06-23
 
 ### Changes
