@@ -161,9 +161,9 @@
       </div>
       <div class="theme-dropdown-menu" id="drilldown-menu" style="right:0; left:auto">
         {% for ch in history_channels %}
-        <a class="theme-option" href="{{ url_for('stats_page', drilldown_channel='history-' ~ ch.id) }}#drilldown-card" onclick="closeDrilldownDropdown(); localStorage.setItem('dcb-stats-drilldown', 'history-{{ ch.id }}')">
+        <button type="button" class="theme-option" data-drilldown-id="history-{{ ch.id }}">
           {{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}
-        </a>
+        </button>
         {% endfor %}
       </div>
     </div>
@@ -709,7 +709,11 @@
   })();
 
   document.querySelectorAll("#drilldown-menu .theme-option").forEach(option => {
-    option.addEventListener("click", function() {
+    option.addEventListener("click", function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = this.dataset.drilldownId;
+      if (id) setDrilldownChannel(id);
       closeDrilldownDropdown();
     });
   });
