@@ -89,6 +89,19 @@ def _build_history_channel_entry(ch_id, name: str, data: dict, channel_history: 
     }
 
 
+def _select_history_channel(history_channels: list[dict], selected_id: str | None) -> dict | None:
+    """Returns the selected history channel, defaulting to the first entry."""
+    if not history_channels:
+        return None
+
+    if selected_id:
+        for channel in history_channels:
+            if str(channel.get("id")) == selected_id or f"history-{channel.get('id')}" == selected_id:
+                return channel
+
+    return history_channels[0]
+
+
 def _csrf_token() -> str:
     """Returns the current session CSRF token, creating one when needed."""
     token = session.get("csrf_token")
@@ -320,8 +333,12 @@ def stats_page():
             {str(ch_id) for ch_id in channel_history.keys()} | {str(ch_id) for ch_id in all_time_channels.keys()}
         )
         for ch_id in channel_ids:
-            history_channels.append(_build_history_channel_entry(ch_id, str(ch_id), {}, channel_history, all_time_channels))
+            stats_entry = all_time_channels.get(ch_id, {})
+            fallback_name = stats_entry.get("name") if isinstance(stats_entry, dict) and stats_entry.get("name") else str(ch_id)
+            history_channels.append(_build_history_channel_entry(ch_id, fallback_name, {}, channel_history, all_time_channels))
         history_channels.sort(key=lambda item: item["latest"]["timestamp"] if item["latest"] else "", reverse=True)
+
+    selected_drilldown_channel = _select_history_channel(history_channels, request.args.get("drilldown_channel"))
 
     context["stats"] = stats
     context["sorted_channels"] = sorted_channels
@@ -330,6 +347,7 @@ def stats_page():
     context["standalone_channels"] = standalone_channels
     context["history_channels"] = history_channels
     context["history_channels_fallback"] = bool(history_channels) and not (bot and bot.guilds)
+    context["selected_history_channel"] = selected_drilldown_channel
     stats_backups, last_run_backups = _split_stats_backups(list_stats_backups())
     context["stats_backups"] = stats_backups
     context["last_run_backups"] = last_run_backups
