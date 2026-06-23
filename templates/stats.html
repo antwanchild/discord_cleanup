@@ -180,116 +180,119 @@
   {% if history_channels_fallback %}
   <p style="color:var(--text-muted); font-size:0.75rem; margin:0 0 1rem">Live channel config is not loaded, so this view is based on stored stats history only.</p>
   {% endif %}
-  <div id="drilldown-preview" data-channel-id="{{ (selected_history_channel or history_channels[0]).id }}" style="display:grid; gap:1rem; margin-bottom:1rem">
-    {% set ch = selected_history_channel or history_channels[0] %}
-    <div class="stat-grid" style="margin-bottom:1rem">
-      <div class="stat-box">
-        <div class="stat-value">{{ ch.all_time_deleted | default(0) }}</div>
-        <div class="stat-label">All-Time Deleted</div>
+  <div id="drilldown-preview" style="display:grid; gap:1rem; margin-bottom:1rem">
+    {% for ch in history_channels %}
+    <div class="drilldown-pane" id="drilldown-pane-{{ ch.id }}" style="display: {% if selected_history_channel and selected_history_channel.id == ch.id %}grid{% else %}none{% endif %}; gap:1rem">
+      <div class="stat-grid" style="margin-bottom:1rem">
+        <div class="stat-box">
+          <div class="stat-value">{{ ch.all_time_deleted | default(0) }}</div>
+          <div class="stat-label">All-Time Deleted</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ ch.history_total }}</div>
+          <div class="stat-label">Recorded Runs</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ ch.days ~ 'd' if ch.days is not none else '—' }}</div>
+          <div class="stat-label">Retention</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ "Yes" if ch.deep_clean else "No" }}</div>
+          <div class="stat-label">Deep Clean</div>
+        </div>
       </div>
-      <div class="stat-box">
-        <div class="stat-value">{{ ch.history_total }}</div>
-        <div class="stat-label">Recorded Runs</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value">{{ ch.days ~ 'd' if ch.days is not none else '—' }}</div>
-        <div class="stat-label">Retention</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-value">{{ "Yes" if ch.deep_clean else "No" }}</div>
-        <div class="stat-label">Deep Clean</div>
-      </div>
-    </div>
 
-    <table style="margin-bottom:1rem">
-      <tbody>
-        <tr>
-          <td>Channel</td>
-          <td class="mono">{{ ch.name }}</td>
-        </tr>
-        <tr>
-          <td>Category</td>
-          <td class="mono">{{ ch.category }}</td>
-        </tr>
-        <tr>
-          <td>Override</td>
-          <td class="mono">{{ "Yes" if ch.is_override else "No" }}</td>
-        </tr>
-        <tr>
-          <td>Report Group</td>
-          <td class="mono">{{ ch.report_group or ch.notification_group or "—" }}</td>
-        </tr>
-        <tr>
-          <td>Report Control</td>
-          <td class="mono">
-            {% if ch.report_exclude %}
-              Excluded
-            {% elif ch.report_individual %}
-              Individual
-            {% else %}
-              Default
-            {% endif %}
-          </td>
-        </tr>
-        <tr>
-          <td>Latest Trigger</td>
-          <td class="mono">{{ ch.latest.triggered_by if ch.latest else "—" }}</td>
-        </tr>
-        <tr>
-          <td>Latest Status</td>
-          <td class="mono">
-            {% if ch.latest %}
-              {% if ch.latest.status == "error" %}
+      <table style="margin-bottom:1rem">
+        <tbody>
+          <tr>
+            <td>Channel</td>
+            <td class="mono">{{ ch.name }}</td>
+          </tr>
+          <tr>
+            <td>Category</td>
+            <td class="mono">{{ ch.category }}</td>
+          </tr>
+          <tr>
+            <td>Override</td>
+            <td class="mono">{{ "Yes" if ch.is_override else "No" }}</td>
+          </tr>
+          <tr>
+            <td>Report Group</td>
+            <td class="mono">{{ ch.report_group or ch.notification_group or "—" }}</td>
+          </tr>
+          <tr>
+            <td>Report Control</td>
+            <td class="mono">
+              {% if ch.report_exclude %}
+                Excluded
+              {% elif ch.report_individual %}
+                Individual
+              {% else %}
+                Default
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td>Latest Trigger</td>
+            <td class="mono">{{ ch.latest.triggered_by if ch.latest else "—" }}</td>
+          </tr>
+          <tr>
+            <td>Latest Status</td>
+            <td class="mono">
+              {% if ch.latest %}
+                {% if ch.latest.status == "error" %}
+                  ⛔ error
+                {% elif ch.latest.status == "clean" %}
+                  ℹ️ clean
+                {% elif ch.latest.dry_run %}
+                  🔍 dry run
+                {% else %}
+                  ✅ deleted
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {% if ch.history %}
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Deleted</th>
+            <th>Status</th>
+            <th>Triggered By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in ch.history %}
+          <tr>
+            <td class="mono">{{ entry.timestamp }}</td>
+            <td class="mono">{{ entry.count }}</td>
+            <td class="mono">
+              {% if entry.status == "error" %}
                 ⛔ error
-              {% elif ch.latest.status == "clean" %}
+              {% elif entry.status == "clean" %}
                 ℹ️ clean
-              {% elif ch.latest.dry_run %}
+              {% elif entry.dry_run %}
                 🔍 dry run
               {% else %}
                 ✅ deleted
               {% endif %}
-            {% else %}
-              —
-            {% endif %}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    {% if ch.history %}
-    <table>
-      <thead>
-        <tr>
-          <th>Timestamp</th>
-          <th>Deleted</th>
-          <th>Status</th>
-          <th>Triggered By</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for entry in ch.history %}
-        <tr>
-          <td class="mono">{{ entry.timestamp }}</td>
-          <td class="mono">{{ entry.count }}</td>
-          <td class="mono">
-            {% if entry.status == "error" %}
-              ⛔ error
-            {% elif entry.status == "clean" %}
-              ℹ️ clean
-            {% elif entry.dry_run %}
-              🔍 dry run
-            {% else %}
-              ✅ deleted
-            {% endif %}
-          </td>
-          <td class="mono">{{ entry.triggered_by }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No recorded runs for this channel yet.</p>
-    {% endif %}
+            </td>
+            <td class="mono">{{ entry.triggered_by }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No recorded runs for this channel yet.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
   </div>
   {% else %}
   <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No channel history yet.</p>
@@ -603,8 +606,15 @@
     const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === id || String(ch.id) === id) || null;
     if (!data) return;
     syncDrilldownLabel(data);
-    renderDrilldownChannel(data);
     updateDrilldownUrl(data.id);
+    const status = document.getElementById("drilldown-status");
+    if (status) {
+      status.textContent = `Showing ${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
+    }
+    const activePane = document.getElementById(`drilldown-pane-${data.id}`);
+    document.querySelectorAll("#drilldown-preview .drilldown-pane").forEach(pane => {
+      pane.style.display = pane === activePane ? "grid" : "none";
+    });
     const card = document.getElementById("drilldown-card");
     if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
     closeDrilldownDropdown();
@@ -625,81 +635,6 @@
       return;
     }
     label.textContent = `${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
-  }
-
-  function renderDrilldownChannel(data) {
-    const preview = document.getElementById("drilldown-preview");
-    const status = document.getElementById("drilldown-status");
-    if (!preview || !data) return;
-
-    const historyRows = (data.history || []).map(entry => `
-      <tr>
-        <td class="mono">${escapeHtml(entry.timestamp)}</td>
-        <td class="mono">${escapeHtml(entry.count)}</td>
-        <td class="mono">
-          ${entry.status === "error" ? "⛔ error" : entry.status === "clean" ? "ℹ️ clean" : entry.dry_run ? "🔍 dry run" : "✅ deleted"}
-        </td>
-        <td class="mono">${escapeHtml(entry.triggered_by)}</td>
-      </tr>
-    `).join("");
-
-    const retention = data.days != null ? `${escapeHtml(data.days)}d` : "—";
-    const reportGroup = escapeHtml(data.report_group || data.notification_group || "—");
-    const latestTrigger = escapeHtml(data.latest?.triggered_by || "—");
-    const latestStatus = data.latest
-      ? (data.latest.status === "error" ? "⛔ error" : data.latest.status === "clean" ? "ℹ️ clean" : data.latest.dry_run ? "🔍 dry run" : "✅ deleted")
-      : "—";
-
-    preview.innerHTML = `
-      <div class="stat-grid" style="margin-bottom:1rem">
-        <div class="stat-box">
-          <div class="stat-value">${escapeHtml(data.all_time_deleted ?? 0)}</div>
-          <div class="stat-label">All-Time Deleted</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-value">${escapeHtml(data.history_total ?? 0)}</div>
-          <div class="stat-label">Recorded Runs</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-value">${retention}</div>
-          <div class="stat-label">Retention</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-value">${data.deep_clean ? "Yes" : "No"}</div>
-          <div class="stat-label">Deep Clean</div>
-        </div>
-      </div>
-      <table style="margin-bottom:1rem">
-        <tbody>
-          <tr><td>Channel</td><td class="mono">${escapeHtml(data.name)}</td></tr>
-          <tr><td>Category</td><td class="mono">${escapeHtml(data.category || "Standalone")}</td></tr>
-          <tr><td>Override</td><td class="mono">${data.is_override ? "Yes" : "No"}</td></tr>
-          <tr><td>Report Group</td><td class="mono">${reportGroup}</td></tr>
-          <tr><td>Report Control</td><td class="mono">${data.report_exclude ? "Excluded" : data.report_individual ? "Individual" : "Default"}</td></tr>
-          <tr><td>Latest Trigger</td><td class="mono">${latestTrigger}</td></tr>
-          <tr><td>Latest Status</td><td class="mono">${latestStatus}</td></tr>
-        </tbody>
-      </table>
-      ${data.history && data.history.length ? `
-        <table>
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Deleted</th>
-              <th>Status</th>
-              <th>Triggered By</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${historyRows}
-          </tbody>
-        </table>
-      ` : `<p style="color:var(--text-muted); font-size:0.875rem; margin:0">No recorded runs for this channel yet.</p>`}
-    `;
-
-    if (status) {
-      status.textContent = `Showing ${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
-    }
   }
 
   // Restore saved view preference on load
