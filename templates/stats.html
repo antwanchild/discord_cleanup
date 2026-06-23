@@ -508,12 +508,12 @@
   let pendingRepairAndRepost = false;
 
   function escapeHtml(value) {
-    return String(value ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
+    return String(value === null || value === undefined ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function confirmReset(scope, label) {
@@ -609,11 +609,11 @@
       <div class="drilldown-pane" data-channel-id="${escapeHtml(entry.id)}" style="display:grid; gap:1rem">
         <div class="stat-grid" style="margin-bottom:1rem">
           <div class="stat-box">
-            <div class="stat-value">${escapeHtml(entry.all_time_deleted ?? 0)}</div>
+            <div class="stat-value">${escapeHtml(entry.all_time_deleted === null || entry.all_time_deleted === undefined ? 0 : entry.all_time_deleted)}</div>
             <div class="stat-label">All-Time Deleted</div>
           </div>
           <div class="stat-box">
-            <div class="stat-value">${escapeHtml(entry.history_total ?? 0)}</div>
+            <div class="stat-value">${escapeHtml(entry.history_total === null || entry.history_total === undefined ? 0 : entry.history_total)}</div>
             <div class="stat-label">Recorded Runs</div>
           </div>
           <div class="stat-box">
@@ -650,7 +650,7 @@
             </tr>
             <tr>
               <td>Latest Trigger</td>
-              <td class="mono">${escapeHtml(entry.latest?.triggered_by || "—")}</td>
+              <td class="mono">${escapeHtml(entry.latest && entry.latest.triggered_by ? entry.latest.triggered_by : "—")}</td>
             </tr>
             <tr>
               <td>Latest Status</td>
@@ -712,6 +712,7 @@
   function setDrilldownChannel(id) {
     updateDrilldownChannel(id, true);
   }
+  window.setDrilldownChannel = setDrilldownChannel;
 
   // Restore saved view preference on load
   (function() {
