@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.41 - 2026-06-23
+
+### Changes
+- Close drilldown dropdown on selection
+
+
 ## 5.11.40 - 2026-06-23
 
 ### Changes
