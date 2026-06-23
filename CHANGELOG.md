@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.43 - 2026-06-23
+
+### Changes
+- Merge channel history into drilldown
+
+
 ## 5.11.42 - 2026-06-23
 
 ### Changes
