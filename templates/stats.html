@@ -167,7 +167,7 @@
     <div class="history-pane" id="history-{{ ch.id }}" style="display:none">
     <div class="stat-grid" style="margin-bottom:1rem">
       <div class="stat-box">
-        <div class="stat-value">{{ ch.days }}d</div>
+        <div class="stat-value">{{ ch.days ~ 'd' if ch.days is not none else '—' }}</div>
         <div class="stat-label">Retention</div>
       </div>
       <div class="stat-box">
@@ -251,6 +251,9 @@
   {% if history_channels %}
   <div id="drilldown-empty" style="color:var(--text-muted); font-size:0.875rem; margin:0">Select a channel to inspect its current config and recent run history.</div>
   <div id="drilldown-status" style="color:var(--text-muted); font-size:0.875rem; margin:0.5rem 0 1rem"></div>
+  {% if history_channels_fallback %}
+  <p style="color:var(--text-muted); font-size:0.75rem; margin:0 0 1rem">Live channel config is not loaded, so this view is based on stored stats history only.</p>
+  {% endif %}
   {% for ch in history_channels %}
   <div class="drilldown-pane" id="drilldown-{{ ch.id }}" data-channel-name="{{ ch.name }}" data-channel-id="{{ ch.id }}" data-history-count="{{ ch.history_total }}" style="display:none">
     <div class="stat-grid" style="margin-bottom:1rem">
@@ -263,7 +266,7 @@
         <div class="stat-label">Recorded Runs</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value">{{ ch.days }}d</div>
+        <div class="stat-value">{{ ch.days ~ 'd' if ch.days is not none else '—' }}</div>
         <div class="stat-label">Retention</div>
       </div>
       <div class="stat-box">

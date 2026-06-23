@@ -221,6 +221,86 @@ class WebConfigTests(unittest.TestCase):
         self.assertIn(b"last-run-20260622-0009.json.bak", response.data)
         self.assertNotIn(b"last-run-20260622-0010.json.bak", response.data)
 
+    def test_stats_page_falls_back_to_history_data_when_bot_is_unavailable(self):
+        config_stub = self._config_stub()
+        config_stub.BOT_VERSION = "1.0.0"
+        config_stub.CLEAN_TIMES = ["03:00"]
+        config_stub.DEFAULT_RETENTION = 7
+        config_stub.LOG_LEVEL = "INFO"
+        config_stub.WARN_UNCONFIGURED = False
+        config_stub.REPORT_FREQUENCY = "monthly"
+        config_stub.LOG_MAX_FILES = 7
+        config_stub.STATS_BACKUP_RETENTION_DAYS = 10
+        config_stub.REPORT_GROUP_MONTHLY = True
+        config_stub.REPORT_GROUP_WEEKLY = True
+        config_stub.SCHEDULE_SKIP_DATES = []
+        config_stub.SCHEDULE_SKIP_WEEKDAYS = []
+
+        stats_payload = {
+            "all_time": {
+                "runs": 1,
+                "deleted": 5,
+                "catchup_runs": 0,
+                "channels": {
+                    "123": {"name": "general", "count": 5, "category": "Standalone"},
+                },
+            },
+            "rolling_30": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+            "monthly": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+            "last_month": None,
+            "previous_month": None,
+            "channel_history": {
+                "123": [
+                    {
+                        "timestamp": "2026-06-22 08:00:00",
+                        "triggered_by": "scheduler",
+                        "count": 5,
+                        "category": "Standalone",
+                        "status": "deleted",
+                        "rate_limits": 0,
+                        "dry_run": False,
+                        "oldest": None,
+                        "error": None,
+                    }
+                ]
+            },
+        }
+
+        with isolated_module_import(
+            "web",
+            {
+                "config": config_stub,
+                "config_utils": types.SimpleNamespace(
+                    list_channel_backups=lambda: [],
+                    list_env_backups=lambda: [],
+                ),
+                "cleanup": types.SimpleNamespace(build_channel_map=lambda *_a, **_k: {}),
+                "utils": types.SimpleNamespace(
+                    get_bot=lambda: None,
+                    get_run_owner=lambda: None,
+                    is_run_in_progress=lambda: False,
+                    read_cleanup_log=lambda *_a, **_k: {},
+                    read_latest_cleanup_log=lambda *_a, **_k: {},
+                    get_uptime_str=lambda: "1m",
+                    get_next_run_str=lambda: "tomorrow",
+                ),
+                "stats": types.SimpleNamespace(
+                    list_stats_backups=lambda: [],
+                    load_stats=lambda: stats_payload,
+                    load_last_run=lambda: None,
+                ),
+                "api": self._api_stub(),
+                "admin": self._admin_stub(),
+            },
+        ) as web_module:
+            client = web_module.app.test_client()
+            response = client.get("/stats")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Channel Drilldown", response.data)
+        self.assertIn(b"general", response.data)
+        self.assertIn(b"Live channel config is not loaded", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()

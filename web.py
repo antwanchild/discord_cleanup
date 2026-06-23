@@ -66,6 +66,29 @@ def _split_stats_backups(backups: list[dict], limit: int = 10) -> tuple[list[dic
     return stats_backups, last_run_backups
 
 
+def _build_history_channel_entry(ch_id, name: str, data: dict, channel_history: dict, all_time_channels: dict) -> dict:
+    """Builds the shared channel drilldown payload for one channel."""
+    entries = list(reversed(channel_history.get(str(ch_id), [])))
+    latest = entries[0] if entries else None
+    stats_entry = all_time_channels.get(str(ch_id), {})
+    return {
+        "id": ch_id,
+        "name": name,
+        "category": data.get("category_name") or "Standalone",
+        "days": data.get("days"),
+        "is_override": data.get("is_override", False),
+        "deep_clean": data.get("deep_clean", False),
+        "notification_group": data.get("notification_group"),
+        "report_exclude": data.get("report_exclude", False),
+        "report_individual": data.get("report_individual", False),
+        "report_group": data.get("report_group"),
+        "all_time_deleted": stats_entry.get("count", 0) if isinstance(stats_entry, dict) else stats_entry,
+        "history": entries[:10],
+        "history_total": len(entries),
+        "latest": latest,
+    }
+
+
 def _csrf_token() -> str:
     """Returns the current session CSRF token, creating one when needed."""
     token = session.get("csrf_token")
@@ -290,25 +313,14 @@ def stats_page():
         for ch_id, data in channel_map.items():
             discord_channel = guild.get_channel(ch_id)
             name = discord_channel.name if discord_channel else str(ch_id)
-            entries = list(reversed(channel_history.get(str(ch_id), [])))
-            latest = entries[0] if entries else None
-            stats_entry = all_time_channels.get(str(ch_id), {})
-            history_channels.append({
-                "id": ch_id,
-                "name": name,
-                "category": data.get("category_name") or "Standalone",
-                "days": data.get("days"),
-                "is_override": data.get("is_override", False),
-                "deep_clean": data.get("deep_clean", False),
-                "notification_group": data.get("notification_group"),
-                "report_exclude": data.get("report_exclude", False),
-                "report_individual": data.get("report_individual", False),
-                "report_group": data.get("report_group"),
-                "all_time_deleted": stats_entry.get("count", 0) if isinstance(stats_entry, dict) else stats_entry,
-                "history": entries[:10],
-                "history_total": len(entries),
-                "latest": latest,
-            })
+            history_channels.append(_build_history_channel_entry(ch_id, name, data, channel_history, all_time_channels))
+        history_channels.sort(key=lambda item: item["latest"]["timestamp"] if item["latest"] else "", reverse=True)
+    elif channel_history or all_time_channels:
+        channel_ids = sorted(
+            {str(ch_id) for ch_id in channel_history.keys()} | {str(ch_id) for ch_id in all_time_channels.keys()}
+        )
+        for ch_id in channel_ids:
+            history_channels.append(_build_history_channel_entry(ch_id, str(ch_id), {}, channel_history, all_time_channels))
         history_channels.sort(key=lambda item: item["latest"]["timestamp"] if item["latest"] else "", reverse=True)
 
     context["stats"] = stats
@@ -317,6 +329,7 @@ def stats_page():
     context["grouped_categories"] = grouped_categories
     context["standalone_channels"] = standalone_channels
     context["history_channels"] = history_channels
+    context["history_channels_fallback"] = bool(history_channels) and not (bot and bot.guilds)
     stats_backups, last_run_backups = _split_stats_backups(list_stats_backups())
     context["stats_backups"] = stats_backups
     context["last_run_backups"] = last_run_backups
