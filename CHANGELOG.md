@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.62 - 2026-06-23
+
+### Changes
+- Use fragment replacement for drilldown
+
+
 ## 5.11.61 - 2026-06-23
 
 ### Changes
