@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.46 - 2026-06-23
+
+### Changes
+- Make drilldown selection client-side
+
+
 ## 5.11.45 - 2026-06-23
 
 ### Changes
