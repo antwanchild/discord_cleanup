@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.70 - 2026-06-23
+
+### Changes
+- Make breakdown header opaque
+
+
 ## 5.11.69 - 2026-06-23
 
 ### Changes
