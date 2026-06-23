@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.40 - 2026-06-23
+
+### Changes
+- Make drilldown options navigate reliably
+
+
 ## 5.11.39 - 2026-06-23
 
 ### Changes
