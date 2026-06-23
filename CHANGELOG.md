@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.45 - 2026-06-23
+
+### Changes
+- Stop drilldown from reselecting on load
+
+
 ## 5.11.44 - 2026-06-23
 
 ### Changes
