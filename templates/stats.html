@@ -154,13 +154,15 @@
   <div class="card-header">
     <span class="card-title">Channel Drilldown</span>
     {% if history_channels %}
-    <select id="drilldown-channel-select" onchange="setDrilldownChannel(this.value)" style="margin-left:auto; max-width:320px; min-width:260px">
+    <form id="drilldown-form" method="get" action="{{ url_for('stats_page') }}#drilldown-card" style="margin-left:auto">
+    <select id="drilldown-channel-select" name="drilldown_channel" onchange="this.form.submit()" style="max-width:320px; min-width:260px">
         {% for ch in history_channels %}
         <option value="history-{{ ch.id }}" {% if selected_history_channel and selected_history_channel.id == ch.id %}selected{% endif %}>
           {{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}
         </option>
         {% endfor %}
     </select>
+    </form>
     {% endif %}
   </div>
 
@@ -170,9 +172,6 @@
     {% if selected_history_channel %}
       Showing {{ selected_history_channel.name }} · {{ selected_history_channel.history_total }} recorded run{{ 's' if selected_history_channel.history_total != 1 else '' }}
     {% endif %}
-  </div>
-  <div id="drilldown-debug" style="color:var(--text-muted); font-size:0.75rem; margin:-0.25rem 0 1rem">
-    selected: {{ (selected_history_channel or history_channels[0]).id }}
   </div>
   {% if history_channels_fallback %}
   <p style="color:var(--text-muted); font-size:0.75rem; margin:0 0 1rem">Live channel config is not loaded, so this view is based on stored stats history only.</p>
@@ -593,52 +592,16 @@
     const data = HISTORY_CHANNELS.find(ch => String(ch.id) === normalizedId || `history-${ch.id}` === id) || null;
     if (!data) return;
     const select = document.getElementById("drilldown-channel-select");
-    if (select) select.value = `history-${data.id}`;
-    syncDrilldownLabel(data);
-    updateDrilldownUrl(data.id);
-    const status = document.getElementById("drilldown-status");
-    if (status) {
-      status.textContent = `Showing ${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
+    if (select) {
+      select.value = `history-${data.id}`;
+      if (select.form) select.form.submit();
     }
-    const debug = document.getElementById("drilldown-debug");
-    if (debug) {
-      debug.textContent = `selected: ${data.id}`;
-    }
-    document.querySelectorAll("#drilldown-preview .drilldown-pane").forEach(pane => {
-      pane.style.display = String(pane.dataset.channelId) === String(data.id) ? "grid" : "none";
-    });
   };
-
-  function updateDrilldownUrl(channelId) {
-    const url = new URL(window.location.href);
-    url.searchParams.set("drilldown_channel", `history-${channelId}`);
-    window.history.replaceState({}, "", url.toString());
-  }
-
-  function syncDrilldownLabel(data) {
-    const label = document.getElementById("drilldown-label");
-    if (!label) return;
-    if (!data) {
-      label.textContent = "Select a channel";
-      return;
-    }
-    label.textContent = `${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
-  }
 
   // Restore saved view preference on load
   (function() {
     const saved = localStorage.getItem(STORAGE_VIEW) || "detail";
     setView(saved);
   })();
-
-  function wireDrilldownSelect() {
-    const select = document.getElementById("drilldown-channel-select");
-    if (!select) return;
-    const handler = event => setDrilldownChannel(event.target.value);
-    select.addEventListener("change", handler);
-    select.addEventListener("input", handler);
-  }
-
-  wireDrilldownSelect();
 </script>
 {% endblock %}
