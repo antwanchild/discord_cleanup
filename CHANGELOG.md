@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.28 - 2026-06-23
+
+### Changes
+- Clarify stats backups and drilldown
+
+
 ## 5.11.27 - 2026-06-22
 
 ### Changes
