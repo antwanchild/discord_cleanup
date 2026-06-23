@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.67 - 2026-06-23
+
+### Changes
+- Fix drilldown selector chevron spacing
+
+
 ## 5.11.66 - 2026-06-23
 
 ### Changes
