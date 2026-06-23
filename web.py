@@ -113,6 +113,7 @@ def _fallback_history_channel_name(ch_id, stats_entry: object) -> str:
             return name
     return str(ch_id)
 
+
 def _select_history_channel(
     history_channels: list[dict], selected_id: str | None
 ) -> dict | None:
