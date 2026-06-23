@@ -161,7 +161,7 @@
       </div>
       <div class="theme-dropdown-menu" id="drilldown-menu" style="right:0; left:auto">
         {% for ch in history_channels %}
-        <button type="button" class="theme-option" data-drilldown-id="history-{{ ch.id }}" onclick="setDrilldownChannel(this.dataset.drilldownId); closeDrilldownDropdown(); return false;">
+        <button type="button" class="theme-option" onclick="window.selectDrilldown('history-{{ ch.id }}'); return false;">
           {{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}
         </button>
         {% endfor %}
@@ -620,6 +620,12 @@
     closeDrilldownDropdown();
     localStorage.setItem(STORAGE_DRILLDOWN, `history-${data.id}`);
   }
+
+  window.selectDrilldown = function(id) {
+    setDrilldownChannel(id);
+    closeDrilldownDropdown();
+    return false;
+  };
 
   function updateDrilldownUrl(channelId) {
     const url = new URL(window.location.href);
