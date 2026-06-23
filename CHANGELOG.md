@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.59 - 2026-06-23
+
+### Changes
+- Harden drilldown client rendering
+
+
 ## 5.11.58 - 2026-06-23
 
 ### Changes
