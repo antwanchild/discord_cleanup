@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.33 - 2026-06-23
+
+### Changes
+- Keep stats drilldown preview visible
+
+
 ## 5.11.32 - 2026-06-23
 
 ### Changes
