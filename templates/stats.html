@@ -236,7 +236,7 @@
 </div>
 
 <!-- Channel drilldown -->
-<div class="card">
+<div class="card" id="drilldown-card">
   <div class="card-header">
     <span class="card-title">Channel Drilldown</span>
     {% if history_channels %}
@@ -247,9 +247,9 @@
       </div>
       <div class="theme-dropdown-menu" id="drilldown-menu" style="right:0; left:auto">
         {% for ch in history_channels %}
-        <div class="theme-option" data-drilldown-id="history-{{ ch.id }}">
+        <a class="theme-option" href="{{ url_for('stats_page', drilldown_channel='history-' ~ ch.id) }}#drilldown-card">
           {{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}
-        </div>
+        </a>
         {% endfor %}
       </div>
     </div>
@@ -816,15 +816,6 @@
       setDrilldownChannel(`history-${data.id}`);
     }
   })();
-
-  document.querySelectorAll("#drilldown-menu .theme-option").forEach(option => {
-    option.addEventListener("click", function(event) {
-      event.preventDefault();
-      event.stopPropagation();
-      const id = this.dataset.drilldownId;
-      if (id) setDrilldownChannel(id);
-    });
-  });
 
   document.addEventListener("click", function(e) {
     const dropdown = document.getElementById("drilldown-dropdown");
