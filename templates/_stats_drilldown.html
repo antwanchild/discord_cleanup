@@ -1,6 +1,9 @@
-<div class="card" id="drilldown-card">
+<div class="card drilldown-card" id="drilldown-card">
   <div class="card-header">
-    <span class="card-title">Channel Drilldown</span>
+    <div class="drilldown-card-titlewrap">
+      <span class="card-title">Channel Drilldown</span>
+      <p class="drilldown-card-subtitle">Inspect one channel at a time with its current config, all-time totals, and recent cleanup history.</p>
+    </div>
     {% if history_channels %}
     <form id="drilldown-form" method="get" action="{{ url_for('stats_page') }}" target="drilldown-loader" class="drilldown-selector">
       <input type="hidden" name="drilldown_partial" value="1">
@@ -18,6 +21,20 @@
   </div>
 
   {% if history_channels %}
+  <div class="drilldown-metrics">
+    <div class="drilldown-metric">
+      <span class="drilldown-metric-value">{{ history_channels|length }}</span>
+      <span class="drilldown-metric-label">Channels</span>
+    </div>
+    <div class="drilldown-metric">
+      <span class="drilldown-metric-value">{% if selected_history_channel %}{{ selected_history_channel.history_total }}{% else %}0{% endif %}</span>
+      <span class="drilldown-metric-label">Selected Runs</span>
+    </div>
+    <div class="drilldown-metric">
+      <span class="drilldown-metric-value">{% if selected_history_channel and selected_history_channel.days is not none %}{{ selected_history_channel.days }}d{% else %}—{% endif %}</span>
+      <span class="drilldown-metric-label">Retention</span>
+    </div>
+  </div>
   <div id="drilldown-empty" style="color:var(--text-muted); font-size:0.875rem; margin:0">Select a channel to inspect its current config and recent run history.</div>
   <div id="drilldown-status" style="color:var(--text-muted); font-size:0.875rem; margin:0.5rem 0 1rem">
     {% if selected_history_channel %}

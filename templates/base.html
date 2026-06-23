@@ -897,6 +897,69 @@
       line-height: 1;
     }
 
+    .drilldown-card-titlewrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      min-width: 0;
+    }
+
+    .drilldown-card-subtitle {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      max-width: 52rem;
+    }
+
+    .drilldown-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin: 0.25rem 0 1rem;
+    }
+
+    .drilldown-metric {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--surface-alt);
+    }
+
+    .drilldown-metric-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--brand);
+      letter-spacing: 0.01em;
+    }
+
+    .drilldown-metric-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    .drilldown-card #drilldown-empty {
+      padding: 0 0 0.2rem;
+    }
+
+    .drilldown-card #drilldown-status {
+      font-size: 0.95rem;
+      color: var(--text-base);
+    }
+
+    .drilldown-card #drilldown-preview {
+      margin-top: 0.25rem;
+    }
+
+    .drilldown-card table {
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
     /* ── Form inputs and selects — theme aware ──────────────────────────────── */
     [data-mode='light'] input,
     [data-mode='light'] select,
