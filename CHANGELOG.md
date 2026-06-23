@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.69 - 2026-06-23
+
+### Changes
+- Simplify drilldown selector arrow
+
+
 ## 5.11.68 - 2026-06-23
 
 ### Changes
