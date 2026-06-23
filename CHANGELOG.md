@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.32 - 2026-06-23
+
+### Changes
+- Render stats drilldown preview inline
+
+
 ## 5.11.31 - 2026-06-23
 
 ### Changes
