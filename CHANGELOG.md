@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.50 - 2026-06-23
+
+### Changes
+- Switch drilldown to native select
+
+
 ## 5.11.49 - 2026-06-23
 
 ### Changes
