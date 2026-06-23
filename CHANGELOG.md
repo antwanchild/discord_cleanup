@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.55 - 2026-06-23
+
+### Changes
+- Make drilldown updates smooth
+
+
 ## 5.11.54 - 2026-06-23
 
 ### Changes
