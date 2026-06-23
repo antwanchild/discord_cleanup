@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.48 - 2026-06-23
+
+### Changes
+- Show pre-rendered drilldown panes
+
+
 ## 5.11.47 - 2026-06-23
 
 ### Changes
