@@ -300,6 +300,7 @@ class WebConfigTests(unittest.TestCase):
         self.assertIn(b"Channel Drilldown", response.data)
         self.assertIn(b"general", response.data)
         self.assertIn(b"Live channel config is not loaded", response.data)
+        self.assertIn(b'drilldown-123" data-channel-name="123" data-channel-id="123" data-history-count="1" style="display:block"', response.data)
 
 
 if __name__ == "__main__":

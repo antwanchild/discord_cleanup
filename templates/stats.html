@@ -255,7 +255,7 @@
   <p style="color:var(--text-muted); font-size:0.75rem; margin:0 0 1rem">Live channel config is not loaded, so this view is based on stored stats history only.</p>
   {% endif %}
   {% for ch in history_channels %}
-  <div class="drilldown-pane" id="drilldown-{{ ch.id }}" data-channel-name="{{ ch.name }}" data-channel-id="{{ ch.id }}" data-history-count="{{ ch.history_total }}" style="display:none">
+  <div class="drilldown-pane" id="drilldown-{{ ch.id }}" data-channel-name="{{ ch.name }}" data-channel-id="{{ ch.id }}" data-history-count="{{ ch.history_total }}" style="display:{% if loop.first %}block{% else %}none{% endif %}">
     <div class="stat-grid" style="margin-bottom:1rem">
       <div class="stat-box">
         <div class="stat-value">{{ ch.all_time_deleted | default(0) }}</div>
