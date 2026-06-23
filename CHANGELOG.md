@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.30 - 2026-06-23
+
+### Changes
+- Add stats drilldown fallback
+
+
 ## 5.11.29 - 2026-06-23
 
 ### Changes
