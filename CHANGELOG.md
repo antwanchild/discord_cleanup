@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.58 - 2026-06-23
+
+### Changes
+- Render drilldown content client-side
+
+
 ## 5.11.57 - 2026-06-23
 
 ### Changes
