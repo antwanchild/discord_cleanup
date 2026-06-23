@@ -4,6 +4,8 @@ An automated Discord bot that cleans up old messages from configured channels on
 
 > **Contributing or building from source?** See [README.md](README.md) for the full developer guide.
 
+If you plan to edit the code locally, install the repository's pre-commit hooks once with `pre-commit install`. That makes Black run automatically before each commit, while GitHub Actions still verifies formatting and type checks on push.
+
 ## Features
 
 - Scheduled daily cleanup runs (one or more times per day)
