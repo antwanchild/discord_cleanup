@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.54 - 2026-06-23
+
+### Changes
+- Submit drilldown selection to server
+
+
 ## 5.11.53 - 2026-06-23
 
 ### Changes
