@@ -154,19 +154,19 @@
   <div class="card-header">
     <span class="card-title">Channel Drilldown</span>
     {% if history_channels %}
-    <form class="theme-dropdown" id="drilldown-dropdown" style="margin-left:auto" method="get" action="{{ url_for('stats_page') }}#drilldown-card">
+    <div class="theme-dropdown" id="drilldown-dropdown" style="margin-left:auto">
       <div class="theme-dropdown-btn" onclick="toggleDrilldownDropdown()" style="min-width:320px; justify-content:space-between">
         <span id="drilldown-label" style="flex:1; min-width:0; text-align:left">{{ (selected_history_channel or history_channels[0]).name }} · {{ (selected_history_channel or history_channels[0]).history_total }} recorded run{{ 's' if (selected_history_channel or history_channels[0]).history_total != 1 else '' }}</span>
         <span class="chevron">⌄</span>
       </div>
       <div class="theme-dropdown-menu" id="drilldown-menu" style="right:0; left:auto">
         {% for ch in history_channels %}
-        <button type="submit" class="theme-option" name="drilldown_channel" value="history-{{ ch.id }}" onclick="closeDrilldownDropdown(); localStorage.setItem('dcb-stats-drilldown', this.value)">
+        <a class="theme-option" href="{{ url_for('stats_page', drilldown_channel='history-' ~ ch.id) }}#drilldown-card" onclick="closeDrilldownDropdown(); localStorage.setItem('dcb-stats-drilldown', 'history-{{ ch.id }}')">
           {{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}
-        </button>
+        </a>
         {% endfor %}
       </div>
-    </form>
+    </div>
     {% endif %}
   </div>
 
@@ -708,7 +708,7 @@
     setView(saved);
     const params = new URLSearchParams(window.location.search);
     const defaultDrilldown = document.getElementById("drilldown-preview")?.dataset.channelId;
-    const selected = params.get("drilldown_channel") || localStorage.getItem(STORAGE_DRILLDOWN) || defaultDrilldown;
+    const selected = params.get("drilldown_channel") || defaultDrilldown;
     const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === selected || String(ch.id) === selected) || HISTORY_CHANNELS[0];
     if (data) {
       setDrilldownChannel(`history-${data.id}`);
