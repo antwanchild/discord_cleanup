@@ -398,7 +398,12 @@
     <div>
       <h3 style="font-size:1rem; margin:0 0 0.5rem">Stats Backups</h3>
       {% if stats_backups %}
-      <table>
+      <table class="backup-table" style="table-layout:fixed">
+        <colgroup>
+          <col style="width:58%">
+          <col style="width:27%">
+          <col style="width:15%">
+        </colgroup>
         <thead>
           <tr>
             <th>File</th>
@@ -424,7 +429,12 @@
     <div>
       <h3 style="font-size:1rem; margin:0 0 0.5rem">Last-Run Backups</h3>
       {% if last_run_backups %}
-      <table>
+      <table class="backup-table" style="table-layout:fixed">
+        <colgroup>
+          <col style="width:58%">
+          <col style="width:27%">
+          <col style="width:15%">
+        </colgroup>
         <thead>
           <tr>
             <th>File</th>
