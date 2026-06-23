@@ -789,7 +789,7 @@
     if (select) select.value = `history-${data.id}`;
     renderDrilldownChannel(data);
     updateDrilldownUrl(data.id);
-    localStorage.setItem(STORAGE_HISTORY, id);
+    localStorage.setItem(STORAGE_HISTORY, `history-${data.id}`);
   }
 
   function updateDrilldownUrl(channelId) {
