@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.42 - 2026-06-23
+
+### Changes
+- Submit drilldown selection as a form
+
+
 ## 5.11.41 - 2026-06-23
 
 ### Changes
