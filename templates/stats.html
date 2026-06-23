@@ -151,6 +151,7 @@
 
 <!-- Channel drilldown -->
 {% include "_stats_drilldown.html" %}
+<iframe id="drilldown-loader" name="drilldown-loader" title="Drilldown loader" style="display:none" aria-hidden="true"></iframe>
 
 <!-- Stats reset -->
 <div class="card">
@@ -444,48 +445,41 @@
     localStorage.setItem(STORAGE_VIEW, view);
   }
 
-  async function setDrilldownChannel(id) {
+  function setDrilldownChannel(id) {
     const normalizedId = String(id == null ? "" : id).replace(/^history-/, "");
     const data = HISTORY_CHANNELS.find(ch => String(ch.id) === normalizedId || `history-${ch.id}` === id) || null;
     if (!data) return;
-
-    const fullUrl = new URL(window.location.href);
-    fullUrl.searchParams.set("drilldown_channel", `history-${data.id}`);
-    const partialUrl = new URL(fullUrl.toString());
-    partialUrl.searchParams.set("drilldown_partial", "1");
-
-    try {
-      const response = await fetch(partialUrl.toString(), {
-        headers: {
-          "Accept": "text/html",
-          "X-Requested-With": "XMLHttpRequest",
-        },
-        credentials: "same-origin",
-      });
-      if (!response.ok) throw new Error(`Failed to load drilldown: ${response.status}`);
-
-      const html = await response.text();
-      const currentCard = document.getElementById("drilldown-card");
-      if (currentCard) {
-        const template = document.createElement("template");
-        template.innerHTML = html.trim();
-        const nextCard = template.content.firstElementChild;
-        if (nextCard) {
-          currentCard.replaceWith(nextCard);
-        }
-        history.replaceState({}, "", fullUrl.pathname + fullUrl.search + "#drilldown-card");
-      }
-    } catch (error) {
-      console.error("Could not update drilldown without a refresh", error);
-      window.location.assign(fullUrl.pathname + fullUrl.search + "#drilldown-card");
+    const select = document.getElementById("drilldown-channel-select");
+    if (select) {
+      select.value = `history-${data.id}`;
+    }
+    const form = document.getElementById("drilldown-form");
+    if (form && typeof form.submit === "function") {
+      form.submit();
     }
   }
   window.setDrilldownChannel = setDrilldownChannel;
+
+  function syncDrilldownFromLoader() {
+    const loader = document.getElementById("drilldown-loader");
+    if (!loader || !loader.contentDocument) return;
+
+    const nextCard = loader.contentDocument.getElementById("drilldown-card");
+    const currentCard = document.getElementById("drilldown-card");
+    if (!nextCard || !currentCard || !currentCard.parentNode) return;
+
+    currentCard.parentNode.replaceChild(nextCard.cloneNode(true), currentCard);
+    history.replaceState({}, "", window.location.pathname + window.location.search + "#drilldown-card");
+  }
 
   // Restore saved view preference on load
   (function() {
     const saved = localStorage.getItem(STORAGE_VIEW) || "detail";
     setView(saved);
+    const loader = document.getElementById("drilldown-loader");
+    if (loader) {
+      loader.addEventListener("load", syncDrilldownFromLoader);
+    }
   })();
 </script>
 {% endblock %}
