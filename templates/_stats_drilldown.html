@@ -2,15 +2,17 @@
   <div class="card-header">
     <span class="card-title">Channel Drilldown</span>
     {% if history_channels %}
-    <form id="drilldown-form" method="get" action="{{ url_for('stats_page') }}" target="drilldown-loader" style="margin-left:auto">
+    <form id="drilldown-form" method="get" action="{{ url_for('stats_page') }}" target="drilldown-loader" class="drilldown-selector">
       <input type="hidden" name="drilldown_partial" value="1">
-      <select id="drilldown-channel-select" name="drilldown_channel" onchange="this.form.submit()" style="max-width:320px; min-width:260px">
+      <span class="drilldown-selector-label">Channel</span>
+      <select id="drilldown-channel-select" name="drilldown_channel" onchange="this.form.submit()">
         {% for ch in history_channels %}
         <option value="history-{{ ch.id }}" {% if selected_history_channel and selected_history_channel.id == ch.id %}selected{% endif %}>
           {{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}
         </option>
         {% endfor %}
       </select>
+      <span class="drilldown-selector-chevron">▾</span>
     </form>
     {% endif %}
   </div>

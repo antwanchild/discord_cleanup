@@ -837,6 +837,66 @@
       border-top: 1px solid var(--border);
     }
 
+    /* ── Drilldown selector ──────────────────────────────────────────────── */
+    .drilldown-selector {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      position: relative;
+      padding: 0.35rem 0.85rem 0.35rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--surface-alt) 86%, transparent), var(--surface));
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+    }
+
+    .drilldown-selector:hover {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 1px var(--brand-glow), 0 10px 24px rgba(0, 0, 0, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .drilldown-selector-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .drilldown-selector select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      color: var(--text-base) !important;
+      font-weight: 600;
+      padding: 0.2rem 1.8rem 0.2rem 0.15rem;
+      min-width: 240px;
+      max-width: 320px;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .drilldown-selector select:focus {
+      box-shadow: none !important;
+    }
+
+    .drilldown-selector-chevron {
+      position: absolute;
+      right: 0.8rem;
+      top: 50%;
+      transform: translateY(-48%);
+      color: var(--text-muted);
+      pointer-events: none;
+      font-size: 0.7rem;
+      line-height: 1;
+    }
+
     /* ── Form inputs and selects — theme aware ──────────────────────────────── */
     [data-mode='light'] input,
     [data-mode='light'] select,
