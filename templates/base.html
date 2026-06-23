@@ -978,18 +978,20 @@
     }
 
     .breakdown-scrollbox thead th {
-      position: relative;
-      background-color: var(--surface-alt);
-      background: var(--surface-alt);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background-color: var(--surface-alt) !important;
+      background: var(--surface-alt) !important;
       background-clip: padding-box;
       box-shadow: 0 1px 0 var(--border);
-      padding-top: 0.7rem;
-      padding-bottom: 0.7rem;
+      padding-top: 0.62rem;
+      padding-bottom: 0.62rem;
     }
 
     .breakdown-scrollbox thead tr {
-      background-color: var(--surface-alt);
-      background: var(--surface-alt);
+      background-color: var(--surface-alt) !important;
+      background: var(--surface-alt) !important;
     }
 
     .breakdown-scrollbox tbody tr:last-child td {
