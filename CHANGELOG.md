@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.53 - 2026-06-23
+
+### Changes
+- Add drilldown selection debug
+
+
 ## 5.11.52 - 2026-06-23
 
 ### Changes
