@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.31 - 2026-06-23
+
+### Changes
+- Show default stats drilldown pane
+
+
 ## 5.11.30 - 2026-06-23
 
 ### Changes
