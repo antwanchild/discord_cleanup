@@ -56,7 +56,7 @@
   </div>
 
   <!-- Summary view — mirrors Discord notification format -->
-  <div id="view-summary" style="display:none">
+  <div id="view-summary" class="breakdown-scrollbox" style="display:none">
     {% if category_summary %}
     <table>
       <thead>
@@ -89,7 +89,7 @@
   </div>
 
   <!-- Detail view — flat list sorted by count -->
-  <div id="view-detail">
+  <div id="view-detail" class="breakdown-scrollbox">
     {% if sorted_channels %}
     <table>
       <thead>
@@ -113,7 +113,7 @@
   </div>
 
   <!-- Grouped view — channels nested under categories -->
-  <div id="view-grouped" style="display:none">
+  <div id="view-grouped" class="breakdown-scrollbox" style="display:none">
     {% if grouped_categories %}
     <table>
       <thead>
