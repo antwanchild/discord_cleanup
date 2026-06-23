@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.64 - 2026-06-23
+
+### Changes
+- Polish drilldown selector
+
+
 ## 5.11.63 - 2026-06-23
 
 ### Changes
