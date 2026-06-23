@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.72 - 2026-06-23
+
+### Changes
+- Restore sticky breakdown headers
+
+
 ## 5.11.71 - 2026-06-23
 
 ### Changes
