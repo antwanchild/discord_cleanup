@@ -154,19 +154,13 @@
   <div class="card-header">
     <span class="card-title">Channel Drilldown</span>
     {% if history_channels %}
-    <div class="theme-dropdown" id="drilldown-dropdown" style="margin-left:auto">
-      <div class="theme-dropdown-btn" onclick="toggleDrilldownDropdown()" style="min-width:320px; justify-content:space-between">
-        <span id="drilldown-label" style="flex:1; min-width:0; text-align:left">{{ (selected_history_channel or history_channels[0]).name }} · {{ (selected_history_channel or history_channels[0]).history_total }} recorded run{{ 's' if (selected_history_channel or history_channels[0]).history_total != 1 else '' }}</span>
-        <span class="chevron">⌄</span>
-      </div>
-      <div class="theme-dropdown-menu" id="drilldown-menu" style="right:0; left:auto">
+    <select id="drilldown-channel-select" onchange="setDrilldownChannel(this.value)" style="margin-left:auto; max-width:320px; min-width:260px">
         {% for ch in history_channels %}
-        <button type="button" class="theme-option" onclick="window.selectDrilldown('history-{{ ch.id }}'); return false;">
+        <option value="history-{{ ch.id }}" {% if selected_history_channel and selected_history_channel.id == ch.id %}selected{% endif %}>
           {{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}
-        </button>
+        </option>
         {% endfor %}
-      </div>
-    </div>
+    </select>
     {% endif %}
   </div>
 
@@ -506,7 +500,6 @@
 {% block scripts %}
 <script>
   const STORAGE_VIEW = "dcb-stats-view";
-  const STORAGE_DRILLDOWN = "dcb-stats-drilldown";
   const HISTORY_CHANNELS = {{ history_channels | tojson }};
   let pendingResetScope = null;
   let pendingRepair = false;
@@ -519,16 +512,6 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
-  }
-
-  function toggleDrilldownDropdown() {
-    const menu = document.getElementById("drilldown-menu");
-    if (menu) menu.classList.toggle("open");
-  }
-
-  function closeDrilldownDropdown() {
-    const menu = document.getElementById("drilldown-menu");
-    if (menu) menu.classList.remove("open");
   }
 
   function confirmReset(scope, label) {
@@ -605,6 +588,8 @@
   function setDrilldownChannel(id) {
     const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === id || String(ch.id) === id) || null;
     if (!data) return;
+    const select = document.getElementById("drilldown-channel-select");
+    if (select) select.value = `history-${data.id}`;
     syncDrilldownLabel(data);
     updateDrilldownUrl(data.id);
     const status = document.getElementById("drilldown-status");
@@ -615,16 +600,6 @@
     document.querySelectorAll("#drilldown-preview .drilldown-pane").forEach(pane => {
       pane.style.display = pane === activePane ? "grid" : "none";
     });
-    const card = document.getElementById("drilldown-card");
-    if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
-    closeDrilldownDropdown();
-    localStorage.setItem(STORAGE_DRILLDOWN, `history-${data.id}`);
-  }
-
-  window.selectDrilldown = function(id) {
-    setDrilldownChannel(id);
-    closeDrilldownDropdown();
-    return false;
   };
 
   function updateDrilldownUrl(channelId) {
@@ -648,12 +623,5 @@
     const saved = localStorage.getItem(STORAGE_VIEW) || "detail";
     setView(saved);
   })();
-
-  document.addEventListener("click", function(e) {
-    const dropdown = document.getElementById("drilldown-dropdown");
-    if (dropdown && !dropdown.contains(e.target)) {
-      closeDrilldownDropdown();
-    }
-  });
 </script>
 {% endblock %}
