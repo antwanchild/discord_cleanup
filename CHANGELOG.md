@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.35 - 2026-06-23
+
+### Changes
+- Make stats drilldown update in place
+
+
 ## 5.11.34 - 2026-06-23
 
 ### Changes
