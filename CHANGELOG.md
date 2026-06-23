@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.63 - 2026-06-23
+
+### Changes
+- Use iframe for drilldown refresh
+
+
 ## 5.11.62 - 2026-06-23
 
 ### Changes
