@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.52 - 2026-06-23
+
+### Changes
+- Wire drilldown select listeners
+
+
 ## 5.11.51 - 2026-06-23
 
 ### Changes
