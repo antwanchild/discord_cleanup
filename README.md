@@ -88,6 +88,21 @@ All workflow files are linted on every push using `actionlint`, which validates 
 
 ---
 
+## Local Formatting and Type Checks
+
+The recommended local workflow is:
+
+1. Install the hooks once:
+   ```bash
+   pre-commit install
+   ```
+2. Let `pre-commit` run Black automatically before each commit.
+3. Let GitHub Actions verify formatting with the `Black` workflow and run type checks with `Pyright`.
+
+Black is the formatter that rewrites Python files in place. The GitHub Black workflow is check-only, so formatting happens locally through `pre-commit` rather than in CI.
+
+---
+
 ## Commit Message Conventions
 
 | Commit message | Version bump | GitHub Release |
