@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.36 - 2026-06-23
+
+### Changes
+- Normalize drilldown selection state
+
+
 ## 5.11.35 - 2026-06-23
 
 ### Changes
