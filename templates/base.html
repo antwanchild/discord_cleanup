@@ -876,28 +876,19 @@
       box-shadow: none !important;
       color: var(--text-base) !important;
       font-weight: 600;
-      padding: 0.2rem 2.15rem 0.2rem 0.15rem;
+      padding: 0.2rem 2.2rem 0.2rem 0.15rem;
       min-width: 250px;
       max-width: 340px;
       margin: 0;
       cursor: pointer;
+      background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+      background-position: calc(100% - 1.0rem) 50%, calc(100% - 0.72rem) 50%;
+      background-size: 0.38rem 0.38rem, 0.38rem 0.38rem;
+      background-repeat: no-repeat;
     }
 
     .drilldown-selector select:focus {
       box-shadow: none !important;
-    }
-
-    .drilldown-selector-chevron {
-      position: absolute;
-      right: 0.95rem;
-      top: 50%;
-      transform: translateY(-48%);
-      color: var(--text-muted);
-      pointer-events: none;
-      font-size: 0.7rem;
-      line-height: 1;
-      background: var(--surface);
-      padding-left: 0.15rem;
     }
 
     .drilldown-card-titlewrap {
