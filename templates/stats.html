@@ -445,7 +445,7 @@
   }
 
   async function setDrilldownChannel(id) {
-    const normalizedId = String(id ?? "").replace(/^history-/, "");
+    const normalizedId = String(id == null ? "" : id).replace(/^history-/, "");
     const data = HISTORY_CHANNELS.find(ch => String(ch.id) === normalizedId || `history-${ch.id}` === id) || null;
     if (!data) return;
 
