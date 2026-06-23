@@ -1,6 +1,7 @@
 """
 admin.py — Flask Blueprint for state-changing admin endpoints under /admin/*.
 """
+
 import asyncio
 import re
 from flask import Blueprint, jsonify, request
@@ -46,7 +47,9 @@ def _augment_preview_with_effective_counts(preview: dict | None) -> dict | None:
     try:
         from cleanup import build_channel_map
     except ModuleNotFoundError:
-        log.warning("Could not import cleanup while building config preview; skipping effective counts")
+        log.warning(
+            "Could not import cleanup while building config preview; skipping effective counts"
+        )
         return preview
 
     bot = get_bot()
@@ -58,11 +61,29 @@ def _augment_preview_with_effective_counts(preview: dict | None) -> dict | None:
     def summarize(channel_map: dict) -> dict:
         return {
             "targets": len(channel_map),
-            "categories": len({data.get("category_name") for data in channel_map.values() if data.get("category_name")}),
-            "standalone": sum(1 for data in channel_map.values() if not data.get("category_name")),
-            "overrides": sum(1 for data in channel_map.values() if data.get("is_override")),
-            "deep_clean": sum(1 for data in channel_map.values() if data.get("deep_clean")),
-            "notification_groups": len({data.get("notification_group") for data in channel_map.values() if data.get("notification_group")}),
+            "categories": len(
+                {
+                    data.get("category_name")
+                    for data in channel_map.values()
+                    if data.get("category_name")
+                }
+            ),
+            "standalone": sum(
+                1 for data in channel_map.values() if not data.get("category_name")
+            ),
+            "overrides": sum(
+                1 for data in channel_map.values() if data.get("is_override")
+            ),
+            "deep_clean": sum(
+                1 for data in channel_map.values() if data.get("deep_clean")
+            ),
+            "notification_groups": len(
+                {
+                    data.get("notification_group")
+                    for data in channel_map.values()
+                    if data.get("notification_group")
+                }
+            ),
         }
 
     current_map = build_channel_map(guild)
@@ -72,16 +93,46 @@ def _augment_preview_with_effective_counts(preview: dict | None) -> dict | None:
         "proposed": summarize(proposed_map),
         "delta": {
             "targets": len(proposed_map) - len(current_map),
-            "categories": len({data.get("category_name") for data in proposed_map.values() if data.get("category_name")})
-                - len({data.get("category_name") for data in current_map.values() if data.get("category_name")}),
-            "standalone": sum(1 for data in proposed_map.values() if not data.get("category_name"))
-                - sum(1 for data in current_map.values() if not data.get("category_name")),
-            "overrides": sum(1 for data in proposed_map.values() if data.get("is_override"))
-                - sum(1 for data in current_map.values() if data.get("is_override")),
-            "deep_clean": sum(1 for data in proposed_map.values() if data.get("deep_clean"))
-                - sum(1 for data in current_map.values() if data.get("deep_clean")),
-            "notification_groups": len({data.get("notification_group") for data in proposed_map.values() if data.get("notification_group")})
-                - len({data.get("notification_group") for data in current_map.values() if data.get("notification_group")}),
+            "categories": len(
+                {
+                    data.get("category_name")
+                    for data in proposed_map.values()
+                    if data.get("category_name")
+                }
+            )
+            - len(
+                {
+                    data.get("category_name")
+                    for data in current_map.values()
+                    if data.get("category_name")
+                }
+            ),
+            "standalone": sum(
+                1 for data in proposed_map.values() if not data.get("category_name")
+            )
+            - sum(1 for data in current_map.values() if not data.get("category_name")),
+            "overrides": sum(
+                1 for data in proposed_map.values() if data.get("is_override")
+            )
+            - sum(1 for data in current_map.values() if data.get("is_override")),
+            "deep_clean": sum(
+                1 for data in proposed_map.values() if data.get("deep_clean")
+            )
+            - sum(1 for data in current_map.values() if data.get("deep_clean")),
+            "notification_groups": len(
+                {
+                    data.get("notification_group")
+                    for data in proposed_map.values()
+                    if data.get("notification_group")
+                }
+            )
+            - len(
+                {
+                    data.get("notification_group")
+                    for data in current_map.values()
+                    if data.get("notification_group")
+                }
+            ),
         },
     }
     return preview
@@ -95,7 +146,15 @@ def set_retention():
     try:
         days = int(request.form.get("days", 0))
         if not 1 <= days <= 365:
-            return jsonify({"success": False, "message": "Retention must be between 1 and 365 days"}), 400
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Retention must be between 1 and 365 days",
+                    }
+                ),
+                400,
+            )
         success, message = update_retention(days)
         return jsonify({"success": success, "message": message})
     except ValueError:
@@ -149,7 +208,15 @@ def set_log_max_files():
     try:
         days = int(request.form.get("days", 0))
         if not 1 <= days <= 365:
-            return jsonify({"success": False, "message": "Log retention must be between 1 and 365 days"}), 400
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Log retention must be between 1 and 365 days",
+                    }
+                ),
+                400,
+            )
         success, message = update_log_max_files(days)
         return jsonify({"success": success, "message": message})
     except ValueError:
@@ -163,14 +230,19 @@ def save_channels():
     success, message, backup_path = save_channels_content(content)
     if not success:
         status_code = 500 if "Permission denied" in message else 400
-        return _with_error_location(message, success=False, details=message), status_code
+        return (
+            _with_error_location(message, success=False, details=message),
+            status_code,
+        )
 
-    return jsonify({
-        "success": True,
-        "message": message,
-        "details": message,
-        "backup_path": backup_path,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": message,
+            "details": message,
+            "backup_path": backup_path,
+        }
+    )
 
 
 @admin.route("/admin/config/channels/validate", methods=["POST"])
@@ -180,12 +252,14 @@ def validate_channels_route():
     success, message, channels = validate_channels_content(content)
     if not success:
         return _with_error_location(message, success=False, details=message), 400
-    return jsonify({
-        "success": True,
-        "message": message,
-        "details": message,
-        "channel_count": len(channels or []),
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": message,
+            "details": message,
+            "channel_count": len(channels or []),
+        }
+    )
 
 
 @admin.route("/admin/config/channels/preview", methods=["POST"])
@@ -197,12 +271,14 @@ def preview_channels_route():
         return _with_error_location(message, success=False, details=message), 400
     preview = _augment_preview_with_effective_counts(preview)
 
-    return jsonify({
-        "success": True,
-        "message": message,
-        "details": message,
-        "preview": preview,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": message,
+            "details": message,
+            "preview": preview,
+        }
+    )
 
 
 @admin.route("/admin/config/channels/restore/preview", methods=["POST"])
@@ -214,12 +290,14 @@ def preview_channels_restore_route():
         return _with_error_location(message, success=False, details=message), 400
     preview = _augment_preview_with_effective_counts(preview)
 
-    return jsonify({
-        "success": True,
-        "message": message,
-        "details": message,
-        "preview": preview,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": message,
+            "details": message,
+            "preview": preview,
+        }
+    )
 
 
 @admin.route("/admin/config/channels/restore", methods=["POST"])
@@ -230,12 +308,14 @@ def restore_channels_route():
     if not success:
         return _with_error_location(message, success=False, details=message), 400
 
-    return jsonify({
-        "success": True,
-        "message": message,
-        "details": message,
-        "backup_path": backup_path,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": message,
+            "details": message,
+            "backup_path": backup_path,
+        }
+    )
 
 
 @admin.route("/admin/config/env/restore/preview", methods=["POST"])
@@ -246,12 +326,14 @@ def preview_env_restore_route():
     if not success:
         return _with_error_location(message, success=False, details=message), 400
 
-    return jsonify({
-        "success": True,
-        "message": message,
-        "details": message,
-        "preview": preview,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": message,
+            "details": message,
+            "preview": preview,
+        }
+    )
 
 
 @admin.route("/admin/config/env/restore", methods=["POST"])
@@ -262,12 +344,14 @@ def restore_env_route():
     if not success:
         return _with_error_location(message, success=False, details=message), 400
 
-    return jsonify({
-        "success": True,
-        "message": message,
-        "details": message,
-        "backup_path": backup_path,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": message,
+            "details": message,
+            "backup_path": backup_path,
+        }
+    )
 
 
 @admin.route("/admin/schedule/add", methods=["POST"])
@@ -279,11 +363,18 @@ def add_schedule():
     time_str = request.form.get("time", "").strip()
     current = list(cfg.CLEAN_TIMES)
     if time_str in current:
-        return jsonify({"success": False, "message": f"{time_str} is already in the schedule"}), 400
+        return (
+            jsonify(
+                {"success": False, "message": f"{time_str} is already in the schedule"}
+            ),
+            400,
+        )
     current.append(time_str)
     current.sort()
     success, message, reschedule_error = update_schedule(current)
-    return jsonify({"success": success, "message": message, "reschedule_error": reschedule_error})
+    return jsonify(
+        {"success": success, "message": message, "reschedule_error": reschedule_error}
+    )
 
 
 @admin.route("/admin/schedule/remove", methods=["POST"])
@@ -295,12 +386,27 @@ def remove_schedule():
     time_str = request.form.get("time", "").strip()
     current = list(cfg.CLEAN_TIMES)
     if time_str not in current:
-        return jsonify({"success": False, "message": f"{time_str} is not in the schedule"}), 400
+        return (
+            jsonify(
+                {"success": False, "message": f"{time_str} is not in the schedule"}
+            ),
+            400,
+        )
     if len(current) == 1:
-        return jsonify({"success": False, "message": "Cannot remove the last scheduled run time"}), 400
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Cannot remove the last scheduled run time",
+                }
+            ),
+            400,
+        )
     current.remove(time_str)
     success, message, reschedule_error = update_schedule(current)
-    return jsonify({"success": success, "message": message, "reschedule_error": reschedule_error})
+    return jsonify(
+        {"success": success, "message": message, "reschedule_error": reschedule_error}
+    )
 
 
 @admin.route("/admin/schedule/skip/date", methods=["POST"])
@@ -318,12 +424,22 @@ def update_schedule_skip_date():
 
     if action == "add":
         if date_value in current:
-            return jsonify({"success": False, "message": f"{date_value} is already skipped"}), 400
+            return (
+                jsonify(
+                    {"success": False, "message": f"{date_value} is already skipped"}
+                ),
+                400,
+            )
         current.append(date_value)
         current.sort()
     else:
         if date_value not in current:
-            return jsonify({"success": False, "message": f"{date_value} is not a skipped date"}), 400
+            return (
+                jsonify(
+                    {"success": False, "message": f"{date_value} is not a skipped date"}
+                ),
+                400,
+            )
         current.remove(date_value)
 
     success, message = update_schedule_skip_dates(current)
@@ -360,7 +476,12 @@ def trigger_full_run():
     from utils import is_run_in_progress
 
     if is_run_in_progress():
-        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
+        return (
+            jsonify(
+                {"success": False, "message": "A cleanup run is already in progress"}
+            ),
+            409,
+        )
 
     bot = get_bot()
     loop = get_bot_loop()
@@ -371,7 +492,12 @@ def trigger_full_run():
 
     guild = bot.guilds[0]
     if not try_acquire_run("web UI full run"):
-        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
+        return (
+            jsonify(
+                {"success": False, "message": "A cleanup run is already in progress"}
+            ),
+            409,
+        )
 
     async def _run():
         try:
@@ -384,9 +510,17 @@ def trigger_full_run():
     except Exception:
         release_run()
         log.exception("Failed to schedule full cleanup run from web UI")
-        return jsonify({"success": False, "message": "Could not schedule cleanup run"}), 500
+        return (
+            jsonify({"success": False, "message": "Could not schedule cleanup run"}),
+            500,
+        )
     log.info("Full cleanup run triggered from web UI")
-    return jsonify({"success": True, "message": "Full cleanup run started — check the log channel for results"})
+    return jsonify(
+        {
+            "success": True,
+            "message": "Full cleanup run started — check the log channel for results",
+        }
+    )
 
 
 @admin.route("/admin/run/channel", methods=["POST"])
@@ -396,7 +530,12 @@ def trigger_channel_run():
     from utils import is_run_in_progress
 
     if is_run_in_progress():
-        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
+        return (
+            jsonify(
+                {"success": False, "message": "A cleanup run is already in progress"}
+            ),
+            409,
+        )
 
     bot = get_bot()
     loop = get_bot_loop()
@@ -413,16 +552,31 @@ def trigger_channel_run():
 
     channel_map = build_channel_map(guild)
     if channel_id not in channel_map:
-        return jsonify({"success": False, "message": "Channel not found in configured channels"}), 404
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Channel not found in configured channels",
+                }
+            ),
+            404,
+        )
 
     discord_channel = guild.get_channel(channel_id)
     channel_name = discord_channel.name if discord_channel else str(channel_id)
     if not try_acquire_run(f"web UI channel run #{channel_name}"):
-        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
+        return (
+            jsonify(
+                {"success": False, "message": "A cleanup run is already in progress"}
+            ),
+            409,
+        )
 
     async def _run():
         try:
-            await run_cleanup(bot, guild, single_channel_id=channel_id, triggered_by="web UI")
+            await run_cleanup(
+                bot, guild, single_channel_id=channel_id, triggered_by="web UI"
+            )
         finally:
             release_run()
 
@@ -430,10 +584,20 @@ def trigger_channel_run():
         asyncio.run_coroutine_threadsafe(_run(), loop)
     except Exception:
         release_run()
-        log.exception("Failed to schedule channel cleanup run from web UI for #%s", channel_name)
-        return jsonify({"success": False, "message": "Could not schedule cleanup run"}), 500
+        log.exception(
+            "Failed to schedule channel cleanup run from web UI for #%s", channel_name
+        )
+        return (
+            jsonify({"success": False, "message": "Could not schedule cleanup run"}),
+            500,
+        )
     log.info(f"Channel cleanup run triggered from web UI for #{channel_name}")
-    return jsonify({"success": True, "message": f"Cleanup started for #{channel_name} — check the log channel for results"})
+    return jsonify(
+        {
+            "success": True,
+            "message": f"Cleanup started for #{channel_name} — check the log channel for results",
+        }
+    )
 
 
 @admin.route("/admin/config/channels/dry-run", methods=["POST"])
@@ -446,11 +610,19 @@ def preview_dry_run():
     success, message, preview = preview_channels_content(content)
     if not success or preview is None:
         status_code = 500 if "Permission denied" in message else 400
-        return _with_error_location(message, success=False, details=message), status_code
+        return (
+            _with_error_location(message, success=False, details=message),
+            status_code,
+        )
     preview = _augment_preview_with_effective_counts(preview)
 
     if is_run_in_progress():
-        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
+        return (
+            jsonify(
+                {"success": False, "message": "A cleanup run is already in progress"}
+            ),
+            409,
+        )
 
     bot = get_bot()
     loop = get_bot_loop()
@@ -461,14 +633,25 @@ def preview_dry_run():
 
     guild = bot.guilds[0]
     if not try_acquire_run("web UI preview dry run"):
-        return jsonify({"success": False, "message": "A cleanup run is already in progress"}), 409
+        return (
+            jsonify(
+                {"success": False, "message": "A cleanup run is already in progress"}
+            ),
+            409,
+        )
 
     async def _run():
         try:
             parsed_channels = preview.get("parsed_channels") if preview else None
             if not isinstance(parsed_channels, list):
                 return
-            await run_cleanup(bot, guild, dry_run=True, triggered_by="web UI preview", raw_channels=parsed_channels)
+            await run_cleanup(
+                bot,
+                guild,
+                dry_run=True,
+                triggered_by="web UI preview",
+                raw_channels=parsed_channels,
+            )
         finally:
             release_run()
 
@@ -477,10 +660,19 @@ def preview_dry_run():
     except Exception:
         release_run()
         log.exception("Failed to schedule preview dry run from web UI")
-        return jsonify({"success": False, "message": "Could not schedule cleanup run"}), 500
+        return (
+            jsonify({"success": False, "message": "Could not schedule cleanup run"}),
+            500,
+        )
 
     log.info("Preview dry run triggered from web UI")
-    return jsonify({"success": True, "message": "Preview dry run started — check the log channel for results", "preview": preview})
+    return jsonify(
+        {
+            "success": True,
+            "message": "Preview dry run started — check the log channel for results",
+            "preview": preview,
+        }
+    )
 
 
 @admin.route("/admin/api/stats/reset", methods=["POST"])
@@ -489,9 +681,19 @@ def stats_reset():
     scope = request.form.get("scope", "").lower()
     valid = ["rolling", "monthly", "all"]
     if scope not in valid:
-        return jsonify({"success": False, "message": f"Invalid scope — must be one of: {', '.join(valid)}"}), 400
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": f"Invalid scope — must be one of: {', '.join(valid)}",
+                }
+            ),
+            400,
+        )
     success = reset_stats(scope)
-    label = {"rolling": "Rolling 30 Days", "monthly": "This Month", "all": "All Time"}[scope]
+    label = {"rolling": "Rolling 30 Days", "monthly": "This Month", "all": "All Time"}[
+        scope
+    ]
     if success:
         log.info(f"Stats reset via web UI — scope: {scope}")
         return jsonify({"success": True, "message": f"{label} stats have been reset"})
@@ -502,12 +704,18 @@ def stats_reset():
 def stats_repair():
     """Repair missing monthly stats snapshots from the latest backup."""
     repaired, message = repair_stats_snapshots()
-    log.info("Stats repair requested via web UI | repaired=%s | message=%s", repaired, message)
-    return jsonify({
-        "success": True,
-        "repaired": repaired,
-        "message": message,
-    })
+    log.info(
+        "Stats repair requested via web UI | repaired=%s | message=%s",
+        repaired,
+        message,
+    )
+    return jsonify(
+        {
+            "success": True,
+            "repaired": repaired,
+            "message": message,
+        }
+    )
 
 
 @admin.route("/admin/api/stats/repair-and-repost", methods=["POST"])
@@ -517,19 +725,44 @@ def stats_repair_and_repost():
 
     repaired, repair_message = repair_stats_snapshots()
     if repair_message.startswith("Could not load stats safely"):
-        return jsonify({
-            "success": False,
-            "message": repair_message,
-            "repaired": False,
-            "reported": False,
-        }), 500
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": repair_message,
+                    "repaired": False,
+                    "reported": False,
+                }
+            ),
+            500,
+        )
 
     bot = get_bot()
     loop = get_bot_loop()
     if not bot or not loop:
-        return jsonify({"success": False, "message": "Bot is not ready yet", "repaired": repaired, "reported": False}), 503
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Bot is not ready yet",
+                    "repaired": repaired,
+                    "reported": False,
+                }
+            ),
+            503,
+        )
     if not bot.guilds:
-        return jsonify({"success": False, "message": "Bot is not in any guilds", "repaired": repaired, "reported": False}), 503
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Bot is not in any guilds",
+                    "repaired": repaired,
+                    "reported": False,
+                }
+            ),
+            503,
+        )
 
     guild = bot.guilds[0]
 
@@ -538,6 +771,7 @@ def stats_repair_and_repost():
 
     try:
         future = asyncio.run_coroutine_threadsafe(_run(), loop)
+
         def _log_repost_result(done_future):
             try:
                 posted = done_future.result()
@@ -545,26 +779,35 @@ def stats_repair_and_repost():
                 log.exception("Monthly report repost failed after scheduling")
                 return
             if not posted:
-                log.warning("Monthly report repost completed but did not send successfully")
+                log.warning(
+                    "Monthly report repost completed but did not send successfully"
+                )
 
         future.add_done_callback(_log_repost_result)
     except Exception:
         log.exception("Failed to schedule monthly report repost from web UI")
-        return jsonify({
-            "success": False,
-            "message": "Could not schedule monthly report repost",
-            "repaired": repaired,
-            "reported": False,
-        }), 500
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Could not schedule monthly report repost",
+                    "repaired": repaired,
+                    "reported": False,
+                }
+            ),
+            500,
+        )
 
     log.info(
         "Monthly report repost requested via web UI | repaired=%s | repair_message=%s",
         repaired,
         repair_message,
     )
-    return jsonify({
-        "success": True,
-        "message": f"Monthly report repost queued — {repair_message}",
-        "repaired": repaired,
-        "reported": True,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": f"Monthly report repost queued — {repair_message}",
+            "repaired": repaired,
+            "reported": True,
+        }
+    )

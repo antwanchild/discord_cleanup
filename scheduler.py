@@ -2,6 +2,7 @@
 scheduler.py — Schedule management and task rescheduling.
 Handles updating schedule config in .env and rescheduling the discord.ext.tasks loop.
 """
+
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -42,24 +43,26 @@ def get_next_run_str(cleanup_task=None, task_tz=None) -> str:
     import config as cfg
 
     task = cleanup_task or _cleanup_task
-    tz   = task_tz or _task_tz or ZoneInfo("UTC")
+    tz = task_tz or _task_tz or ZoneInfo("UTC")
 
     if task and task.is_running() and task.next_iteration:
-        return task.next_iteration.astimezone(tz).strftime('%Y-%m-%d %I:%M %p')
+        return task.next_iteration.astimezone(tz).strftime("%Y-%m-%d %I:%M %p")
 
     now = datetime.now(tz)
     for t in sorted(cfg.CLEAN_TIMES):
         hour, minute = map(int, t.split(":"))
         candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         if candidate > now and not _matches_schedule_exception(candidate)[0]:
-            return candidate.strftime('%Y-%m-%d %I:%M %p')
+            return candidate.strftime("%Y-%m-%d %I:%M %p")
 
     hour, minute = map(int, sorted(cfg.CLEAN_TIMES)[0].split(":"))
-    candidate = (now + timedelta(days=1)).replace(hour=hour, minute=minute, second=0, microsecond=0)
+    candidate = (now + timedelta(days=1)).replace(
+        hour=hour, minute=minute, second=0, microsecond=0
+    )
     while _matches_schedule_exception(candidate)[0]:
         candidate += timedelta(days=1)
         candidate = candidate.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    return candidate.strftime('%Y-%m-%d %I:%M %p')
+    return candidate.strftime("%Y-%m-%d %I:%M %p")
 
 
 def update_schedule(new_times: list) -> tuple[bool, str, str | None]:
@@ -76,7 +79,11 @@ def update_schedule(new_times: list) -> tuple[bool, str, str | None]:
         try:
             validate_time_string(t, "schedule time")
         except ValueError:
-            return False, f"`{t}` is not a valid time — use 24hr format e.g. `03:00`", None
+            return (
+                False,
+                f"`{t}` is not a valid time — use 24hr format e.g. `03:00`",
+                None,
+            )
 
     with config_lock:
         try:
@@ -109,7 +116,7 @@ def update_schedule(new_times: list) -> tuple[bool, str, str | None]:
     # Reschedule the running task without restart
     reschedule_error = None
     if _cleanup_task is not None:
-        tz    = _task_tz or ZoneInfo("UTC")
+        tz = _task_tz or ZoneInfo("UTC")
         times = [
             dtime(hour=int(t.split(":")[0]), minute=int(t.split(":")[1]), tzinfo=tz)
             for t in new_times
@@ -128,7 +135,9 @@ def update_schedule(new_times: list) -> tuple[bool, str, str | None]:
     return True, new_value, reschedule_error
 
 
-def update_schedule_exceptions(skip_dates: list[str] | None = None, skip_weekdays: list[str] | None = None) -> tuple[bool, str]:
+def update_schedule_exceptions(
+    skip_dates: list[str] | None = None, skip_weekdays: list[str] | None = None
+) -> tuple[bool, str]:
     """Updates schedule blackout dates and weekdays in the env file."""
     from config_utils import update_schedule_skip_dates, update_schedule_skip_weekdays
 

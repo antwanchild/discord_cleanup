@@ -27,8 +27,12 @@ class SchedulerTests(unittest.TestCase):
                 f.write("CLEAN_TIME=03:00\nLOG_LEVEL=INFO\n")
 
             config_stub = self._build_config_stub(tempdir)
-            with isolated_module_import("scheduler", {"config": config_stub}) as scheduler:
-                success, message, reschedule_error = scheduler.update_schedule(["05:00", "23:15"])
+            with isolated_module_import(
+                "scheduler", {"config": config_stub}
+            ) as scheduler:
+                success, message, reschedule_error = scheduler.update_schedule(
+                    ["05:00", "23:15"]
+                )
 
             self.assertTrue(success)
             self.assertEqual(message, "05:00,23:15")
@@ -45,8 +49,12 @@ class SchedulerTests(unittest.TestCase):
                 f.write(original)
 
             config_stub = self._build_config_stub(tempdir)
-            with isolated_module_import("scheduler", {"config": config_stub}) as scheduler:
-                success, message, reschedule_error = scheduler.update_schedule(["25:00"])
+            with isolated_module_import(
+                "scheduler", {"config": config_stub}
+            ) as scheduler:
+                success, message, reschedule_error = scheduler.update_schedule(
+                    ["25:00"]
+                )
 
             self.assertFalse(success)
             self.assertIn("is not a valid time", message)
@@ -61,10 +69,24 @@ class SchedulerTests(unittest.TestCase):
             config_stub.SCHEDULE_SKIP_DATES = ["2026-04-20"]
             config_stub.SCHEDULE_SKIP_WEEKDAYS = ["thu"]
 
-            with isolated_module_import("scheduler", {"config": config_stub}) as scheduler:
-                self.assertTrue(scheduler._matches_schedule_exception(datetime(2026, 4, 20, 3, 0))[0])
-                self.assertTrue(scheduler._matches_schedule_exception(datetime(2026, 4, 23, 3, 0))[0])
-                self.assertFalse(scheduler._matches_schedule_exception(datetime(2026, 4, 21, 3, 0))[0])
+            with isolated_module_import(
+                "scheduler", {"config": config_stub}
+            ) as scheduler:
+                self.assertTrue(
+                    scheduler._matches_schedule_exception(datetime(2026, 4, 20, 3, 0))[
+                        0
+                    ]
+                )
+                self.assertTrue(
+                    scheduler._matches_schedule_exception(datetime(2026, 4, 23, 3, 0))[
+                        0
+                    ]
+                )
+                self.assertFalse(
+                    scheduler._matches_schedule_exception(datetime(2026, 4, 21, 3, 0))[
+                        0
+                    ]
+                )
 
 
 class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
@@ -72,7 +94,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
         class DummyIntents:
             @staticmethod
             def default():
-                return types.SimpleNamespace(message_content=False, guilds=False, messages=False)
+                return types.SimpleNamespace(
+                    message_content=False, guilds=False, messages=False
+                )
 
         class DummyTree:
             def clear_commands(self, guild=None):
@@ -131,11 +155,14 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
         def loop(*_args, **_kwargs):
             def decorator(func):
                 return DummyLoop(func)
+
             return decorator
 
         app_commands = types.SimpleNamespace(
             AppCommandError=Exception,
-            errors=types.SimpleNamespace(MissingPermissions=type("MissingPermissions", (Exception,), {})),
+            errors=types.SimpleNamespace(
+                MissingPermissions=type("MissingPermissions", (Exception,), {})
+            ),
         )
         commands = types.SimpleNamespace(Bot=DummyBot)
         tasks = types.SimpleNamespace(loop=loop)
@@ -172,7 +199,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             config_lock=threading.Lock(),
             log=logger,
         )
-        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None
+        )
         commands_stub = types.SimpleNamespace(cleanup_group=object())
         notifications_stub = types.SimpleNamespace(
             post_deploy_notification=lambda *a, **k: None,
@@ -202,7 +231,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             try_acquire_run=lambda *_a, **_k: True,
         )
         web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
-        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        file_utils_stub = types.SimpleNamespace(
+            atomic_write_text=lambda *_a, **_k: None
+        )
         commands_stats_stub = types.SimpleNamespace()
 
         with isolated_module_import(
@@ -231,7 +262,10 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                     raise RuntimeError("boom")
 
             await cleanup_bot._run_per_guild(
-                [types.SimpleNamespace(name="first"), types.SimpleNamespace(name="second")],
+                [
+                    types.SimpleNamespace(name="first"),
+                    types.SimpleNamespace(name="second"),
+                ],
                 action,
                 "Test action",
             )
@@ -262,7 +296,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             config_lock=threading.Lock(),
             log=logger,
         )
-        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None
+        )
         commands_stub = types.SimpleNamespace(cleanup_group=object())
         notifications_stub = types.SimpleNamespace(
             post_deploy_notification=lambda *a, **k: None,
@@ -292,7 +328,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             try_acquire_run=lambda *_a, **_k: True,
         )
         web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
-        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        file_utils_stub = types.SimpleNamespace(
+            atomic_write_text=lambda *_a, **_k: None
+        )
         commands_stats_stub = types.SimpleNamespace()
 
         with isolated_module_import(
@@ -345,10 +383,13 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             config_lock=threading.Lock(),
             log=logger,
         )
-        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None
+        )
         commands_stub = types.SimpleNamespace(cleanup_group=object())
         posted = []
         missed_notices = []
+
         async def post_status_report(bot, guild, label="monthly"):
             posted.append((guild.name, label))
 
@@ -383,7 +424,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             try_acquire_run=lambda *_a, **_k: True,
         )
         web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
-        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        file_utils_stub = types.SimpleNamespace(
+            atomic_write_text=lambda *_a, **_k: None
+        )
         commands_stats_stub = types.SimpleNamespace()
 
         with isolated_module_import(
@@ -435,7 +478,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             config_lock=threading.Lock(),
             log=logger,
         )
-        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None
+        )
         commands_stub = types.SimpleNamespace(cleanup_group=object())
         notices = []
         posts = []
@@ -477,7 +522,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             try_acquire_run=lambda *_a, **_k: True,
         )
         web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
-        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        file_utils_stub = types.SimpleNamespace(
+            atomic_write_text=lambda *_a, **_k: None
+        )
         commands_stats_stub = types.SimpleNamespace()
 
         with isolated_module_import(
@@ -498,12 +545,20 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            set_module_attr(cleanup_bot, "_report_labels_due", lambda _moment: ["monthly", "weekly"])
-            set_module_attr(cleanup_bot, "_missed_report_period_text", lambda label, _moment: f"{label}-period")
+            set_module_attr(
+                cleanup_bot, "_report_labels_due", lambda _moment: ["monthly", "weekly"]
+            )
+            set_module_attr(
+                cleanup_bot,
+                "_missed_report_period_text",
+                lambda label, _moment: f"{label}-period",
+            )
             cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
             await cleanup_bot._check_and_catchup_monthly_report(cleanup_bot.bot)
 
-        self.assertEqual(notices, [("monthly", "monthly-period"), ("weekly", "weekly-period")])
+        self.assertEqual(
+            notices, [("monthly", "monthly-period"), ("weekly", "weekly-period")]
+        )
         self.assertEqual(posts, [("alpha", "monthly"), ("alpha", "weekly")])
 
     async def test_report_labels_due_respects_frequency_setting(self):
@@ -530,7 +585,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             config_lock=threading.Lock(),
             log=logger,
         )
-        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None
+        )
         commands_stub = types.SimpleNamespace(cleanup_group=object())
         notifications_stub = types.SimpleNamespace(
             post_deploy_notification=lambda *a, **k: None,
@@ -560,7 +617,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             try_acquire_run=lambda *_a, **_k: True,
         )
         web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
-        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        file_utils_stub = types.SimpleNamespace(
+            atomic_write_text=lambda *_a, **_k: None
+        )
         commands_stats_stub = types.SimpleNamespace()
 
         with isolated_module_import(
@@ -583,11 +642,17 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
         ) as cleanup_bot:
             set_module_attr(cleanup_bot, "load_report_state", lambda: {})
             config_stub.REPORT_FREQUENCY = "monthly"
-            monthly_labels = cleanup_bot._report_labels_due(cleanup_bot.datetime(2026, 6, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ))
+            monthly_labels = cleanup_bot._report_labels_due(
+                cleanup_bot.datetime(2026, 6, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ)
+            )
             config_stub.REPORT_FREQUENCY = "weekly"
-            weekly_labels = cleanup_bot._report_labels_due(cleanup_bot.datetime(2026, 6, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ))
+            weekly_labels = cleanup_bot._report_labels_due(
+                cleanup_bot.datetime(2026, 6, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ)
+            )
             config_stub.REPORT_FREQUENCY = "both"
-            both_labels = cleanup_bot._report_labels_due(cleanup_bot.datetime(2026, 6, 1, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ))
+            both_labels = cleanup_bot._report_labels_due(
+                cleanup_bot.datetime(2026, 6, 1, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ)
+            )
 
         self.assertEqual(monthly_labels, ["monthly"])
         self.assertEqual(weekly_labels, ["weekly"])
@@ -617,7 +682,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             config_lock=threading.Lock(),
             log=logger,
         )
-        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None
+        )
         commands_stub = types.SimpleNamespace(cleanup_group=object())
         posts = []
 
@@ -652,7 +719,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             try_acquire_run=lambda *_a, **_k: True,
         )
         web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
-        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        file_utils_stub = types.SimpleNamespace(
+            atomic_write_text=lambda *_a, **_k: None
+        )
         commands_stats_stub = types.SimpleNamespace()
 
         with isolated_module_import(
@@ -673,7 +742,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            set_module_attr(cleanup_bot, "_report_labels_due", lambda _moment: ["monthly", "weekly"])
+            set_module_attr(
+                cleanup_bot, "_report_labels_due", lambda _moment: ["monthly", "weekly"]
+            )
             cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
             await cleanup_bot.monthly_report_task()
 
@@ -703,9 +774,12 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             config_lock=threading.Lock(),
             log=logger,
         )
-        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None
+        )
         commands_stub = types.SimpleNamespace(cleanup_group=object())
         posted = []
+
         async def post_status_report(bot, guild, label="monthly"):
             posted.append((guild.name, label))
 
@@ -737,7 +811,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             try_acquire_run=lambda *_a, **_k: True,
         )
         web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
-        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        file_utils_stub = types.SimpleNamespace(
+            atomic_write_text=lambda *_a, **_k: None
+        )
         commands_stats_stub = types.SimpleNamespace()
 
         with isolated_module_import(
@@ -758,7 +834,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            set_module_attr(cleanup_bot, "_monthly_report_is_due", lambda _moment: False)
+            set_module_attr(
+                cleanup_bot, "_monthly_report_is_due", lambda _moment: False
+            )
             cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
             await cleanup_bot._check_and_catchup_monthly_report(cleanup_bot.bot)
 
@@ -788,8 +866,11 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             config_lock=threading.Lock(),
             log=logger,
         )
-        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None
+        )
         commands_stub = types.SimpleNamespace(cleanup_group=object())
+
         async def post_status_report(bot, guild, label="monthly"):
             return None
 
@@ -821,7 +902,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             try_acquire_run=lambda *_a, **_k: True,
         )
         web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
-        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        file_utils_stub = types.SimpleNamespace(
+            atomic_write_text=lambda *_a, **_k: None
+        )
         commands_stats_stub = types.SimpleNamespace()
 
         with isolated_module_import(
@@ -842,12 +925,38 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            set_module_attr(cleanup_bot, "load_report_state", lambda: {"monthly": {"last_sent": "2026-04"}})
-            self.assertTrue(cleanup_bot._monthly_report_is_due(cleanup_bot.datetime(2026, 5, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ)))
-            set_module_attr(cleanup_bot, "load_report_state", lambda: {"monthly": {"last_sent": "2026-05"}})
-            self.assertFalse(cleanup_bot._monthly_report_is_due(cleanup_bot.datetime(2026, 5, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ)))
+            set_module_attr(
+                cleanup_bot,
+                "load_report_state",
+                lambda: {"monthly": {"last_sent": "2026-04"}},
+            )
+            self.assertTrue(
+                cleanup_bot._monthly_report_is_due(
+                    cleanup_bot.datetime(
+                        2026, 5, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ
+                    )
+                )
+            )
+            set_module_attr(
+                cleanup_bot,
+                "load_report_state",
+                lambda: {"monthly": {"last_sent": "2026-05"}},
+            )
+            self.assertFalse(
+                cleanup_bot._monthly_report_is_due(
+                    cleanup_bot.datetime(
+                        2026, 5, 2, 10, 0, 0, tzinfo=cleanup_bot.TASK_TZ
+                    )
+                )
+            )
             set_module_attr(cleanup_bot, "load_report_state", lambda: {})
-            self.assertFalse(cleanup_bot._monthly_report_is_due(cleanup_bot.datetime(2026, 5, 1, 8, 59, 0, tzinfo=cleanup_bot.TASK_TZ)))
+            self.assertFalse(
+                cleanup_bot._monthly_report_is_due(
+                    cleanup_bot.datetime(
+                        2026, 5, 1, 8, 59, 0, tzinfo=cleanup_bot.TASK_TZ
+                    )
+                )
+            )
 
     async def test_log_startup_path_check_reports_expected_paths(self):
         discord_module, commands, tasks = self._discord_stubs()
@@ -871,7 +980,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             config_lock=threading.Lock(),
             log=logger,
         )
-        cleanup_stub = types.SimpleNamespace(run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            run_cleanup=lambda *a, **k: None, validate_channels=lambda *_a, **_k: None
+        )
         commands_stub = types.SimpleNamespace(cleanup_group=object())
         notifications_stub = types.SimpleNamespace(
             post_deploy_notification=lambda *a, **k: None,
@@ -901,7 +1012,9 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             try_acquire_run=lambda *_a, **_k: True,
         )
         web_stub = types.SimpleNamespace(start_web_thread=lambda: None)
-        file_utils_stub = types.SimpleNamespace(atomic_write_text=lambda *_a, **_k: None)
+        file_utils_stub = types.SimpleNamespace(
+            atomic_write_text=lambda *_a, **_k: None
+        )
         commands_stats_stub = types.SimpleNamespace()
 
         with isolated_module_import(
@@ -922,8 +1035,12 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            set_module_attr(cleanup_bot, "_probe_writable_directory", lambda path: (True, "OK"))
-            set_module_attr(cleanup_bot, "_probe_writable_file", lambda path: (False, "denied"))
+            set_module_attr(
+                cleanup_bot, "_probe_writable_directory", lambda path: (True, "OK")
+            )
+            set_module_attr(
+                cleanup_bot, "_probe_writable_file", lambda path: (False, "denied")
+            )
 
             checks = cleanup_bot.log_startup_path_check()
 

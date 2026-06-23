@@ -21,7 +21,9 @@ class WebConfigTests(unittest.TestCase):
         def _get_status_context():
             return {}
 
-        return types.SimpleNamespace(api=api_blueprint, _get_status_context=_get_status_context)
+        return types.SimpleNamespace(
+            api=api_blueprint, _get_status_context=_get_status_context
+        )
 
     def _admin_stub(self):
         return types.SimpleNamespace(admin=Blueprint("admin", __name__))
@@ -80,8 +82,20 @@ class WebConfigTests(unittest.TestCase):
 
         stats_payload = {
             "all_time": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}},
-            "rolling_30": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
-            "monthly": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+            "rolling_30": {
+                "runs": 1,
+                "deleted": 5,
+                "catchup_runs": 0,
+                "channels": {},
+                "reset": "2026-06-01",
+            },
+            "monthly": {
+                "runs": 1,
+                "deleted": 5,
+                "catchup_runs": 0,
+                "channels": {},
+                "reset": "2026-06-01",
+            },
             "last_month": None,
             "previous_month": None,
             "channel_history": {},
@@ -95,7 +109,9 @@ class WebConfigTests(unittest.TestCase):
                     list_channel_backups=lambda: [],
                     list_env_backups=lambda: [],
                 ),
-                "cleanup": types.SimpleNamespace(build_channel_map=lambda *_a, **_k: {}),
+                "cleanup": types.SimpleNamespace(
+                    build_channel_map=lambda *_a, **_k: {}
+                ),
                 "utils": types.SimpleNamespace(
                     get_bot=lambda: None,
                     get_run_owner=lambda: None,
@@ -183,7 +199,9 @@ class WebConfigTests(unittest.TestCase):
                     list_channel_backups=lambda: [],
                     list_env_backups=lambda: [],
                 ),
-                "cleanup": types.SimpleNamespace(build_channel_map=lambda *_a, **_k: {}),
+                "cleanup": types.SimpleNamespace(
+                    build_channel_map=lambda *_a, **_k: {}
+                ),
                 "utils": types.SimpleNamespace(
                     get_bot=lambda: None,
                     get_run_owner=lambda: None,
@@ -196,9 +214,26 @@ class WebConfigTests(unittest.TestCase):
                 "stats": types.SimpleNamespace(
                     list_stats_backups=lambda: stats_backups + last_run_backups,
                     load_stats=lambda: {
-                        "all_time": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}},
-                        "rolling_30": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
-                        "monthly": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+                        "all_time": {
+                            "runs": 1,
+                            "deleted": 5,
+                            "catchup_runs": 0,
+                            "channels": {},
+                        },
+                        "rolling_30": {
+                            "runs": 1,
+                            "deleted": 5,
+                            "catchup_runs": 0,
+                            "channels": {},
+                            "reset": "2026-06-01",
+                        },
+                        "monthly": {
+                            "runs": 1,
+                            "deleted": 5,
+                            "catchup_runs": 0,
+                            "channels": {},
+                            "reset": "2026-06-01",
+                        },
                         "last_month": None,
                         "previous_month": None,
                         "channel_history": {},
@@ -215,7 +250,10 @@ class WebConfigTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Stats Backups", response.data)
         self.assertIn(b"Last-Run Backups", response.data)
-        self.assertIn(b"Showing the 10 most recent stats backups and the 10 most recent last-run backups.", response.data)
+        self.assertIn(
+            b"Showing the 10 most recent stats backups and the 10 most recent last-run backups.",
+            response.data,
+        )
         self.assertIn(b"stats-20260622-0009.json.bak", response.data)
         self.assertNotIn(b"stats-20260622-0010.json.bak", response.data)
         self.assertIn(b"last-run-20260622-0009.json.bak", response.data)
@@ -245,8 +283,20 @@ class WebConfigTests(unittest.TestCase):
                     "123": {"name": "general", "count": 5, "category": "Standalone"},
                 },
             },
-            "rolling_30": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
-            "monthly": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+            "rolling_30": {
+                "runs": 1,
+                "deleted": 5,
+                "catchup_runs": 0,
+                "channels": {},
+                "reset": "2026-06-01",
+            },
+            "monthly": {
+                "runs": 1,
+                "deleted": 5,
+                "catchup_runs": 0,
+                "channels": {},
+                "reset": "2026-06-01",
+            },
             "last_month": None,
             "previous_month": None,
             "channel_history": {
@@ -274,7 +324,9 @@ class WebConfigTests(unittest.TestCase):
                     list_channel_backups=lambda: [],
                     list_env_backups=lambda: [],
                 ),
-                "cleanup": types.SimpleNamespace(build_channel_map=lambda *_a, **_k: {}),
+                "cleanup": types.SimpleNamespace(
+                    build_channel_map=lambda *_a, **_k: {}
+                ),
                 "utils": types.SimpleNamespace(
                     get_bot=lambda: None,
                     get_run_owner=lambda: None,
@@ -328,8 +380,20 @@ class WebConfigTests(unittest.TestCase):
                     "456": {"name": "warning", "count": 9, "category": "Standalone"},
                 },
             },
-            "rolling_30": {"runs": 2, "deleted": 14, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
-            "monthly": {"runs": 2, "deleted": 14, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+            "rolling_30": {
+                "runs": 2,
+                "deleted": 14,
+                "catchup_runs": 0,
+                "channels": {},
+                "reset": "2026-06-01",
+            },
+            "monthly": {
+                "runs": 2,
+                "deleted": 14,
+                "catchup_runs": 0,
+                "channels": {},
+                "reset": "2026-06-01",
+            },
             "last_month": None,
             "previous_month": None,
             "channel_history": {
@@ -370,7 +434,9 @@ class WebConfigTests(unittest.TestCase):
                     list_channel_backups=lambda: [],
                     list_env_backups=lambda: [],
                 ),
-                "cleanup": types.SimpleNamespace(build_channel_map=lambda *_a, **_k: {}),
+                "cleanup": types.SimpleNamespace(
+                    build_channel_map=lambda *_a, **_k: {}
+                ),
                 "utils": types.SimpleNamespace(
                     get_bot=lambda: None,
                     get_run_owner=lambda: None,

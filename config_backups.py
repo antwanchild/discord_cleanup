@@ -1,6 +1,7 @@
 """
 config_backups.py — Shared helpers for .env.discord_cleanup and backup file handling.
 """
+
 import logging
 import os
 from datetime import datetime, timedelta
@@ -79,7 +80,9 @@ def _prune_old_channel_backups() -> None:
             except FileNotFoundError:
                 continue
             except PermissionError:
-                log.warning("Permission denied deleting old channels.yml backup: %s", filename)
+                log.warning(
+                    "Permission denied deleting old channels.yml backup: %s", filename
+                )
     if removed:
         log.info("Pruned %s old channels.yml backup(s)", removed)
 
@@ -137,13 +140,17 @@ def list_channel_backups() -> list[dict]:
                 stat = os.stat(path)
             except OSError:
                 continue
-            backups.append({
-                "type": "channels",
-                "filename": filename,
-                "path": path,
-                "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-                "size_bytes": stat.st_size,
-            })
+            backups.append(
+                {
+                    "type": "channels",
+                    "filename": filename,
+                    "path": path,
+                    "modified": datetime.fromtimestamp(stat.st_mtime).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                    "size_bytes": stat.st_size,
+                }
+            )
     backups.sort(key=lambda item: item["modified"], reverse=True)
     return backups
 
@@ -170,13 +177,17 @@ def list_env_backups() -> list[dict]:
                 stat = os.stat(path)
             except OSError:
                 continue
-            backups.append({
-                "type": "env",
-                "filename": filename,
-                "path": path,
-                "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-                "size_bytes": stat.st_size,
-            })
+            backups.append(
+                {
+                    "type": "env",
+                    "filename": filename,
+                    "path": path,
+                    "modified": datetime.fromtimestamp(stat.st_mtime).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                    "size_bytes": stat.st_size,
+                }
+            )
     backups.sort(key=lambda item: item["modified"], reverse=True)
     return backups
 
@@ -225,8 +236,13 @@ def _compare_env_snapshots(current: dict[str, str], proposed: dict[str, str]) ->
     added_keys = sorted(proposed_keys - current_keys)
     removed_keys = sorted(current_keys - proposed_keys)
     shared_keys = sorted(current_keys & proposed_keys)
-    added = [{"key": key, "value": _mask_env_value(key, proposed[key])} for key in added_keys]
-    removed = [{"key": key, "value": _mask_env_value(key, current[key])} for key in removed_keys]
+    added = [
+        {"key": key, "value": _mask_env_value(key, proposed[key])} for key in added_keys
+    ]
+    removed = [
+        {"key": key, "value": _mask_env_value(key, current[key])}
+        for key in removed_keys
+    ]
     updated = []
     sensitive_updates = 0
     for key in shared_keys:
@@ -235,11 +251,13 @@ def _compare_env_snapshots(current: dict[str, str], proposed: dict[str, str]) ->
         if before != after:
             if key in _SENSITIVE_ENV_KEYS:
                 sensitive_updates += 1
-            updated.append({
-                "key": key,
-                "before": _mask_env_value(key, before),
-                "after": _mask_env_value(key, after),
-            })
+            updated.append(
+                {
+                    "key": key,
+                    "before": _mask_env_value(key, before),
+                    "after": _mask_env_value(key, after),
+                }
+            )
     return {
         "added": added,
         "removed": removed,
@@ -252,11 +270,24 @@ def _compare_env_snapshots(current: dict[str, str], proposed: dict[str, str]) ->
             "sensitive_updates": sensitive_updates,
         },
         "summary": {
-            "current": {"keys": len(current_keys), "sensitive": sum(1 for key in current_keys if key in _SENSITIVE_ENV_KEYS)},
-            "proposed": {"keys": len(proposed_keys), "sensitive": sum(1 for key in proposed_keys if key in _SENSITIVE_ENV_KEYS)},
+            "current": {
+                "keys": len(current_keys),
+                "sensitive": sum(
+                    1 for key in current_keys if key in _SENSITIVE_ENV_KEYS
+                ),
+            },
+            "proposed": {
+                "keys": len(proposed_keys),
+                "sensitive": sum(
+                    1 for key in proposed_keys if key in _SENSITIVE_ENV_KEYS
+                ),
+            },
             "delta": {
                 "keys": len(proposed_keys) - len(current_keys),
-                "sensitive": sum(1 for key in proposed_keys if key in _SENSITIVE_ENV_KEYS) - sum(1 for key in current_keys if key in _SENSITIVE_ENV_KEYS),
+                "sensitive": sum(
+                    1 for key in proposed_keys if key in _SENSITIVE_ENV_KEYS
+                )
+                - sum(1 for key in current_keys if key in _SENSITIVE_ENV_KEYS),
             },
         },
     }
@@ -278,7 +309,9 @@ def _write_env_content(content: str) -> str | None:
         try:
             os.makedirs(_env_backup_dirs()[0], exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            backup_path = os.path.join(_env_backup_dirs()[0], f"env-{timestamp}.env.bak")
+            backup_path = os.path.join(
+                _env_backup_dirs()[0], f"env-{timestamp}.env.bak"
+            )
             atomic_write_text(backup_path, previous_content)
         except PermissionError:
             log.error("Permission denied creating .env backup")
@@ -292,11 +325,16 @@ def _write_env_content(content: str) -> str | None:
         except PermissionError as e:
             last_error = e
             if attempt < 2:
-                log.warning("Could not write .env.discord_cleanup (attempt %s/3) — retrying...", attempt + 1)
+                log.warning(
+                    "Could not write .env.discord_cleanup (attempt %s/3) — retrying...",
+                    attempt + 1,
+                )
                 continue
             raise
     else:
-        raise PermissionError(f"Permission denied writing .env.discord_cleanup after 3 attempts — {last_error}")
+        raise PermissionError(
+            f"Permission denied writing .env.discord_cleanup after 3 attempts — {last_error}"
+        )
 
     _prune_old_env_backups()
     load_dotenv(env_path, override=True)
@@ -309,16 +347,42 @@ def _reload_runtime_env_values() -> None:
 
     try:
         clean_times = parse_time_list(os.getenv("CLEAN_TIME", "03:00"), "CLEAN_TIME")
-        log_max_files = validate_int(os.getenv("LOG_MAX_FILES", 7), "LOG_MAX_FILES", 1, 365)
-        channels_backup_retention_days = validate_int(os.getenv("CHANNELS_BACKUP_RETENTION_DAYS", 10), "CHANNELS_BACKUP_RETENTION_DAYS", 1, 365)
-        stats_backup_retention_days = validate_int(os.getenv("STATS_BACKUP_RETENTION_DAYS", 10), "STATS_BACKUP_RETENTION_DAYS", 1, 365)
-        default_retention = validate_int(os.getenv("DEFAULT_RETENTION", 7), "DEFAULT_RETENTION", 1, 365)
-        status_report_time = validate_time_string(os.getenv("STATUS_REPORT_TIME", "09:00"), "STATUS_REPORT_TIME")
-        report_frequency = validate_report_frequency(os.getenv("REPORT_FREQUENCY", "monthly"))
-        report_group_monthly = validate_bool(os.getenv("REPORT_GROUP_MONTHLY", "true"), "REPORT_GROUP_MONTHLY")
-        report_group_weekly = validate_bool(os.getenv("REPORT_GROUP_WEEKLY", "true"), "REPORT_GROUP_WEEKLY")
-        schedule_skip_dates = parse_date_list(os.getenv("SCHEDULE_SKIP_DATES", ""), "SCHEDULE_SKIP_DATES")
-        schedule_skip_weekdays = parse_weekday_list(os.getenv("SCHEDULE_SKIP_WEEKDAYS", ""), "SCHEDULE_SKIP_WEEKDAYS")
+        log_max_files = validate_int(
+            os.getenv("LOG_MAX_FILES", 7), "LOG_MAX_FILES", 1, 365
+        )
+        channels_backup_retention_days = validate_int(
+            os.getenv("CHANNELS_BACKUP_RETENTION_DAYS", 10),
+            "CHANNELS_BACKUP_RETENTION_DAYS",
+            1,
+            365,
+        )
+        stats_backup_retention_days = validate_int(
+            os.getenv("STATS_BACKUP_RETENTION_DAYS", 10),
+            "STATS_BACKUP_RETENTION_DAYS",
+            1,
+            365,
+        )
+        default_retention = validate_int(
+            os.getenv("DEFAULT_RETENTION", 7), "DEFAULT_RETENTION", 1, 365
+        )
+        status_report_time = validate_time_string(
+            os.getenv("STATUS_REPORT_TIME", "09:00"), "STATUS_REPORT_TIME"
+        )
+        report_frequency = validate_report_frequency(
+            os.getenv("REPORT_FREQUENCY", "monthly")
+        )
+        report_group_monthly = validate_bool(
+            os.getenv("REPORT_GROUP_MONTHLY", "true"), "REPORT_GROUP_MONTHLY"
+        )
+        report_group_weekly = validate_bool(
+            os.getenv("REPORT_GROUP_WEEKLY", "true"), "REPORT_GROUP_WEEKLY"
+        )
+        schedule_skip_dates = parse_date_list(
+            os.getenv("SCHEDULE_SKIP_DATES", ""), "SCHEDULE_SKIP_DATES"
+        )
+        schedule_skip_weekdays = parse_weekday_list(
+            os.getenv("SCHEDULE_SKIP_WEEKDAYS", ""), "SCHEDULE_SKIP_WEEKDAYS"
+        )
     except ValueError as e:
         raise ValueError(f"Invalid runtime env value — {e}") from e
 
@@ -335,7 +399,9 @@ def _reload_runtime_env_values() -> None:
     config.SCHEDULE_SKIP_WEEKDAYS = schedule_skip_weekdays
     config.WARN_UNCONFIGURED = os.getenv("WARN_UNCONFIGURED", "false").lower() == "true"
     config.GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-    config.CATCHUP_MISSED_RUNS = os.getenv("CATCHUP_MISSED_RUNS", "true").lower() == "true"
+    config.CATCHUP_MISSED_RUNS = (
+        os.getenv("CATCHUP_MISSED_RUNS", "true").lower() == "true"
+    )
 
     if hasattr(config, "LOG_LEVEL"):
         log_level = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -354,7 +420,9 @@ def _reload_runtime_env_values() -> None:
                 log_channel_id = getattr(config, "LOG_CHANNEL_ID", 0) or 0
             config.LOG_CHANNEL_ID = int(log_channel_id)
         except ValueError:
-            log.warning("Invalid LOG_CHANNEL_ID in environment — keeping existing value")
+            log.warning(
+                "Invalid LOG_CHANNEL_ID in environment — keeping existing value"
+            )
     if hasattr(config, "REPORT_CHANNEL_ID"):
         try:
             report_channel_id = os.getenv("REPORT_CHANNEL_ID")
@@ -362,7 +430,9 @@ def _reload_runtime_env_values() -> None:
                 report_channel_id = getattr(config, "REPORT_CHANNEL_ID", 0) or 0
             config.REPORT_CHANNEL_ID = int(report_channel_id)
         except ValueError:
-            log.warning("Invalid REPORT_CHANNEL_ID in environment — keeping existing value")
+            log.warning(
+                "Invalid REPORT_CHANNEL_ID in environment — keeping existing value"
+            )
 
 
 def update_env_value(key: str, value: str) -> tuple[bool, str]:
@@ -432,8 +502,10 @@ def preview_env_restore(filename: str) -> tuple[bool, str, dict | None]:
     }
     restores: dict[str, object] = {
         "startup_only_changed": sorted(
-            key for key in set(current_values) | set(proposed_values)
-            if key in _STARTUP_ONLY_ENV_KEYS and current_values.get(key, "") != proposed_values.get(key, "")
+            key
+            for key in set(current_values) | set(proposed_values)
+            if key in _STARTUP_ONLY_ENV_KEYS
+            and current_values.get(key, "") != proposed_values.get(key, "")
         ),
     }
     restores["restart_required"] = bool(restores["startup_only_changed"])
@@ -476,7 +548,8 @@ def restore_env_backup(filename: str) -> tuple[bool, str, str | None]:
     label = "setting" if len(restored_values) == 1 else "settings"
     message = f"Restored .env.discord_cleanup from {backup['filename']} — {len(restored_values)} {label}"
     startup_only_changed = sorted(
-        key for key in _STARTUP_ONLY_ENV_KEYS
+        key
+        for key in _STARTUP_ONLY_ENV_KEYS
         if current_values_before.get(key, "") != proposed_values.get(key, "")
     )
     if startup_only_changed:

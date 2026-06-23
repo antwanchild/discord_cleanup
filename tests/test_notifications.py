@@ -17,7 +17,9 @@ class NotificationGroupingTests(unittest.TestCase):
             pass
 
         class DummyEmbed:
-            def __init__(self, title=None, description=None, color=None, timestamp=None):
+            def __init__(
+                self, title=None, description=None, color=None, timestamp=None
+            ):
                 self.title = title
                 self.description = description
                 self.color = color
@@ -34,7 +36,9 @@ class NotificationGroupingTests(unittest.TestCase):
             def set_footer(self, *, text):
                 self._footer = {"text": text}
 
-        return types.SimpleNamespace(Embed=DummyEmbed, HTTPException=HTTPException, Forbidden=Forbidden)
+        return types.SimpleNamespace(
+            Embed=DummyEmbed, HTTPException=HTTPException, Forbidden=Forbidden
+        )
 
     def _module_stubs(self):
         config_stub = types.SimpleNamespace(
@@ -62,10 +66,18 @@ class NotificationGroupingTests(unittest.TestCase):
             record_monthly_report_sent=lambda *_a, **_k: None,
         )
         utils_stub = types.SimpleNamespace(get_next_run_str=lambda: "tomorrow")
-        return config_stub, file_utils_stub, stats_stub, utils_stub, self._discord_stub()
+        return (
+            config_stub,
+            file_utils_stub,
+            stats_stub,
+            utils_stub,
+            self._discord_stub(),
+        )
 
     def test_build_notification_leaderboard_groups_channels_for_report_only(self):
-        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "notifications",
@@ -99,7 +111,9 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertFalse(leaderboard[1]["grouped"])
 
     def test_build_notification_leaderboard_can_disable_grouping(self):
-        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "notifications",
@@ -121,7 +135,9 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertFalse(leaderboard[0]["grouped"])
 
     def test_build_notification_leaderboard_respects_per_channel_report_controls(self):
-        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "notifications",
@@ -141,9 +157,18 @@ class NotificationGroupingTests(unittest.TestCase):
                     "104": {"name": "silent", "count": 5},
                 },
                 {
-                    101: {"notification_group": "Build Channels", "report_group_override": "Build Channels"},
-                    102: {"notification_group": "Build Channels", "report_individual": True},
-                    103: {"notification_group": "Build Channels", "report_exclude": True},
+                    101: {
+                        "notification_group": "Build Channels",
+                        "report_group_override": "Build Channels",
+                    },
+                    102: {
+                        "notification_group": "Build Channels",
+                        "report_individual": True,
+                    },
+                    103: {
+                        "notification_group": "Build Channels",
+                        "report_exclude": True,
+                    },
                     104: {"notification_group": "Build Channels"},
                 },
                 group_notification_groups=False,
@@ -154,12 +179,16 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertIn("#repo-b-builds", labels)
         self.assertIn("#silent", labels)
         self.assertNotIn("#audit", labels)
-        grouped = next(item for item in leaderboard if item["label"] == "Build Channels")
+        grouped = next(
+            item for item in leaderboard if item["label"] == "Build Channels"
+        )
         self.assertTrue(grouped["grouped"])
         self.assertEqual(grouped["count"], 20)
 
     def test_sanitize_embed_trims_fields_to_discord_limits(self):
-        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "notifications",
@@ -178,14 +207,26 @@ class NotificationGroupingTests(unittest.TestCase):
             notifications.sanitize_embed(embed)
 
         self.assertEqual(len(embed.title), notifications.EMBED_TITLE_LIMIT)
-        self.assertLessEqual(len(embed.description), notifications.EMBED_DESCRIPTION_LIMIT)
-        self.assertEqual(len(embed._fields[0]["name"]), notifications.EMBED_FIELD_NAME_LIMIT)
-        self.assertLessEqual(len(embed._fields[0]["value"]), notifications.EMBED_FIELD_VALUE_LIMIT)
-        self.assertLessEqual(len(embed._footer["text"]), notifications.EMBED_FOOTER_LIMIT)
-        self.assertLessEqual(notifications._embed_text_length(embed), notifications.EMBED_TOTAL_LIMIT)
+        self.assertLessEqual(
+            len(embed.description), notifications.EMBED_DESCRIPTION_LIMIT
+        )
+        self.assertEqual(
+            len(embed._fields[0]["name"]), notifications.EMBED_FIELD_NAME_LIMIT
+        )
+        self.assertLessEqual(
+            len(embed._fields[0]["value"]), notifications.EMBED_FIELD_VALUE_LIMIT
+        )
+        self.assertLessEqual(
+            len(embed._footer["text"]), notifications.EMBED_FOOTER_LIMIT
+        )
+        self.assertLessEqual(
+            notifications._embed_text_length(embed), notifications.EMBED_TOTAL_LIMIT
+        )
 
     def test_safe_send_embed_uses_plain_text_fallback_on_http_error(self):
-        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "notifications",
@@ -197,6 +238,7 @@ class NotificationGroupingTests(unittest.TestCase):
                 "discord": discord_stub,
             },
         ) as notifications:
+
             class Channel:
                 def __init__(self):
                     self.calls = []
@@ -225,7 +267,9 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertEqual(channel.calls[1]["content"], "short fallback")
 
     def test_safe_send_embed_returns_false_for_forbidden_without_fallback_send(self):
-        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "notifications",
@@ -237,6 +281,7 @@ class NotificationGroupingTests(unittest.TestCase):
                 "discord": discord_stub,
             },
         ) as notifications:
+
             class Channel:
                 def __init__(self):
                     self.calls = []
@@ -262,7 +307,9 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertIn("embed", channel.calls[0])
 
     def test_post_missed_monthly_report_notification_posts_to_report_channel(self):
-        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "notifications",
@@ -274,6 +321,7 @@ class NotificationGroupingTests(unittest.TestCase):
                 "discord": discord_stub,
             },
         ) as notifications:
+
             class Channel:
                 def __init__(self):
                     self.calls = []
@@ -287,7 +335,11 @@ class NotificationGroupingTests(unittest.TestCase):
                     self.channel = channel
 
                 def get_channel(self, channel_id):
-                    return self.channel if channel_id == config_stub.REPORT_CHANNEL_ID else None
+                    return (
+                        self.channel
+                        if channel_id == config_stub.REPORT_CHANNEL_ID
+                        else None
+                    )
 
             channel = Channel()
             bot = Bot(channel)
@@ -305,7 +357,9 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertIn("May 2026", channel.calls[0]["embed"].description)
 
     def test_post_missed_weekly_report_notification_posts_to_report_channel(self):
-        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "notifications",
@@ -317,6 +371,7 @@ class NotificationGroupingTests(unittest.TestCase):
                 "discord": discord_stub,
             },
         ) as notifications:
+
             class Channel:
                 def __init__(self):
                     self.calls = []
@@ -330,7 +385,11 @@ class NotificationGroupingTests(unittest.TestCase):
                     self.channel = channel
 
                 def get_channel(self, channel_id):
-                    return self.channel if channel_id == config_stub.REPORT_CHANNEL_ID else None
+                    return (
+                        self.channel
+                        if channel_id == config_stub.REPORT_CHANNEL_ID
+                        else None
+                    )
 
             channel = Channel()
             bot = Bot(channel)
@@ -356,7 +415,11 @@ class NotificationGroupingTests(unittest.TestCase):
                 "runs": 33,
                 "deleted": 8640,
                 "channels": {
-                    "101": {"name": "notifications-kometa", "count": 1342, "category": "Standalone"},
+                    "101": {
+                        "name": "notifications-kometa",
+                        "count": 1342,
+                        "category": "Standalone",
+                    },
                     "102": {"name": "crowdsec", "count": 649, "category": "Standalone"},
                 },
                 "reset": "2026-05-01",
@@ -401,6 +464,7 @@ class NotificationGroupingTests(unittest.TestCase):
                 "cleanup": cleanup_stub,
             },
         ) as notifications:
+
             class Channel:
                 def __init__(self):
                     self.calls = []
@@ -414,7 +478,11 @@ class NotificationGroupingTests(unittest.TestCase):
                     self.channel = channel
 
                 def get_channel(self, channel_id):
-                    return self.channel if channel_id == config_stub.REPORT_CHANNEL_ID else None
+                    return (
+                        self.channel
+                        if channel_id == config_stub.REPORT_CHANNEL_ID
+                        else None
+                    )
 
             channel = Channel()
             original_datetime = notifications.datetime
@@ -435,11 +503,16 @@ class NotificationGroupingTests(unittest.TestCase):
         self.assertIn("📈 vs last month: **+454** (8186 → 8640)", embed.description)
         self.assertIn("📋 Active channels: **2**", embed.description)
         self.assertEqual(embed._fields[0]["name"], "🏆 Top Groups")
-        self.assertIn("`Build Channels` — **1342** deleted across **1** channels", embed._fields[0]["value"])
+        self.assertIn(
+            "`Build Channels` — **1342** deleted across **1** channels",
+            embed._fields[0]["value"],
+        )
         self.assertIn("`#crowdsec` — **649** deleted", embed._fields[0]["value"])
 
     def test_load_recent_changelog_entries_reads_markdown_changelog(self):
-        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = self._module_stubs()
+        config_stub, file_utils_stub, stats_stub, utils_stub, discord_stub = (
+            self._module_stubs()
+        )
 
         with tempfile.TemporaryDirectory() as tempdir:
             changelog_path = os.path.join(tempdir, "CHANGELOG.md")
@@ -467,7 +540,9 @@ class NotificationGroupingTests(unittest.TestCase):
                         "discord": discord_stub,
                     },
                 ) as notifications:
-                    entries = notifications._load_recent_changelog_entries(last_version="5.5.14")
+                    entries = notifications._load_recent_changelog_entries(
+                        last_version="5.5.14"
+                    )
             finally:
                 os.chdir(cwd)
 

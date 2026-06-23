@@ -1,6 +1,7 @@
 """
 validation.py — Shared validation helpers for env values and channels.yml.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -12,7 +13,9 @@ class ChannelsConfigError(ValueError):
     """Raised when channels.yml fails schema validation."""
 
 
-def validate_int(value, label: str, minimum: int | None = None, maximum: int | None = None) -> int:
+def validate_int(
+    value, label: str, minimum: int | None = None, maximum: int | None = None
+) -> int:
     """Parses an integer and enforces optional bounds."""
     try:
         parsed = int(value)
@@ -45,7 +48,9 @@ def parse_time_list(value: str, label: str = "CLEAN_TIME") -> list[str]:
     if not isinstance(value, str):
         raise ValueError(f"{label} must be a comma-separated string")
 
-    parsed = [validate_time_string(item, label) for item in value.split(",") if item.strip()]
+    parsed = [
+        validate_time_string(item, label) for item in value.split(",") if item.strip()
+    ]
     if not parsed:
         raise ValueError(f"{label} must contain at least one valid time")
     return parsed
@@ -68,7 +73,9 @@ def parse_date_list(value: str, label: str = "SCHEDULE_SKIP_DATES") -> list[str]
     if not isinstance(value, str):
         raise ValueError(f"{label} must be a comma-separated string")
 
-    parsed = [validate_date_string(item, label) for item in value.split(",") if item.strip()]
+    parsed = [
+        validate_date_string(item, label) for item in value.split(",") if item.strip()
+    ]
     return parsed
 
 
@@ -115,7 +122,11 @@ def parse_weekday_list(value: str, label: str = "SCHEDULE_SKIP_WEEKDAYS") -> lis
     if not isinstance(value, str):
         raise ValueError(f"{label} must be a comma-separated string")
 
-    return [validate_weekday_string(item, label) for item in value.split(",") if item.strip()]
+    return [
+        validate_weekday_string(item, label)
+        for item in value.split(",")
+        if item.strip()
+    ]
 
 
 def validate_report_frequency(value: str) -> str:
@@ -166,7 +177,9 @@ def _expect_sequence(node, label: str) -> SequenceNode:
     return node
 
 
-def _mapping_dict(node: MappingNode, label: str) -> dict[str, tuple[ScalarNode, object]]:
+def _mapping_dict(
+    node: MappingNode, label: str
+) -> dict[str, tuple[ScalarNode, object]]:
     """Converts a mapping node into a scalar-keyed dict while preserving child nodes."""
     result = {}
     for key_node, value_node in node.value:
@@ -184,7 +197,9 @@ def _scalar_string(node, label: str) -> str:
     return node.value
 
 
-def _scalar_int(node, label: str, minimum: int | None = None, maximum: int | None = None) -> int:
+def _scalar_int(
+    node, label: str, minimum: int | None = None, maximum: int | None = None
+) -> int:
     if not isinstance(node, ScalarNode):
         raise _schema_error(f"{label} must be an integer", node)
     try:
@@ -221,22 +236,34 @@ def _parse_channel_entry(node, index: int) -> dict:
     if "type" in mapping:
         item_type = _scalar_string(mapping["type"][1], f"{label}.type")
         if item_type != "category":
-            raise _schema_error(f"{label}.type must be 'category' when provided", mapping["type"][1])
+            raise _schema_error(
+                f"{label}.type must be 'category' when provided", mapping["type"][1]
+            )
         item["type"] = item_type
     if "days" in mapping:
         item["days"] = _scalar_int(mapping["days"][1], f"{label}.days", 1, 365)
     if "exclude" in mapping:
         item["exclude"] = _scalar_bool(mapping["exclude"][1], f"{label}.exclude")
     if "deep_clean" in mapping:
-        item["deep_clean"] = _scalar_bool(mapping["deep_clean"][1], f"{label}.deep_clean")
+        item["deep_clean"] = _scalar_bool(
+            mapping["deep_clean"][1], f"{label}.deep_clean"
+        )
     if "report_exclude" in mapping:
-        item["report_exclude"] = _scalar_bool(mapping["report_exclude"][1], f"{label}.report_exclude")
+        item["report_exclude"] = _scalar_bool(
+            mapping["report_exclude"][1], f"{label}.report_exclude"
+        )
     if "report_individual" in mapping:
-        item["report_individual"] = _scalar_bool(mapping["report_individual"][1], f"{label}.report_individual")
+        item["report_individual"] = _scalar_bool(
+            mapping["report_individual"][1], f"{label}.report_individual"
+        )
     if "report_group" in mapping:
-        item["report_group"] = _scalar_string(mapping["report_group"][1], f"{label}.report_group")
+        item["report_group"] = _scalar_string(
+            mapping["report_group"][1], f"{label}.report_group"
+        )
     if "notification_group" in mapping:
-        item["notification_group"] = _scalar_string(mapping["notification_group"][1], f"{label}.notification_group")
+        item["notification_group"] = _scalar_string(
+            mapping["notification_group"][1], f"{label}.notification_group"
+        )
 
     for key, (_, value_node) in mapping.items():
         if key not in item:
@@ -251,13 +278,18 @@ def load_channels_config(text: str) -> list[dict]:
     if root is None:
         raise ChannelsConfigError("channels.yml must not be empty")
 
-    root_mapping = _mapping_dict(_expect_mapping(root, "channels.yml root"), "channels.yml root")
+    root_mapping = _mapping_dict(
+        _expect_mapping(root, "channels.yml root"), "channels.yml root"
+    )
     channels_pair = root_mapping.get("channels")
     if channels_pair is None:
         raise _schema_error("channels.yml root must contain a 'channels' key", root)
 
     channels_node = _expect_sequence(channels_pair[1], "channels.yml 'channels'")
-    return [_parse_channel_entry(node, index) for index, node in enumerate(channels_node.value, start=1)]
+    return [
+        _parse_channel_entry(node, index)
+        for index, node in enumerate(channels_node.value, start=1)
+    ]
 
 
 def load_channels_config_file(path: str) -> list[dict]:

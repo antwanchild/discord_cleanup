@@ -37,101 +37,113 @@ def create_default_files():
     if not os.path.exists(f"{CONFIG_DIR}/.env.discord_cleanup"):
         try:
             with open(f"{CONFIG_DIR}/.env.discord_cleanup", "w") as f:
-                f.write("# Discord bot token from Discord Developer Portal\n"
-                        "DISCORD_TOKEN=your_bot_token_here\n\n"
-                        "# Channel ID where cleanup reports are posted\n"
-                        "LOG_CHANNEL_ID=your_log_channel_id_here\n\n"
-                        "# Channel ID where scheduled reports are posted\n"
-                        "REPORT_CHANNEL_ID=your_report_channel_id_here\n\n"
-                        "# Comma-separated run times in 24hr format e.g. 03:00 or 03:00,12:00\n"
-                        "CLEAN_TIME=03:00\n\n"
-                        "# Default message retention in days\n"
-                        "DEFAULT_RETENTION=7\n\n"
-                        "# Number of daily log files to retain\n"
-                        "LOG_MAX_FILES=7\n\n"
-                        "# Number of days to keep channels.yml backups\n"
-                        "CHANNELS_BACKUP_RETENTION_DAYS=10\n\n"
-                        "# Number of days to keep stats.json and last_run.json backups\n"
-                        "STATS_BACKUP_RETENTION_DAYS=10\n\n"
-                        "# Optional scheduled cleanup blackout dates (YYYY-MM-DD, comma-separated)\n"
-                        "SCHEDULE_SKIP_DATES=\n\n"
-                        "# Optional scheduled cleanup blackout weekdays (Mon, Tue, Wed, Thu, Fri, Sat, Sun)\n"
-                        "SCHEDULE_SKIP_WEEKDAYS=\n\n"
-                        "# Log level: DEBUG, INFO, WARNING, ERROR\n"
-                        "LOG_LEVEL=INFO\n\n"
-                        "# Time to post scheduled report checks (24hr format)\n"
-                        "STATUS_REPORT_TIME=09:00\n\n"
-                        "# Report frequency: monthly, weekly, or both\n"
-                        "REPORT_FREQUENCY=monthly\n\n"
-                        "# Group notification_group channels in monthly reports (true/false)\n"
-                        "REPORT_GROUP_MONTHLY=true\n\n"
-                        "# Group notification_group channels in weekly reports (true/false)\n"
-                        "REPORT_GROUP_WEEKLY=true\n\n"
-                        "# Warn about Discord channels not in channels.yml (true/false)\n"
-                        "WARN_UNCONFIGURED=false\n\n"
-                        "# Trigger a catchup run on startup if a scheduled run was missed (true/false)\n"
-                        "CATCHUP_MISSED_RUNS=true\n\n"
-                        "# Web UI bind host and port\n"
-                        "WEB_HOST=0.0.0.0\n"
-                        "WEB_PORT=8080\n\n"
-                        "# Admin endpoint rate limits\n"
-                        "ADMIN_RATE_LIMIT_WINDOW_SECONDS=60\n"
-                        "ADMIN_RATE_LIMIT_MAX_REQUESTS=20\n"
-                        "RUN_RATE_LIMIT_MAX_REQUESTS=5\n\n"
-                        "# Optional runtime settings can still be added manually if needed\n")
-            print(f"{CONFIG_DIR}/.env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart.")
+                f.write(
+                    "# Discord bot token from Discord Developer Portal\n"
+                    "DISCORD_TOKEN=your_bot_token_here\n\n"
+                    "# Channel ID where cleanup reports are posted\n"
+                    "LOG_CHANNEL_ID=your_log_channel_id_here\n\n"
+                    "# Channel ID where scheduled reports are posted\n"
+                    "REPORT_CHANNEL_ID=your_report_channel_id_here\n\n"
+                    "# Comma-separated run times in 24hr format e.g. 03:00 or 03:00,12:00\n"
+                    "CLEAN_TIME=03:00\n\n"
+                    "# Default message retention in days\n"
+                    "DEFAULT_RETENTION=7\n\n"
+                    "# Number of daily log files to retain\n"
+                    "LOG_MAX_FILES=7\n\n"
+                    "# Number of days to keep channels.yml backups\n"
+                    "CHANNELS_BACKUP_RETENTION_DAYS=10\n\n"
+                    "# Number of days to keep stats.json and last_run.json backups\n"
+                    "STATS_BACKUP_RETENTION_DAYS=10\n\n"
+                    "# Optional scheduled cleanup blackout dates (YYYY-MM-DD, comma-separated)\n"
+                    "SCHEDULE_SKIP_DATES=\n\n"
+                    "# Optional scheduled cleanup blackout weekdays (Mon, Tue, Wed, Thu, Fri, Sat, Sun)\n"
+                    "SCHEDULE_SKIP_WEEKDAYS=\n\n"
+                    "# Log level: DEBUG, INFO, WARNING, ERROR\n"
+                    "LOG_LEVEL=INFO\n\n"
+                    "# Time to post scheduled report checks (24hr format)\n"
+                    "STATUS_REPORT_TIME=09:00\n\n"
+                    "# Report frequency: monthly, weekly, or both\n"
+                    "REPORT_FREQUENCY=monthly\n\n"
+                    "# Group notification_group channels in monthly reports (true/false)\n"
+                    "REPORT_GROUP_MONTHLY=true\n\n"
+                    "# Group notification_group channels in weekly reports (true/false)\n"
+                    "REPORT_GROUP_WEEKLY=true\n\n"
+                    "# Warn about Discord channels not in channels.yml (true/false)\n"
+                    "WARN_UNCONFIGURED=false\n\n"
+                    "# Trigger a catchup run on startup if a scheduled run was missed (true/false)\n"
+                    "CATCHUP_MISSED_RUNS=true\n\n"
+                    "# Web UI bind host and port\n"
+                    "WEB_HOST=0.0.0.0\n"
+                    "WEB_PORT=8080\n\n"
+                    "# Admin endpoint rate limits\n"
+                    "ADMIN_RATE_LIMIT_WINDOW_SECONDS=60\n"
+                    "ADMIN_RATE_LIMIT_MAX_REQUESTS=20\n"
+                    "RUN_RATE_LIMIT_MAX_REQUESTS=5\n\n"
+                    "# Optional runtime settings can still be added manually if needed\n"
+                )
+            print(
+                f"{CONFIG_DIR}/.env.discord_cleanup not found — created with default values. Please fill in your bot token and channel IDs then restart."
+            )
             created = True
         except PermissionError:
-            print(f"ERROR: Could not create {CONFIG_DIR}/.env.discord_cleanup — check directory permissions.")
+            print(
+                f"ERROR: Could not create {CONFIG_DIR}/.env.discord_cleanup — check directory permissions."
+            )
             sys.exit(1)
 
     if not os.path.exists(f"{CONFIG_DIR}/channels.yml"):
         try:
             with open(f"{CONFIG_DIR}/channels.yml", "w") as f:
-                f.write("channels:\n"
-                        "  # --- CATEGORIES ---\n"
-                        "  # Cleans all text channels under this Discord category\n"
-                        "  # Uses DEFAULT_RETENTION from .env unless days is specified\n"
-                        "  # Add deep_clean: true to also delete messages older than 14 days\n"
-                        "  - id: 123456789012345678\n"
-                        "    name: My Category\n"
-                        "    type: category\n\n"
-                        "  # Category with retention override and deep clean enabled\n"
-                        "  - id: 234567890123456789\n"
-                        "    name: My Category With Override\n"
-                        "    type: category\n"
-                        "    days: 4\n"
-                        "    deep_clean: true\n\n"
-                        "  # --- CHANNEL OVERRIDES ---\n"
-                        "  - id: 345678901234567890\n"
-                        "    name: my-channel-override\n"
-                        "    days: 3\n\n"
-                        "  # --- EXCLUSIONS ---\n"
-                        "  # Excluded channels are skipped by full runs and cannot be targeted\n"
-                        "  # by /cleanup channel or the web UI single-channel run\n"
-                        "  - id: 456789012345678901\n"
-                        "    name: my-excluded-channel\n"
-                        "    exclude: true\n\n"
-                        "  # --- STANDALONE CHANNELS ---\n"
-                        "  - id: 567890123456789012\n"
-                        "    name: my-standalone-channel\n"
-                        "    # Optional: group channels together in monthly/weekly Discord reports\n"
-                        "    # notification_group: Build Channels\n\n"
-                        "    # Optional: override the report group label for this channel\n"
-                        "    # report_group: Build Channels\n"
-                        "    # Optional: force this channel to stay individual in reports\n"
-                        "    # report_individual: true\n"
-                        "    # Optional: exclude this channel from report embeds\n"
-                        "    # report_exclude: true\n\n"
-                        "  # Standalone channel with deep clean enabled\n"
-                        "  - id: 678901234567890123\n"
-                        "    name: my-standalone-deep\n"
-                        "    days: 14\n"
-                        "    deep_clean: true\n")
-            print(f"{CONFIG_DIR}/channels.yml not found — created with sample config. Please update with your real channel IDs then restart.")
+                f.write(
+                    "channels:\n"
+                    "  # --- CATEGORIES ---\n"
+                    "  # Cleans all text channels under this Discord category\n"
+                    "  # Uses DEFAULT_RETENTION from .env unless days is specified\n"
+                    "  # Add deep_clean: true to also delete messages older than 14 days\n"
+                    "  - id: 123456789012345678\n"
+                    "    name: My Category\n"
+                    "    type: category\n\n"
+                    "  # Category with retention override and deep clean enabled\n"
+                    "  - id: 234567890123456789\n"
+                    "    name: My Category With Override\n"
+                    "    type: category\n"
+                    "    days: 4\n"
+                    "    deep_clean: true\n\n"
+                    "  # --- CHANNEL OVERRIDES ---\n"
+                    "  - id: 345678901234567890\n"
+                    "    name: my-channel-override\n"
+                    "    days: 3\n\n"
+                    "  # --- EXCLUSIONS ---\n"
+                    "  # Excluded channels are skipped by full runs and cannot be targeted\n"
+                    "  # by /cleanup channel or the web UI single-channel run\n"
+                    "  - id: 456789012345678901\n"
+                    "    name: my-excluded-channel\n"
+                    "    exclude: true\n\n"
+                    "  # --- STANDALONE CHANNELS ---\n"
+                    "  - id: 567890123456789012\n"
+                    "    name: my-standalone-channel\n"
+                    "    # Optional: group channels together in monthly/weekly Discord reports\n"
+                    "    # notification_group: Build Channels\n\n"
+                    "    # Optional: override the report group label for this channel\n"
+                    "    # report_group: Build Channels\n"
+                    "    # Optional: force this channel to stay individual in reports\n"
+                    "    # report_individual: true\n"
+                    "    # Optional: exclude this channel from report embeds\n"
+                    "    # report_exclude: true\n\n"
+                    "  # Standalone channel with deep clean enabled\n"
+                    "  - id: 678901234567890123\n"
+                    "    name: my-standalone-deep\n"
+                    "    days: 14\n"
+                    "    deep_clean: true\n"
+                )
+            print(
+                f"{CONFIG_DIR}/channels.yml not found — created with sample config. Please update with your real channel IDs then restart."
+            )
             created = True
         except PermissionError:
-            print(f"ERROR: Could not create {CONFIG_DIR}/channels.yml — check directory permissions.")
+            print(
+                f"ERROR: Could not create {CONFIG_DIR}/channels.yml — check directory permissions."
+            )
             sys.exit(1)
 
     if created:
@@ -153,8 +165,7 @@ logger.setLevel(numeric_level)
 console_handler = logging.StreamHandler()
 console_handler.setLevel(numeric_level)
 formatter = logging.Formatter(
-    "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    "%(asctime)s [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
@@ -184,13 +195,17 @@ if not _raw_log_channel:
     log.error("LOG_CHANNEL_ID is not set in .env.discord_cleanup — cannot start bot.")
     sys.exit(1)
 if not _raw_report_channel:
-    log.error("REPORT_CHANNEL_ID is not set in .env.discord_cleanup — cannot start bot.")
+    log.error(
+        "REPORT_CHANNEL_ID is not set in .env.discord_cleanup — cannot start bot."
+    )
     sys.exit(1)
 try:
     LOG_CHANNEL_ID = int(_raw_log_channel)
     REPORT_CHANNEL_ID = int(_raw_report_channel)
 except ValueError:
-    log.error("LOG_CHANNEL_ID and REPORT_CHANNEL_ID must be numeric Discord channel IDs.")
+    log.error(
+        "LOG_CHANNEL_ID and REPORT_CHANNEL_ID must be numeric Discord channel IDs."
+    )
     sys.exit(1)
 
 try:
@@ -208,21 +223,35 @@ try:
         1,
         365,
     )
-    DEFAULT_RETENTION = validate_int(os.getenv("DEFAULT_RETENTION", 7), "DEFAULT_RETENTION", 1, 365)
-    STATUS_REPORT_TIME = validate_time_string(os.getenv("STATUS_REPORT_TIME", "09:00"), "STATUS_REPORT_TIME")
-    REPORT_FREQUENCY = validate_report_frequency(os.getenv("REPORT_FREQUENCY", "monthly"))
-    REPORT_GROUP_MONTHLY = validate_bool(os.getenv("REPORT_GROUP_MONTHLY", "true"), "REPORT_GROUP_MONTHLY")
-    REPORT_GROUP_WEEKLY = validate_bool(os.getenv("REPORT_GROUP_WEEKLY", "true"), "REPORT_GROUP_WEEKLY")
-    SCHEDULE_SKIP_DATES = parse_date_list(os.getenv("SCHEDULE_SKIP_DATES", ""), "SCHEDULE_SKIP_DATES")
-    SCHEDULE_SKIP_WEEKDAYS = parse_weekday_list(os.getenv("SCHEDULE_SKIP_WEEKDAYS", ""), "SCHEDULE_SKIP_WEEKDAYS")
+    DEFAULT_RETENTION = validate_int(
+        os.getenv("DEFAULT_RETENTION", 7), "DEFAULT_RETENTION", 1, 365
+    )
+    STATUS_REPORT_TIME = validate_time_string(
+        os.getenv("STATUS_REPORT_TIME", "09:00"), "STATUS_REPORT_TIME"
+    )
+    REPORT_FREQUENCY = validate_report_frequency(
+        os.getenv("REPORT_FREQUENCY", "monthly")
+    )
+    REPORT_GROUP_MONTHLY = validate_bool(
+        os.getenv("REPORT_GROUP_MONTHLY", "true"), "REPORT_GROUP_MONTHLY"
+    )
+    REPORT_GROUP_WEEKLY = validate_bool(
+        os.getenv("REPORT_GROUP_WEEKLY", "true"), "REPORT_GROUP_WEEKLY"
+    )
+    SCHEDULE_SKIP_DATES = parse_date_list(
+        os.getenv("SCHEDULE_SKIP_DATES", ""), "SCHEDULE_SKIP_DATES"
+    )
+    SCHEDULE_SKIP_WEEKDAYS = parse_weekday_list(
+        os.getenv("SCHEDULE_SKIP_WEEKDAYS", ""), "SCHEDULE_SKIP_WEEKDAYS"
+    )
 except ValueError as e:
     log.error(f"Invalid configuration value — {e}")
     sys.exit(1)
 
-WARN_UNCONFIGURED    = os.getenv("WARN_UNCONFIGURED", "false").lower() == "true"
-GITHUB_TOKEN         = os.getenv("GITHUB_TOKEN")
+WARN_UNCONFIGURED = os.getenv("WARN_UNCONFIGURED", "false").lower() == "true"
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 # When true, a missed scheduled run is detected on startup and triggered automatically
-CATCHUP_MISSED_RUNS  = os.getenv("CATCHUP_MISSED_RUNS", "true").lower() == "true"
+CATCHUP_MISSED_RUNS = os.getenv("CATCHUP_MISSED_RUNS", "true").lower() == "true"
 
 # --- Paths ---
 LOG_DIR = f"{CONFIG_DIR}/logs"
@@ -242,7 +271,9 @@ except FileNotFoundError:
     log.error(f"{CONFIG_DIR}/channels.yml not found — cannot start bot.")
     sys.exit(1)
 except PermissionError:
-    log.error(f"Could not read {CONFIG_DIR}/channels.yml — check directory permissions.")
+    log.error(
+        f"Could not read {CONFIG_DIR}/channels.yml — check directory permissions."
+    )
     sys.exit(1)
 except ChannelsConfigError as e:
     log.error(f"channels.yml validation failed — {e}")

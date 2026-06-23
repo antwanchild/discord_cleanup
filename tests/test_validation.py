@@ -25,11 +25,7 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(validate_report_frequency("BoTh"), "both")
 
     def test_load_channels_config_reports_line_and_column(self):
-        content = (
-            "channels:\n"
-            "  - id: 123\n"
-            "    exclude: falsey\n"
-        )
+        content = "channels:\n" "  - id: 123\n" "    exclude: falsey\n"
 
         with self.assertRaisesRegex(
             ChannelsConfigError,
@@ -65,11 +61,7 @@ class ValidationTests(unittest.TestCase):
         self.assertFalse(channels[1]["report_exclude"])
 
     def test_load_channels_config_rejects_non_string_notification_group(self):
-        content = (
-            "channels:\n"
-            "  - id: 123\n"
-            "    notification_group: true\n"
-        )
+        content = "channels:\n" "  - id: 123\n" "    notification_group: true\n"
 
         with self.assertRaisesRegex(
             ChannelsConfigError,
@@ -78,11 +70,7 @@ class ValidationTests(unittest.TestCase):
             load_channels_config(content)
 
     def test_load_channels_config_rejects_non_bool_report_control(self):
-        content = (
-            "channels:\n"
-            "  - id: 123\n"
-            "    report_exclude: maybe\n"
-        )
+        content = "channels:\n" "  - id: 123\n" "    report_exclude: maybe\n"
 
         with self.assertRaisesRegex(
             ChannelsConfigError,

@@ -22,7 +22,9 @@ class BuildChannelMapTests(unittest.TestCase):
         return types.SimpleNamespace(
             Embed=object,
             Forbidden=Forbidden,
-            errors=types.SimpleNamespace(RateLimited=RateLimited, HTTPException=HTTPException),
+            errors=types.SimpleNamespace(
+                RateLimited=RateLimited, HTTPException=HTTPException
+            ),
         )
 
     def _cleanup_stubs(self, raw_channels):
@@ -54,12 +56,21 @@ class BuildChannelMapTests(unittest.TestCase):
         )
         return config_stub, stats_stub, utils_stub, self._discord_stub()
 
-    def test_category_subchannel_with_same_days_is_not_marked_as_retention_override(self):
-        config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([
-            {"id": 10, "name": "Github", "type": "category", "days": 7},
-            {"id": 20, "name": "build-bot", "days": 7, "notification_group": "Build Channels"},
-            {"id": 21, "name": "build-fast", "days": 3},
-        ])
+    def test_category_subchannel_with_same_days_is_not_marked_as_retention_override(
+        self,
+    ):
+        config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs(
+            [
+                {"id": 10, "name": "Github", "type": "category", "days": 7},
+                {
+                    "id": 20,
+                    "name": "build-bot",
+                    "days": 7,
+                    "notification_group": "Build Channels",
+                },
+                {"id": 21, "name": "build-fast", "days": 3},
+            ]
+        )
 
         with isolated_module_import(
             "cleanup",
@@ -72,8 +83,12 @@ class BuildChannelMapTests(unittest.TestCase):
         ) as cleanup:
             build_bot = types.SimpleNamespace(id=20, name="build-bot")
             build_fast = types.SimpleNamespace(id=21, name="build-fast")
-            category = types.SimpleNamespace(id=10, text_channels=[build_bot, build_fast])
-            guild = types.SimpleNamespace(get_channel=lambda channel_id: {10: category}.get(channel_id))
+            category = types.SimpleNamespace(
+                id=10, text_channels=[build_bot, build_fast]
+            )
+            guild = types.SimpleNamespace(
+                get_channel=lambda channel_id: {10: category}.get(channel_id)
+            )
 
             channel_map = cleanup.build_channel_map(guild)
 
@@ -97,7 +112,9 @@ class BuildChannelMapTests(unittest.TestCase):
         ) as cleanup:
             build_channel = types.SimpleNamespace(id=20, name="build-bot")
             category = types.SimpleNamespace(id=10, text_channels=[build_channel])
-            guild = types.SimpleNamespace(get_channel=lambda channel_id: {10: category}.get(channel_id))
+            guild = types.SimpleNamespace(
+                get_channel=lambda channel_id: {10: category}.get(channel_id)
+            )
 
             channel_map = cleanup.build_channel_map(
                 guild,
@@ -124,9 +141,36 @@ class BuildChannelMapTests(unittest.TestCase):
         ) as cleanup:
             lines = cleanup._build_breakdown_lines(
                 [
-                    ("build-bot", {"count": 12, "notification_group": "Build Channels", "is_override": False, "deep_clean": False, "days": 7}),
-                    ("build-docs", {"count": 8, "notification_group": "Build Channels", "is_override": False, "deep_clean": False, "days": 7}),
-                    ("discord-cleanup-gh", {"count": 5, "notification_group": None, "is_override": False, "deep_clean": False, "days": 7}),
+                    (
+                        "build-bot",
+                        {
+                            "count": 12,
+                            "notification_group": "Build Channels",
+                            "is_override": False,
+                            "deep_clean": False,
+                            "days": 7,
+                        },
+                    ),
+                    (
+                        "build-docs",
+                        {
+                            "count": 8,
+                            "notification_group": "Build Channels",
+                            "is_override": False,
+                            "deep_clean": False,
+                            "days": 7,
+                        },
+                    ),
+                    (
+                        "discord-cleanup-gh",
+                        {
+                            "count": 5,
+                            "notification_group": None,
+                            "is_override": False,
+                            "deep_clean": False,
+                            "days": 7,
+                        },
+                    ),
                 ]
             )
 
@@ -146,6 +190,7 @@ class BuildChannelMapTests(unittest.TestCase):
                 "discord": discord_stub,
             },
         ) as cleanup:
+
             class FailingHistory:
                 def __aiter__(self):
                     return self
@@ -153,7 +198,9 @@ class BuildChannelMapTests(unittest.TestCase):
                 async def __anext__(self):
                     raise discord_stub.Forbidden()
 
-            permissions = types.SimpleNamespace(read_message_history=True, manage_messages=True)
+            permissions = types.SimpleNamespace(
+                read_message_history=True, manage_messages=True
+            )
             guild = types.SimpleNamespace(me=object())
             channel = types.SimpleNamespace(
                 name="build-bot",
@@ -172,7 +219,9 @@ class BuildChannelMapTests(unittest.TestCase):
         config_stub.LOG_CHANNEL_ID = 1
 
         class DummyEmbed:
-            def __init__(self, title=None, description=None, color=None, timestamp=None):
+            def __init__(
+                self, title=None, description=None, color=None, timestamp=None
+            ):
                 self.title = title
                 self.description = description
                 self.color = color
@@ -187,6 +236,7 @@ class BuildChannelMapTests(unittest.TestCase):
                 return self
 
         discord_stub.Embed = DummyEmbed
+
         def save_last_run_stub(*_a, **_k):
             raise OSError("disk full")
 
@@ -216,7 +266,9 @@ class BuildChannelMapTests(unittest.TestCase):
             },
         ) as cleanup:
             bot = types.SimpleNamespace(get_channel=lambda _channel_id: object())
-            guild = types.SimpleNamespace(name="test-guild", get_channel=lambda *_a, **_k: None)
+            guild = types.SimpleNamespace(
+                name="test-guild", get_channel=lambda *_a, **_k: None
+            )
 
             asyncio.run(cleanup.run_cleanup(bot, guild, raw_channels=[]))
 

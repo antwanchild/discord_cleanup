@@ -1,6 +1,7 @@
 """
 config_settings.py — Runtime env update helpers for config knobs.
 """
+
 from config_backups import update_env_value
 
 
@@ -10,7 +11,9 @@ def update_schedule_skip_dates(dates: list[str]) -> tuple[bool, str]:
     from validation import parse_date_list
 
     try:
-        normalized = parse_date_list(",".join(dates), "SCHEDULE_SKIP_DATES") if dates else []
+        normalized = (
+            parse_date_list(",".join(dates), "SCHEDULE_SKIP_DATES") if dates else []
+        )
     except ValueError as e:
         return False, str(e)
     success, message = update_env_value("SCHEDULE_SKIP_DATES", ",".join(normalized))
@@ -26,7 +29,11 @@ def update_schedule_skip_weekdays(weekdays: list[str]) -> tuple[bool, str]:
     from validation import parse_weekday_list
 
     try:
-        normalized = parse_weekday_list(",".join(weekdays), "SCHEDULE_SKIP_WEEKDAYS") if weekdays else []
+        normalized = (
+            parse_weekday_list(",".join(weekdays), "SCHEDULE_SKIP_WEEKDAYS")
+            if weekdays
+            else []
+        )
     except ValueError as e:
         return False, str(e)
     success, message = update_env_value("SCHEDULE_SKIP_WEEKDAYS", ",".join(normalized))
@@ -39,6 +46,7 @@ def update_schedule_skip_weekdays(weekdays: list[str]) -> tuple[bool, str]:
 def update_retention(days: int) -> tuple[bool, str]:
     """Updates DEFAULT_RETENTION in env and in-memory config."""
     import config
+
     success, message = update_env_value("DEFAULT_RETENTION", str(days))
     if success:
         config.DEFAULT_RETENTION = days
@@ -68,6 +76,7 @@ def update_log_level(level: str) -> tuple[bool, str]:
 def update_warn_unconfigured(enabled: bool) -> tuple[bool, str]:
     """Updates WARN_UNCONFIGURED in env and in-memory config."""
     import config
+
     value = "true" if enabled else "false"
     success, message = update_env_value("WARN_UNCONFIGURED", value)
     if success:
@@ -79,6 +88,7 @@ def update_warn_unconfigured(enabled: bool) -> tuple[bool, str]:
 def update_report_frequency(frequency: str) -> tuple[bool, str]:
     """Updates REPORT_FREQUENCY in env and in-memory config."""
     import config
+
     valid = ["monthly", "weekly", "both"]
     if frequency.lower() not in valid:
         return False, f"Invalid frequency — must be one of: {', '.join(valid)}"
@@ -106,13 +116,17 @@ def update_report_grouping(scope: str, enabled: bool) -> tuple[bool, str]:
         else:
             config.REPORT_GROUP_WEEKLY = enabled
         label = "monthly" if scope == "monthly" else "weekly"
-        return True, f"{label.capitalize()} grouping {'enabled' if enabled else 'disabled'}"
+        return (
+            True,
+            f"{label.capitalize()} grouping {'enabled' if enabled else 'disabled'}",
+        )
     return success, message
 
 
 def update_log_max_files(days: int) -> tuple[bool, str]:
     """Updates LOG_MAX_FILES in env and in-memory config."""
     import config
+
     if not 1 <= days <= 365:
         return False, "Log retention must be between 1 and 365 days"
     success, message = update_env_value("LOG_MAX_FILES", str(days))

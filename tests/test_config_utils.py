@@ -52,8 +52,12 @@ class ConfigUtilsTests(unittest.TestCase):
                 "    deep_clean: true\n"
             )
 
-            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
-                success, message, preview = config_utils.preview_channels_content(content)
+            with isolated_module_import(
+                "config_utils", {"config": config_stub}
+            ) as config_utils:
+                success, message, preview = config_utils.preview_channels_content(
+                    content
+                )
 
             self.assertTrue(success)
             self.assertIn("preview ready", message)
@@ -63,7 +67,9 @@ class ConfigUtilsTests(unittest.TestCase):
             self.assertEqual(preview["changes"]["added"][0]["name"], "new-channel")
             self.assertEqual(preview["changes"]["removed"][0]["name"], "old-channel")
             self.assertEqual(preview["changes"]["updated"][0]["label"], "#keep-renamed")
-            changed_fields = {item["field"] for item in preview["changes"]["updated"][0]["changes"]}
+            changed_fields = {
+                item["field"] for item in preview["changes"]["updated"][0]["changes"]
+            }
             self.assertEqual(changed_fields, {"name", "days"})
 
     def test_preview_channel_restore_reports_diff_from_backup(self):
@@ -88,12 +94,18 @@ class ConfigUtilsTests(unittest.TestCase):
             config_stub = self._build_config_stub(tempdir)
             config_stub.raw_channels = [{"id": 1, "name": "old-channel"}]
 
-            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
-                success, message, preview = config_utils.preview_channel_restore("channels-20260415-054500.yml.bak")
+            with isolated_module_import(
+                "config_utils", {"config": config_stub}
+            ) as config_utils:
+                success, message, preview = config_utils.preview_channel_restore(
+                    "channels-20260415-054500.yml.bak"
+                )
 
             self.assertTrue(success)
             self.assertIn("Restore preview ready", message)
-            self.assertEqual(preview["backup"]["filename"], "channels-20260415-054500.yml.bak")
+            self.assertEqual(
+                preview["backup"]["filename"], "channels-20260415-054500.yml.bak"
+            )
             self.assertEqual(preview["summary"]["counts"]["added"], 1)
             self.assertEqual(preview["summary"]["counts"]["updated"], 1)
             self.assertEqual(preview["changes"]["added"][0]["name"], "new-channel")
@@ -108,7 +120,9 @@ class ConfigUtilsTests(unittest.TestCase):
             config_stub.REPORT_GROUP_MONTHLY = True
             config_stub.REPORT_GROUP_WEEKLY = True
 
-            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+            with isolated_module_import(
+                "config_utils", {"config": config_stub}
+            ) as config_utils:
                 success, message = config_utils.update_report_grouping("monthly", False)
 
             self.assertTrue(success)
@@ -117,22 +131,32 @@ class ConfigUtilsTests(unittest.TestCase):
             with open(env_path, "r") as f:
                 self.assertIn("REPORT_GROUP_MONTHLY=false", f.read())
 
-    def test_update_schedule_skip_dates_and_weekdays_updates_env_and_in_memory_config(self):
+    def test_update_schedule_skip_dates_and_weekdays_updates_env_and_in_memory_config(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as tempdir:
             env_path = os.path.join(tempdir, ".env.discord_cleanup")
             with open(env_path, "w") as f:
                 f.write("SCHEDULE_SKIP_DATES=\nSCHEDULE_SKIP_WEEKDAYS=\n")
 
             config_stub = self._build_config_stub(tempdir)
-            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
-                success_dates, message_dates = config_utils.update_schedule_skip_dates(["2026-04-20", "2026-04-22"])
-                success_weekdays, message_weekdays = config_utils.update_schedule_skip_weekdays(["Mon", "Fri"])
+            with isolated_module_import(
+                "config_utils", {"config": config_stub}
+            ) as config_utils:
+                success_dates, message_dates = config_utils.update_schedule_skip_dates(
+                    ["2026-04-20", "2026-04-22"]
+                )
+                success_weekdays, message_weekdays = (
+                    config_utils.update_schedule_skip_weekdays(["Mon", "Fri"])
+                )
 
             self.assertTrue(success_dates)
             self.assertEqual(message_dates, "Schedule blackout dates updated")
             self.assertTrue(success_weekdays)
             self.assertEqual(message_weekdays, "Schedule blackout weekdays updated")
-            self.assertEqual(config_stub.SCHEDULE_SKIP_DATES, ["2026-04-20", "2026-04-22"])
+            self.assertEqual(
+                config_stub.SCHEDULE_SKIP_DATES, ["2026-04-20", "2026-04-22"]
+            )
             self.assertEqual(config_stub.SCHEDULE_SKIP_WEEKDAYS, ["mon", "fri"])
             with open(env_path, "r") as f:
                 env_text = f.read()
@@ -152,12 +176,18 @@ class ConfigUtilsTests(unittest.TestCase):
                 )
 
             config_stub = self._build_config_stub(tempdir)
-            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+            with isolated_module_import(
+                "config_utils", {"config": config_stub}
+            ) as config_utils:
                 retention_success, retention_message = config_utils.update_retention(14)
                 log_success, log_message = config_utils.update_log_level("warning")
                 warn_success, warn_message = config_utils.update_warn_unconfigured(True)
-                frequency_success, frequency_message = config_utils.update_report_frequency("weekly")
-                max_files_success, max_files_message = config_utils.update_log_max_files(30)
+                frequency_success, frequency_message = (
+                    config_utils.update_report_frequency("weekly")
+                )
+                max_files_success, max_files_message = (
+                    config_utils.update_log_max_files(30)
+                )
 
             self.assertTrue(retention_success)
             self.assertEqual(retention_message, "Default retention updated to 14 days")
@@ -176,7 +206,9 @@ class ConfigUtilsTests(unittest.TestCase):
                 f.write("channels:\n  - name: missing-id\n")
 
             config_stub = self._build_config_stub(tempdir)
-            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
+            with isolated_module_import(
+                "config_utils", {"config": config_stub}
+            ) as config_utils:
                 success, message = config_utils.reload_channels()
 
             self.assertFalse(success)
@@ -192,14 +224,20 @@ class ConfigUtilsTests(unittest.TestCase):
             config_stub = self._build_config_stub(tempdir)
             new_content = "channels:\n  - id: 456\n    name: new-name\n"
 
-            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
-                success, message, backup_path = config_utils.save_channels_content(new_content)
+            with isolated_module_import(
+                "config_utils", {"config": config_stub}
+            ) as config_utils:
+                success, message, backup_path = config_utils.save_channels_content(
+                    new_content
+                )
 
             self.assertTrue(success)
             self.assertIn("Saved and reloaded channels.yml", message)
             self.assertIsNotNone(backup_path)
             self.assertTrue(os.path.exists(backup_path))
-            self.assertEqual(config_stub.raw_channels, [{"id": 456, "name": "new-name"}])
+            self.assertEqual(
+                config_stub.raw_channels, [{"id": 456, "name": "new-name"}]
+            )
             with open(channels_path, "r") as f:
                 self.assertEqual(f.read(), new_content)
             with open(backup_path, "r") as f:
@@ -215,7 +253,9 @@ class ConfigUtilsTests(unittest.TestCase):
                 f.write("channels:\n  - id: 123\n    name: old-name\n")
 
             old_backup = os.path.join(backups_dir, "channels-20260101-000000.yml.bak")
-            recent_backup = os.path.join(backups_dir, "channels-20260407-000000.yml.bak")
+            recent_backup = os.path.join(
+                backups_dir, "channels-20260407-000000.yml.bak"
+            )
             with open(old_backup, "w") as f:
                 f.write("old backup")
             with open(recent_backup, "w") as f:
@@ -230,8 +270,12 @@ class ConfigUtilsTests(unittest.TestCase):
             config_stub = self._build_config_stub(tempdir)
             new_content = "channels:\n  - id: 456\n    name: new-name\n"
 
-            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
-                success, message, backup_path = config_utils.save_channels_content(new_content)
+            with isolated_module_import(
+                "config_utils", {"config": config_stub}
+            ) as config_utils:
+                success, message, backup_path = config_utils.save_channels_content(
+                    new_content
+                )
 
             self.assertTrue(success)
             self.assertIn("Saved and reloaded channels.yml", message)
@@ -257,18 +301,26 @@ class ConfigUtilsTests(unittest.TestCase):
             config_stub = self._build_config_stub(tempdir)
             config_stub.raw_channels = [{"id": 123, "name": "current-channel"}]
 
-            with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
-                success, message, backup_path = config_utils.restore_channels_backup("channels-20260415-054500.yml.bak")
+            with isolated_module_import(
+                "config_utils", {"config": config_stub}
+            ) as config_utils:
+                success, message, backup_path = config_utils.restore_channels_backup(
+                    "channels-20260415-054500.yml.bak"
+                )
 
             self.assertTrue(success)
-            self.assertIn("Restored channels.yml from channels-20260415-054500.yml.bak", message)
+            self.assertIn(
+                "Restored channels.yml from channels-20260415-054500.yml.bak", message
+            )
             self.assertIsNotNone(backup_path)
             self.assertTrue(os.path.exists(backup_path))
             with open(channels_path, "r") as f:
                 self.assertEqual(f.read(), backup_content)
             with open(backup_path, "r") as f:
                 self.assertEqual(f.read(), current_content)
-            self.assertEqual(config_stub.raw_channels, [{"id": 456, "name": "restored-channel"}])
+            self.assertEqual(
+                config_stub.raw_channels, [{"id": 456, "name": "restored-channel"}]
+            )
 
     def test_preview_env_restore_reports_diff_and_restart_requirement(self):
         with tempfile.TemporaryDirectory() as tempdir:
@@ -294,15 +346,30 @@ class ConfigUtilsTests(unittest.TestCase):
                 )
 
             config_stub = self._build_config_stub(tempdir)
-            original_env = {key: os.environ.get(key) for key in ["DISCORD_TOKEN", "REPORT_GROUP_WEEKLY", "WEB_HOST", "GITHUB_TOKEN", "WARN_UNCONFIGURED"]}
+            original_env = {
+                key: os.environ.get(key)
+                for key in [
+                    "DISCORD_TOKEN",
+                    "REPORT_GROUP_WEEKLY",
+                    "WEB_HOST",
+                    "GITHUB_TOKEN",
+                    "WARN_UNCONFIGURED",
+                ]
+            }
 
             try:
-                with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
-                    success, message, preview = config_utils.preview_env_restore("env-20260415-054500.env.bak")
+                with isolated_module_import(
+                    "config_utils", {"config": config_stub}
+                ) as config_utils:
+                    success, message, preview = config_utils.preview_env_restore(
+                        "env-20260415-054500.env.bak"
+                    )
 
                 self.assertTrue(success)
                 self.assertIn("Restore preview ready", message)
-                self.assertEqual(preview["backup"]["filename"], "env-20260415-054500.env.bak")
+                self.assertEqual(
+                    preview["backup"]["filename"], "env-20260415-054500.env.bak"
+                )
                 self.assertEqual(preview["counts"]["added"], 1)
                 self.assertEqual(preview["counts"]["removed"], 1)
                 self.assertEqual(preview["counts"]["updated"], 3)
@@ -341,14 +408,30 @@ class ConfigUtilsTests(unittest.TestCase):
                 f.write(backup_content)
 
             config_stub = self._build_config_stub(tempdir)
-            original_env = {key: os.environ.get(key) for key in ["DISCORD_TOKEN", "REPORT_GROUP_WEEKLY", "WEB_HOST", "GITHUB_TOKEN", "WARN_UNCONFIGURED"]}
+            original_env = {
+                key: os.environ.get(key)
+                for key in [
+                    "DISCORD_TOKEN",
+                    "REPORT_GROUP_WEEKLY",
+                    "WEB_HOST",
+                    "GITHUB_TOKEN",
+                    "WARN_UNCONFIGURED",
+                ]
+            }
 
             try:
-                with isolated_module_import("config_utils", {"config": config_stub}) as config_utils:
-                    success, message, backup_path = config_utils.restore_env_backup("env-20260415-054500.env.bak")
+                with isolated_module_import(
+                    "config_utils", {"config": config_stub}
+                ) as config_utils:
+                    success, message, backup_path = config_utils.restore_env_backup(
+                        "env-20260415-054500.env.bak"
+                    )
 
                 self.assertTrue(success)
-                self.assertIn("Restored .env.discord_cleanup from env-20260415-054500.env.bak", message)
+                self.assertIn(
+                    "Restored .env.discord_cleanup from env-20260415-054500.env.bak",
+                    message,
+                )
                 self.assertIsNotNone(backup_path)
                 self.assertTrue(os.path.exists(backup_path))
                 with open(env_path, "r") as f:

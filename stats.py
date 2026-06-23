@@ -3,6 +3,7 @@ stats.py — Load, save, update, and reset cleanup statistics.
 Stats are persisted to /config/data/stats.json across three rolling buckets:
 all_time, rolling_30, and monthly.
 """
+
 import json
 import os
 import logging
@@ -53,8 +54,20 @@ def _empty_stats():
     now = datetime.now().strftime("%Y-%m-%d")
     return {
         "all_time": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}},
-        "rolling_30": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}, "reset": now},
-        "monthly": {"runs": 0, "deleted": 0, "catchup_runs": 0, "channels": {}, "reset": now},
+        "rolling_30": {
+            "runs": 0,
+            "deleted": 0,
+            "catchup_runs": 0,
+            "channels": {},
+            "reset": now,
+        },
+        "monthly": {
+            "runs": 0,
+            "deleted": 0,
+            "catchup_runs": 0,
+            "channels": {},
+            "reset": now,
+        },
         "last_month": None,
         "previous_month": None,
         "channel_history": {},
@@ -138,8 +151,12 @@ def _normalize_monthly_report_source_payload(payload) -> dict:
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     normalized: dict[str, object] = {
-        "display": _normalize_month_summary(payload.get("display"), default_reset=datetime.now().strftime("%Y-%m-%d")),
-        "comparison": _normalize_month_summary(payload.get("comparison"), default_reset=datetime.now().strftime("%Y-%m-%d")),
+        "display": _normalize_month_summary(
+            payload.get("display"), default_reset=datetime.now().strftime("%Y-%m-%d")
+        ),
+        "comparison": _normalize_month_summary(
+            payload.get("comparison"), default_reset=datetime.now().strftime("%Y-%m-%d")
+        ),
     }
     captured_at = payload.get("captured_at")
     if isinstance(captured_at, str) and captured_at.strip():
@@ -179,17 +196,35 @@ def _normalize_channel_history(history) -> dict:
         for entry in entries:
             if not isinstance(entry, dict):
                 continue
-            channel_entries.append({
-                "timestamp": _coerce_timestamp(entry.get("timestamp"), datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-                "triggered_by": str(entry.get("triggered_by") or "unknown"),
-                "count": _coerce_non_negative_int(entry.get("count", 0)),
-                "category": str(entry.get("category") or "Standalone"),
-                "status": str(entry.get("status") or ("error" if entry.get("error") else "deleted" if _coerce_non_negative_int(entry.get("count", 0)) > 0 else "clean")),
-                "rate_limits": _coerce_non_negative_int(entry.get("rate_limits", 0)),
-                "dry_run": bool(entry.get("dry_run", False)),
-                "oldest": entry.get("oldest"),
-                "error": entry.get("error"),
-            })
+            channel_entries.append(
+                {
+                    "timestamp": _coerce_timestamp(
+                        entry.get("timestamp"),
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    ),
+                    "triggered_by": str(entry.get("triggered_by") or "unknown"),
+                    "count": _coerce_non_negative_int(entry.get("count", 0)),
+                    "category": str(entry.get("category") or "Standalone"),
+                    "status": str(
+                        entry.get("status")
+                        or (
+                            "error"
+                            if entry.get("error")
+                            else (
+                                "deleted"
+                                if _coerce_non_negative_int(entry.get("count", 0)) > 0
+                                else "clean"
+                            )
+                        )
+                    ),
+                    "rate_limits": _coerce_non_negative_int(
+                        entry.get("rate_limits", 0)
+                    ),
+                    "dry_run": bool(entry.get("dry_run", False)),
+                    "oldest": entry.get("oldest"),
+                    "error": entry.get("error"),
+                }
+            )
         if channel_entries:
             normalized[str(ch_id)] = channel_entries[-50:]
     return normalized
@@ -203,11 +238,21 @@ def _normalize_stats_payload(payload) -> dict:
     now = datetime.now().strftime("%Y-%m-%d")
     return {
         "all_time": _normalize_stats_bucket(payload.get("all_time", {})),
-        "rolling_30": _normalize_stats_bucket(payload.get("rolling_30", {}), default_reset=now),
-        "monthly": _normalize_stats_bucket(payload.get("monthly", {}), default_reset=now),
-        "last_month": _normalize_month_summary(payload.get("last_month"), default_reset=now),
-        "previous_month": _normalize_month_summary(payload.get("previous_month"), default_reset=now),
-        "channel_history": _normalize_channel_history(payload.get("channel_history", {})),
+        "rolling_30": _normalize_stats_bucket(
+            payload.get("rolling_30", {}), default_reset=now
+        ),
+        "monthly": _normalize_stats_bucket(
+            payload.get("monthly", {}), default_reset=now
+        ),
+        "last_month": _normalize_month_summary(
+            payload.get("last_month"), default_reset=now
+        ),
+        "previous_month": _normalize_month_summary(
+            payload.get("previous_month"), default_reset=now
+        ),
+        "channel_history": _normalize_channel_history(
+            payload.get("channel_history", {})
+        ),
     }
 
 
@@ -226,17 +271,21 @@ def _normalize_last_run_payload(payload) -> dict | None:
     for item in categories:
         if not isinstance(item, dict):
             continue
-        normalized_categories.append({
-            "name": str(item.get("name") or "Unknown"),
-            "count": _coerce_non_negative_int(item.get("count", 0)),
-        })
+        normalized_categories.append(
+            {
+                "name": str(item.get("name") or "Unknown"),
+                "count": _coerce_non_negative_int(item.get("count", 0)),
+            }
+        )
 
     return {
         "timestamp": str(payload.get("timestamp") or "N/A"),
         "triggered_by": str(payload.get("triggered_by") or "unknown"),
         "duration": str(payload.get("duration") or "0s"),
         "total_deleted": _coerce_non_negative_int(payload.get("total_deleted", 0)),
-        "channels_checked": _coerce_non_negative_int(payload.get("channels_checked", 0)),
+        "channels_checked": _coerce_non_negative_int(
+            payload.get("channels_checked", 0)
+        ),
         "rate_limits": _coerce_non_negative_int(payload.get("rate_limits", 0)),
         "status": str(payload.get("status") or "unknown"),
         "categories": normalized_categories,
@@ -272,14 +321,18 @@ def _latest_backup_path(backup_type: str) -> str | None:
     return newest
 
 
-def _latest_monthly_report_backup_path(reference_month_key: str | None = None) -> str | None:
+def _latest_monthly_report_backup_path(
+    reference_month_key: str | None = None,
+) -> str | None:
     """Returns the newest stats backup that still contains the just-closed monthly snapshot."""
     reference_month_key = reference_month_key or datetime.now().strftime("%Y-%m")
     for backup_path in sorted(
         (
             os.path.join(backup_dir, filename)
             for backup_dir in _stats_backup_dirs("stats")
-            for filename in (os.listdir(backup_dir) if os.path.isdir(backup_dir) else [])
+            for filename in (
+                os.listdir(backup_dir) if os.path.isdir(backup_dir) else []
+            )
             if filename.startswith("stats-") and filename.endswith(".json.bak")
         ),
         key=lambda path: os.path.getmtime(path) if os.path.exists(path) else 0,
@@ -403,19 +456,25 @@ def list_stats_backups() -> list[dict]:
                 stat = os.stat(path)
             except OSError:
                 continue
-            backups.append({
-                "type": backup_type,
-                "filename": filename,
-                "path": path,
-                "modified": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
-                "size_bytes": stat.st_size,
-            })
+            backups.append(
+                {
+                    "type": backup_type,
+                    "filename": filename,
+                    "path": path,
+                    "modified": datetime.fromtimestamp(stat.st_mtime).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
+                    "size_bytes": stat.st_size,
+                }
+            )
 
     backups.sort(key=lambda item: item["modified"], reverse=True)
     return backups
 
 
-def _backup_existing_file(path: str, prefix: str, backup_type: str, new_content: str | None = None) -> str | None:
+def _backup_existing_file(
+    path: str, prefix: str, backup_type: str, new_content: str | None = None
+) -> str | None:
     """Backs up an existing JSON file before overwriting it."""
     if not os.path.exists(path):
         return None
@@ -424,13 +483,17 @@ def _backup_existing_file(path: str, prefix: str, backup_type: str, new_content:
         with open(path, "r") as f:
             current_content = f.read()
     except PermissionError:
-        log.warning("Permission denied reading %s before backup", os.path.basename(path))
+        log.warning(
+            "Permission denied reading %s before backup", os.path.basename(path)
+        )
         return None
 
     if new_content is not None and current_content == new_content:
         return None
 
-    backup_dir = _stats_backup_dir() if backup_type == "stats" else _last_run_backup_dir()
+    backup_dir = (
+        _stats_backup_dir() if backup_type == "stats" else _last_run_backup_dir()
+    )
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     backup_path = os.path.join(backup_dir, f"{prefix}-{timestamp}.json.bak")
     try:
@@ -499,7 +562,9 @@ def save_stats(stats: dict):
     try:
         normalized = _normalize_stats_payload(stats)
         new_content = json.dumps(normalized, indent=2)
-        backup_path = _backup_existing_file(STATS_FILE, "stats", "stats", new_content=new_content)
+        backup_path = _backup_existing_file(
+            STATS_FILE, "stats", "stats", new_content=new_content
+        )
         atomic_write_text(STATS_FILE, new_content)
         _prune_old_stats_backups()
         if backup_path:
@@ -520,14 +585,21 @@ def update_stats(channel_results: dict, run_context: dict | None = None):
     try:
         stats = load_stats(strict=True)
     except StatsLoadError as e:
-        log.error(f"Skipping stats update to avoid overwriting unreadable stats data — {e}")
+        log.error(
+            f"Skipping stats update to avoid overwriting unreadable stats data — {e}"
+        )
         return
     now = datetime.now()
 
     rolling_reset = datetime.strptime(stats["rolling_30"]["reset"], "%Y-%m-%d")
     if (now - rolling_reset).days >= 30:
         log.info("Resetting rolling 30-day stats")
-        stats["rolling_30"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}
+        stats["rolling_30"] = {
+            "runs": 0,
+            "deleted": 0,
+            "channels": {},
+            "reset": now.strftime("%Y-%m-%d"),
+        }
 
     monthly_reset = datetime.strptime(stats["monthly"]["reset"], "%Y-%m-%d")
     if now.month != monthly_reset.month or now.year != monthly_reset.year:
@@ -549,13 +621,20 @@ def update_stats(channel_results: dict, run_context: dict | None = None):
         else:
             stats["previous_month"] = None
         stats["last_month"] = deepcopy(completed_month)
-        save_monthly_report_source({
-            "display": completed_month,
-            "comparison": stats.get("previous_month"),
-            "captured_at": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "month_key": completed_month["reset"][:7],
-        })
-        stats["monthly"] = {"runs": 0, "deleted": 0, "channels": {}, "reset": now.strftime("%Y-%m-%d")}
+        save_monthly_report_source(
+            {
+                "display": completed_month,
+                "comparison": stats.get("previous_month"),
+                "captured_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "month_key": completed_month["reset"][:7],
+            }
+        )
+        stats["monthly"] = {
+            "runs": 0,
+            "deleted": 0,
+            "channels": {},
+            "reset": now.strftime("%Y-%m-%d"),
+        }
 
     total_deleted = sum(v["count"] for v in channel_results.values() if v["count"] > 0)
 
@@ -565,15 +644,23 @@ def update_stats(channel_results: dict, run_context: dict | None = None):
         for ch_id, ch_data in channel_results.items():
             if ch_data["count"] > 0:
                 if ch_id not in stats[bucket]["channels"]:
-                    stats[bucket]["channels"][ch_id] = {"name": ch_data["name"], "count": 0, "category": ch_data.get("category", "Standalone")}
+                    stats[bucket]["channels"][ch_id] = {
+                        "name": ch_data["name"],
+                        "count": 0,
+                        "category": ch_data.get("category", "Standalone"),
+                    }
                 else:
                     # Update name and category in case they changed
                     stats[bucket]["channels"][ch_id]["name"] = ch_data["name"]
-                    stats[bucket]["channels"][ch_id]["category"] = ch_data.get("category", "Standalone")
+                    stats[bucket]["channels"][ch_id]["category"] = ch_data.get(
+                        "category", "Standalone"
+                    )
                 stats[bucket]["channels"][ch_id]["count"] += ch_data["count"]
 
     save_stats(stats)
-    log.info(f"Stats updated | Run total: {total_deleted} | All-time: {stats['all_time']['deleted']}")
+    log.info(
+        f"Stats updated | Run total: {total_deleted} | All-time: {stats['all_time']['deleted']}"
+    )
 
 
 def record_channel_history(channel_results: dict, run_context: dict | None = None):
@@ -581,11 +668,15 @@ def record_channel_history(channel_results: dict, run_context: dict | None = Non
     try:
         stats = load_stats(strict=True)
     except StatsLoadError as e:
-        log.error(f"Skipping channel history update to avoid overwriting unreadable stats data — {e}")
+        log.error(
+            f"Skipping channel history update to avoid overwriting unreadable stats data — {e}"
+        )
         return
 
     run_context = run_context or {}
-    run_timestamp = str(run_context.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    run_timestamp = str(
+        run_context.get("timestamp") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
     triggered_by = str(run_context.get("triggered_by") or "unknown")
     dry_run = bool(run_context.get("dry_run", False))
 
@@ -596,7 +687,12 @@ def record_channel_history(channel_results: dict, run_context: dict | None = Non
             "triggered_by": triggered_by,
             "count": _coerce_non_negative_int(ch_data.get("count", 0)),
             "category": ch_data.get("category", "Standalone"),
-            "status": ch_data.get("status") or ("error" if ch_data.get("count", 0) < 0 or ch_data.get("error") else "deleted" if ch_data.get("count", 0) > 0 else "clean"),
+            "status": ch_data.get("status")
+            or (
+                "error"
+                if ch_data.get("count", 0) < 0 or ch_data.get("error")
+                else "deleted" if ch_data.get("count", 0) > 0 else "clean"
+            ),
             "rate_limits": _coerce_non_negative_int(ch_data.get("rate_limits", 0)),
             "dry_run": dry_run,
             "oldest": ch_data.get("oldest"),
@@ -640,7 +736,9 @@ def record_catchup_run():
     try:
         stats = load_stats(strict=True)
     except StatsLoadError as e:
-        log.error(f"Skipping catchup stat update to avoid overwriting unreadable stats data — {e}")
+        log.error(
+            f"Skipping catchup stat update to avoid overwriting unreadable stats data — {e}"
+        )
         return
     for bucket in ["all_time", "rolling_30", "monthly"]:
         stats[bucket]["catchup_runs"] = stats[bucket].get("catchup_runs", 0) + 1
@@ -652,6 +750,7 @@ def migrate_stats_categories(guild):
     """One-time migration to backfill missing category fields in existing stats entries.
     Runs on startup — skips entries that already have a category set."""
     from cleanup import build_channel_map
+
     try:
         stats = load_stats(strict=True)
     except StatsLoadError as e:
@@ -686,7 +785,9 @@ def save_last_run(data: dict):
         os.makedirs(DATA_DIR, exist_ok=True)
         normalized = _normalize_last_run_payload(data)
         new_content = json.dumps(normalized, indent=2)
-        backup_path = _backup_existing_file(path, "last-run", "last_run", new_content=new_content)
+        backup_path = _backup_existing_file(
+            path, "last-run", "last_run", new_content=new_content
+        )
         atomic_write_text(path, new_content)
         _prune_old_stats_backups()
         if backup_path:
@@ -707,7 +808,9 @@ def _normalize_report_period_payload(payload) -> dict:
 
     last_sent_at = payload.get("last_sent_at")
     if isinstance(last_sent_at, str) and last_sent_at.strip():
-        normalized["last_sent_at"] = _coerce_timestamp(last_sent_at, last_sent_at.strip())
+        normalized["last_sent_at"] = _coerce_timestamp(
+            last_sent_at, last_sent_at.strip()
+        )
 
     return normalized
 
@@ -730,9 +833,15 @@ def _monthly_report_source_from_stats(stats: dict) -> dict | None:
     if not isinstance(stats, dict):
         return None
 
-    monthly = _normalize_stats_bucket(stats.get("monthly", {}), default_reset=datetime.now().strftime("%Y-%m-%d"))
-    last_month = _normalize_month_summary(stats.get("last_month"), default_reset=datetime.now().strftime("%Y-%m-%d"))
-    previous_month = _normalize_month_summary(stats.get("previous_month"), default_reset=datetime.now().strftime("%Y-%m-%d"))
+    monthly = _normalize_stats_bucket(
+        stats.get("monthly", {}), default_reset=datetime.now().strftime("%Y-%m-%d")
+    )
+    last_month = _normalize_month_summary(
+        stats.get("last_month"), default_reset=datetime.now().strftime("%Y-%m-%d")
+    )
+    previous_month = _normalize_month_summary(
+        stats.get("previous_month"), default_reset=datetime.now().strftime("%Y-%m-%d")
+    )
 
     display = monthly
     comparison = last_month
@@ -812,7 +921,10 @@ def load_monthly_report_source() -> dict | None:
             with open(MONTHLY_REPORT_SOURCE_FILE, "r") as f:
                 payload = json.load(f)
             normalized = _normalize_monthly_report_source_payload(payload)
-            if normalized.get("display", {}).get("channels") and normalized.get("month_key") != current_month_key:
+            if (
+                normalized.get("display", {}).get("channels")
+                and normalized.get("month_key") != current_month_key
+            ):
                 return _backfill_comparison(normalized)
         except (OSError, ValueError, json.JSONDecodeError):
             pass
@@ -880,7 +992,11 @@ def record_report_sent(label: str, sent_at: datetime | None = None):
 
     try:
         atomic_write_text(REPORT_STATE_FILE, json.dumps(state, indent=2))
-        log.info("%s report state recorded for %s", label.capitalize(), state[label]["last_sent"])
+        log.info(
+            "%s report state recorded for %s",
+            label.capitalize(),
+            state[label]["last_sent"],
+        )
     except (OSError, ValueError) as e:
         log.warning(f"Could not save report state — {e}")
 

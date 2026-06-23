@@ -3,6 +3,7 @@ notifications.py — Discord embed notifications for startup, deploy, reports, a
 All functions are async and post directly to the configured log or report channel.
 Startup notification includes an update check against the latest VERSION on main.
 """
+
 import asyncio
 import os
 import urllib.request
@@ -11,9 +12,15 @@ from datetime import datetime
 from collections import deque
 
 from config import (
-    BOT_VERSION, DATA_DIR, GITHUB_TOKEN, LAST_VERSION_FILE, LOG_CHANNEL_ID,
-    MISSED_RUN_THRESHOLD_MINUTES, REPORT_CHANNEL_ID, WARN_UNCONFIGURED,
-    log
+    BOT_VERSION,
+    DATA_DIR,
+    GITHUB_TOKEN,
+    LAST_VERSION_FILE,
+    LOG_CHANNEL_ID,
+    MISSED_RUN_THRESHOLD_MINUTES,
+    REPORT_CHANNEL_ID,
+    WARN_UNCONFIGURED,
+    log,
 )
 import config as cfg
 from file_utils import atomic_write_text
@@ -77,7 +84,12 @@ def _load_recent_changelog_entries(last_version: str | None = None) -> list[str]
     return entries
 
 
-def _build_notification_leaderboard(channels: dict, channel_map: dict, limit: int = 10, group_notification_groups: bool = True) -> list[dict]:
+def _build_notification_leaderboard(
+    channels: dict,
+    channel_map: dict,
+    limit: int = 10,
+    group_notification_groups: bool = True,
+) -> list[dict]:
     """Aggregates report entries by notification_group while preserving standalone channels."""
     grouped = {}
 
@@ -99,7 +111,11 @@ def _build_notification_leaderboard(channels: dict, channel_map: dict, limit: in
         report_individual = live_config.get("report_individual", False)
         notification_group = live_config.get("notification_group")
         explicit_group = live_config.get("report_group_override")
-        should_group = bool(notification_group) and not report_individual and (group_notification_groups or bool(explicit_group))
+        should_group = (
+            bool(notification_group)
+            and not report_individual
+            and (group_notification_groups or bool(explicit_group))
+        )
 
         if should_group:
             key = f"group:{notification_group}"
@@ -169,9 +185,13 @@ def sanitize_embed(embed):
 
     footer = getattr(embed, "_footer", {}) or {}
     if footer.get("text") and hasattr(embed, "set_footer"):
-        embed.set_footer(text=_truncate_text(footer.get("text", ""), EMBED_FOOTER_LIMIT))
+        embed.set_footer(
+            text=_truncate_text(footer.get("text", ""), EMBED_FOOTER_LIMIT)
+        )
 
-    while _embed_text_length(embed) > EMBED_TOTAL_LIMIT and getattr(embed, "_fields", None):
+    while _embed_text_length(embed) > EMBED_TOTAL_LIMIT and getattr(
+        embed, "_fields", None
+    ):
         trimmed_fields = list(embed._fields)
         last_field = trimmed_fields[-1]
         excess = _embed_text_length(embed) - EMBED_TOTAL_LIMIT
@@ -183,12 +203,18 @@ def sanitize_embed(embed):
             trimmed_fields[-1] = {**last_field, "value": new_value}
         embed.clear_fields()
         for field in trimmed_fields:
-            embed.add_field(name=field.get("name", ""), value=field.get("value", ""), inline=field.get("inline", False))
+            embed.add_field(
+                name=field.get("name", ""),
+                value=field.get("value", ""),
+                inline=field.get("inline", False),
+            )
 
     return embed
 
 
-async def safe_send_embed(channel, embed, *, fallback_text: str | None = None, context: str = "notification") -> bool:
+async def safe_send_embed(
+    channel, embed, *, fallback_text: str | None = None, context: str = "notification"
+) -> bool:
     """Sends an embed safely with trimming and optional plain-text fallback."""
     sanitize_embed(embed)
     try:
@@ -202,13 +228,18 @@ async def safe_send_embed(channel, embed, *, fallback_text: str | None = None, c
         if fallback_text:
             try:
                 log.warning("Falling back to plain-text send for %s", context)
-                _recent_notification_fallbacks.append({
-                    "context": context,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                })
+                _recent_notification_fallbacks.append(
+                    {
+                        "context": context,
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                )
                 await channel.send(content=_truncate_text(fallback_text, 2000))
             except discord.Forbidden:
-                log.warning("Could not send %s fallback text — missing Discord permissions", context)
+                log.warning(
+                    "Could not send %s fallback text — missing Discord permissions",
+                    context,
+                )
             except discord.HTTPException:
                 log.exception("Could not send %s fallback text", context)
         return False
@@ -221,18 +252,24 @@ def get_recent_notification_fallbacks() -> list[dict]:
 
 async def _fetch_latest_version() -> str | None:
     """Fetches the latest version from the VERSION file on main branch. Returns None on failure."""
+
     def _get():
-        url = "https://raw.githubusercontent.com/antwanchild/discord_cleanup/main/VERSION"
+        url = (
+            "https://raw.githubusercontent.com/antwanchild/discord_cleanup/main/VERSION"
+        )
         headers = {"User-Agent": "discord-cleanup-bot"}
         if GITHUB_TOKEN:
             headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=5) as resp:
             return resp.read().decode().strip()
+
     try:
         return await asyncio.to_thread(_get)
     except Exception as e:
-        log.warning(f"Version check failed — {e}. If the repo is private, set GITHUB_TOKEN in your .env.")
+        log.warning(
+            f"Version check failed — {e}. If the repo is private, set GITHUB_TOKEN in your .env."
+        )
         return None
 
 
@@ -252,12 +289,17 @@ async def post_startup_notification(bot, guild):
         accounted_ids = {ch["id"] for ch in config.raw_channels}
         for discord_channel in guild.text_channels:
             if discord_channel.id not in accounted_ids:
-                if discord_channel.category and discord_channel.category.id in accounted_ids:
+                if (
+                    discord_channel.category
+                    and discord_channel.category.id in accounted_ids
+                ):
                     continue
                 unaccounted.append(discord_channel)
 
     channel_map = build_channel_map(guild)
-    missing_configured = sum(1 for entry in config.raw_channels if guild.get_channel(entry["id"]) is None)
+    missing_configured = sum(
+        1 for entry in config.raw_channels if guild.get_channel(entry["id"]) is None
+    )
     configured_channels = len(channel_map)
     report_channel = bot.get_channel(REPORT_CHANNEL_ID)
 
@@ -283,7 +325,7 @@ async def post_startup_notification(bot, guild):
         title=f"🟢 Bot Online — v{BOT_VERSION}",
         description=description,
         color=0x2ECC71 if not unaccounted else 0xFFA500,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     embed.add_field(
         name="Startup Self-Check",
@@ -294,7 +336,7 @@ async def post_startup_notification(bot, guild):
             f"Missing configured targets: **{missing_configured}**\n"
             f"Unconfigured text channels: **{len(unaccounted)}**"
         ),
-        inline=False
+        inline=False,
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_send_embed(
@@ -320,7 +362,9 @@ async def post_deploy_notification(bot, guild):
             with open(LAST_VERSION_FILE, "r") as f:
                 last_version = f.read().strip()
         except PermissionError:
-            log.error(f"Could not read {LAST_VERSION_FILE} — check directory permissions.")
+            log.error(
+                f"Could not read {LAST_VERSION_FILE} — check directory permissions."
+            )
             return
 
     try:
@@ -339,7 +383,9 @@ async def post_deploy_notification(bot, guild):
         return
 
     if last_version:
-        log.info(f"New version detected — {last_version} -> {BOT_VERSION}, posting deploy notification")
+        log.info(
+            f"New version detected — {last_version} -> {BOT_VERSION}, posting deploy notification"
+        )
         description = f"Updated from **v{last_version}** to **v{BOT_VERSION}**"
     else:
         log.info(f"First run detected — posting deploy notification for v{BOT_VERSION}")
@@ -355,14 +401,18 @@ async def post_deploy_notification(bot, guild):
         title=f"🚀 New Version Deployed — v{BOT_VERSION}",
         description=description,
         color=0x5865F2,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     if changelog:
         # Truncate if too long for Discord field limit
         if len(changelog) > 1000:
             changelog = changelog[:997] + "..."
         embed.add_field(name="📝 Changes", value=changelog, inline=False)
-    embed.add_field(name="🐳 Image", value=f"`ghcr.io/antwanchild/discord_cleanup:{BOT_VERSION}`", inline=False)
+    embed.add_field(
+        name="🐳 Image",
+        value=f"`ghcr.io/antwanchild/discord_cleanup:{BOT_VERSION}`",
+        inline=False,
+    )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_send_embed(
         log_channel,
@@ -381,7 +431,10 @@ async def post_missed_report_notification(bot, label: str, missed_period: str):
     """Posts a notification when a scheduled report was missed and is being caught up."""
     report_channel = bot.get_channel(REPORT_CHANNEL_ID)
     if not report_channel:
-        log.warning("Could not post missed %s report notification — report channel not found", label)
+        log.warning(
+            "Could not post missed %s report notification — report channel not found",
+            label,
+        )
         return
 
     embed = discord.Embed(
@@ -444,8 +497,15 @@ async def post_status_report(bot, guild, label: str = "monthly"):
 
     channels = display.get("channels", {})
     channel_map = build_channel_map(guild)
-    group_notification_groups = cfg.REPORT_GROUP_MONTHLY if label == "monthly" else cfg.REPORT_GROUP_WEEKLY
-    leaderboard = _build_notification_leaderboard(channels, channel_map, limit=10, group_notification_groups=group_notification_groups)
+    group_notification_groups = (
+        cfg.REPORT_GROUP_MONTHLY if label == "monthly" else cfg.REPORT_GROUP_WEEKLY
+    )
+    leaderboard = _build_notification_leaderboard(
+        channels,
+        channel_map,
+        limit=10,
+        group_notification_groups=group_notification_groups,
+    )
 
     # Build diff string using the prior period that matches the displayed month.
     diff_str = ""
@@ -472,21 +532,25 @@ async def post_status_report(bot, guild, label: str = "monthly"):
             f"📋 Active channels: **{len(channels)}**"
         ),
         color=0xE67E22,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
 
     if leaderboard:
+
         def ch_display(item):
             if item["grouped"]:
                 return f"`{item['label']}` — **{item['count']}** deleted across **{len(item['channels'])}** channels"
             return f"`{item['label']}` — **{item['count']}** deleted"
+
         embed.add_field(
             name="🏆 Top Groups",
             value="\n".join([ch_display(item) for item in leaderboard]),
-            inline=False
+            inline=False,
         )
     else:
-        embed.add_field(name="🏆 Top Groups", value="No messages deleted this period", inline=False)
+        embed.add_field(
+            name="🏆 Top Groups", value="No messages deleted this period", inline=False
+        )
 
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     sent = await safe_send_embed(
@@ -506,7 +570,9 @@ async def post_status_report(bot, guild, label: str = "monthly"):
     return sent
 
 
-async def post_schedule_notification(bot, guild, old_times: list, new_times: list, changed_by: str):
+async def post_schedule_notification(
+    bot, guild, old_times: list, new_times: list, changed_by: str
+):
     """Posts a notification when the cleanup schedule is changed."""
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
     if not log_channel:
@@ -521,7 +587,7 @@ async def post_schedule_notification(bot, guild, old_times: list, new_times: lis
             f"**After:** `{', '.join(new_times)}`"
         ),
         color=0x5865F2,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_send_embed(
@@ -530,7 +596,9 @@ async def post_schedule_notification(bot, guild, old_times: list, new_times: lis
         fallback_text="Schedule update notification generated, but the full embed could not be delivered.",
         context="schedule notification",
     )
-    log.info(f"Schedule notification posted — {', '.join(old_times)} -> {', '.join(new_times)}")
+    log.info(
+        f"Schedule notification posted — {', '.join(old_times)} -> {', '.join(new_times)}"
+    )
 
 
 async def post_missed_run_alert(bot, guild, scheduled_time: str):
@@ -549,7 +617,7 @@ async def post_missed_run_alert(bot, guild, scheduled_time: str):
             f"Check the container logs for issues."
         ),
         color=0xFFA500,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_send_embed(
@@ -576,7 +644,7 @@ async def post_catchup_notification(bot, guild, missed_time_str: str):
             f"Running now to catch up."
         ),
         color=0x5865F2,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_send_embed(
@@ -592,7 +660,9 @@ async def post_schedule_error_notification(bot, guild, error: str):
     """Posts a notification when the cleanup task fails to reschedule after a schedule change."""
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
     if not log_channel:
-        log.warning("Could not post schedule error notification — log channel not found")
+        log.warning(
+            "Could not post schedule error notification — log channel not found"
+        )
         return
     embed = discord.Embed(
         title="⚠️ Schedule Saved — Task Reschedule Failed",
@@ -603,7 +673,7 @@ async def post_schedule_error_notification(bot, guild, error: str):
             f"The new schedule will take effect on the next container restart."
         ),
         color=0xFFA500,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_send_embed(

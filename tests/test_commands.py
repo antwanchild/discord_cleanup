@@ -12,7 +12,9 @@ class CommandSendHelperTests(unittest.TestCase):
             pass
 
         class DummyEmbed:
-            def __init__(self, title=None, description=None, color=None, timestamp=None):
+            def __init__(
+                self, title=None, description=None, color=None, timestamp=None
+            ):
                 self.title = title
                 self.description = description
                 self.color = color
@@ -45,6 +47,7 @@ class CommandSendHelperTests(unittest.TestCase):
             def command(self, *args, **kwargs):
                 def decorator(func):
                     return func
+
                 return decorator
 
             def error(self, func):
@@ -53,6 +56,7 @@ class CommandSendHelperTests(unittest.TestCase):
         def passthrough_decorator(*args, **kwargs):
             def decorator(func):
                 return func
+
             return decorator
 
         app_commands = types.SimpleNamespace(
@@ -72,6 +76,7 @@ class CommandSendHelperTests(unittest.TestCase):
         def button(*args, **kwargs):
             def decorator(func):
                 return func
+
             return decorator
 
         ui = types.SimpleNamespace(View=DummyView, button=button, Button=object)
@@ -99,7 +104,11 @@ class CommandSendHelperTests(unittest.TestCase):
             WARN_UNCONFIGURED=False,
             log=logging.getLogger("test-commands"),
         )
-        cleanup_stub = types.SimpleNamespace(build_channel_map=lambda *_a, **_k: {}, run_cleanup=lambda *_a, **_k: None, purge_all_channel=lambda *_a, **_k: None)
+        cleanup_stub = types.SimpleNamespace(
+            build_channel_map=lambda *_a, **_k: {},
+            run_cleanup=lambda *_a, **_k: None,
+            purge_all_channel=lambda *_a, **_k: None,
+        )
         notifications_stub = types.SimpleNamespace(
             post_status_report=lambda *_a, **_k: None,
             safe_send_embed=lambda *_a, **_k: True,
@@ -117,7 +126,9 @@ class CommandSendHelperTests(unittest.TestCase):
         return discord_stub, config_stub, cleanup_stub, notifications_stub, utils_stub
 
     def test_safe_followup_send_falls_back_to_content(self):
-        discord_stub, config_stub, cleanup_stub, notifications_stub, utils_stub = self._module_stubs()
+        discord_stub, config_stub, cleanup_stub, notifications_stub, utils_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "commands",
@@ -129,6 +140,7 @@ class CommandSendHelperTests(unittest.TestCase):
                 "utils": utils_stub,
             },
         ) as commands:
+
             class Followup:
                 def __init__(self):
                     self.calls = []
@@ -159,7 +171,9 @@ class CommandSendHelperTests(unittest.TestCase):
         self.assertEqual(interaction.followup.calls[1]["content"], "fallback")
 
     def test_safe_response_send_falls_back_to_followup(self):
-        discord_stub, config_stub, cleanup_stub, notifications_stub, utils_stub = self._module_stubs()
+        discord_stub, config_stub, cleanup_stub, notifications_stub, utils_stub = (
+            self._module_stubs()
+        )
 
         with isolated_module_import(
             "commands",
@@ -171,6 +185,7 @@ class CommandSendHelperTests(unittest.TestCase):
                 "utils": utils_stub,
             },
         ) as commands:
+
             class Response:
                 async def send_message(self, **kwargs):
                     raise discord_stub.HTTPException("boom")

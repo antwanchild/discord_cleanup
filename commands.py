@@ -2,6 +2,7 @@
 commands.py — Discord slash commands for the cleanup group.
 All commands require Administrator permissions and respond ephemerally.
 """
+
 from __future__ import annotations
 
 import discord
@@ -12,7 +13,12 @@ from typing import Any, cast
 
 import config as cfg
 from config import (
-    BOT_VERSION, DEFAULT_RETENTION, LOG_CHANNEL_ID, LOG_DIR, LOG_MAX_FILES, log
+    BOT_VERSION,
+    DEFAULT_RETENTION,
+    LOG_CHANNEL_ID,
+    LOG_DIR,
+    LOG_MAX_FILES,
+    log,
 )
 from cleanup import build_channel_map, run_cleanup, purge_all_channel
 from notifications import post_status_report, safe_send_embed, sanitize_embed
@@ -26,8 +32,9 @@ from utils import (
     try_acquire_run,
 )
 
-
-cleanup_group = app_commands.Group(name="cleanup", description="Discord Cleanup Bot commands")
+cleanup_group = app_commands.Group(
+    name="cleanup", description="Discord Cleanup Bot commands"
+)
 
 
 async def safe_followup_send(
@@ -50,12 +57,18 @@ async def safe_followup_send(
         await interaction.followup.send(**send_kwargs)
         return True
     except discord.HTTPException:
-        log.exception("Failed to send command followup | command=%s", getattr(interaction.command, "name", "unknown"))
+        log.exception(
+            "Failed to send command followup | command=%s",
+            getattr(interaction.command, "name", "unknown"),
+        )
         if embed is not None and fallback_text:
             try:
                 await interaction.followup.send(content=fallback_text, **kwargs)
             except discord.HTTPException:
-                log.exception("Failed to send command followup fallback | command=%s", getattr(interaction.command, "name", "unknown"))
+                log.exception(
+                    "Failed to send command followup fallback | command=%s",
+                    getattr(interaction.command, "name", "unknown"),
+                )
         return False
 
 
@@ -79,89 +92,153 @@ async def safe_response_send(
         await interaction.response.send_message(**send_kwargs)
         return True
     except discord.HTTPException:
-        log.exception("Failed to send command response | command=%s", getattr(interaction.command, "name", "unknown"))
+        log.exception(
+            "Failed to send command response | command=%s",
+            getattr(interaction.command, "name", "unknown"),
+        )
         if embed is not None and fallback_text:
             try:
                 await interaction.followup.send(content=fallback_text, **kwargs)
             except discord.HTTPException:
-                log.exception("Failed to send command response fallback | command=%s", getattr(interaction.command, "name", "unknown"))
+                log.exception(
+                    "Failed to send command response fallback | command=%s",
+                    getattr(interaction.command, "name", "unknown"),
+                )
         return False
 
 
-@cleanup_group.command(name="run", description="Trigger a full cleanup run on all configured channels")
+@cleanup_group.command(
+    name="run", description="Trigger a full cleanup run on all configured channels"
+)
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_run(interaction: discord.Interaction):
     bot = get_bot()
     guild = interaction.guild
     if guild is None:
-        await interaction.response.send_message("⛔ This command can only be used in a server.", ephemeral=True)
+        await interaction.response.send_message(
+            "⛔ This command can only be used in a server.", ephemeral=True
+        )
         return
     if is_run_in_progress():
-        await interaction.response.send_message("⚠️ A cleanup run is already in progress. Please wait for it to finish.", ephemeral=True)
+        await interaction.response.send_message(
+            "⚠️ A cleanup run is already in progress. Please wait for it to finish.",
+            ephemeral=True,
+        )
         return
     if not try_acquire_run(f"slash command ({interaction.user})"):
-        await interaction.response.send_message("⚠️ A cleanup run is already in progress. Please wait for it to finish.", ephemeral=True)
+        await interaction.response.send_message(
+            "⚠️ A cleanup run is already in progress. Please wait for it to finish.",
+            ephemeral=True,
+        )
         return
-    await interaction.response.send_message("🧹 Full cleanup started — report will be posted to the log channel when complete.", ephemeral=True)
+    await interaction.response.send_message(
+        "🧹 Full cleanup started — report will be posted to the log channel when complete.",
+        ephemeral=True,
+    )
     channel_name = getattr(interaction.channel, "name", "DM")
     log.info(f"Manual full cleanup triggered by {interaction.user} in #{channel_name}")
     try:
-        await run_cleanup(bot, guild, triggered_by=f"slash command ({interaction.user})")
+        await run_cleanup(
+            bot, guild, triggered_by=f"slash command ({interaction.user})"
+        )
     finally:
         release_run()
 
 
-@cleanup_group.command(name="channel", description="Trigger cleanup on a specific configured channel")
+@cleanup_group.command(
+    name="channel", description="Trigger cleanup on a specific configured channel"
+)
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(channel="The channel to clean up")
-async def cleanup_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+async def cleanup_channel(
+    interaction: discord.Interaction, channel: discord.TextChannel
+):
     bot = get_bot()
     guild = interaction.guild
     if guild is None:
-        await interaction.response.send_message("⛔ This command can only be used in a server.", ephemeral=True)
+        await interaction.response.send_message(
+            "⛔ This command can only be used in a server.", ephemeral=True
+        )
         return
     channel_map = build_channel_map(guild)
     if channel.id not in channel_map:
-        await interaction.response.send_message(f"⚠️ `#{channel.name}` is not in your configured channels. Check `channels.yml`.", ephemeral=True)
+        await interaction.response.send_message(
+            f"⚠️ `#{channel.name}` is not in your configured channels. Check `channels.yml`.",
+            ephemeral=True,
+        )
         return
     if is_run_in_progress():
-        await interaction.response.send_message("⚠️ A cleanup run is already in progress. Please wait for it to finish.", ephemeral=True)
+        await interaction.response.send_message(
+            "⚠️ A cleanup run is already in progress. Please wait for it to finish.",
+            ephemeral=True,
+        )
         return
     if not try_acquire_run(f"slash command ({interaction.user})"):
-        await interaction.response.send_message("⚠️ A cleanup run is already in progress. Please wait for it to finish.", ephemeral=True)
+        await interaction.response.send_message(
+            "⚠️ A cleanup run is already in progress. Please wait for it to finish.",
+            ephemeral=True,
+        )
         return
-    await interaction.response.send_message(f"🧹 Cleanup started for `#{channel.name}` — report will be posted to the log channel when complete.", ephemeral=True)
-    log.info(f"Manual channel cleanup triggered by {interaction.user} for #{channel.name}")
+    await interaction.response.send_message(
+        f"🧹 Cleanup started for `#{channel.name}` — report will be posted to the log channel when complete.",
+        ephemeral=True,
+    )
+    log.info(
+        f"Manual channel cleanup triggered by {interaction.user} for #{channel.name}"
+    )
     try:
-        await run_cleanup(bot, guild, single_channel_id=channel.id, triggered_by=f"slash command ({interaction.user})")
+        await run_cleanup(
+            bot,
+            guild,
+            single_channel_id=channel.id,
+            triggered_by=f"slash command ({interaction.user})",
+        )
     finally:
         release_run()
 
 
-@cleanup_group.command(name="dryrun", description="Preview what would be deleted without actually deleting anything")
+@cleanup_group.command(
+    name="dryrun",
+    description="Preview what would be deleted without actually deleting anything",
+)
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_dryrun(interaction: discord.Interaction):
     bot = get_bot()
     guild = interaction.guild
     if guild is None:
-        await interaction.response.send_message("⛔ This command can only be used in a server.", ephemeral=True)
+        await interaction.response.send_message(
+            "⛔ This command can only be used in a server.", ephemeral=True
+        )
         return
     if is_run_in_progress():
-        await interaction.response.send_message("⚠️ A cleanup run is already in progress. Please wait for it to finish.", ephemeral=True)
+        await interaction.response.send_message(
+            "⚠️ A cleanup run is already in progress. Please wait for it to finish.",
+            ephemeral=True,
+        )
         return
     if not try_acquire_run(f"slash command ({interaction.user})"):
-        await interaction.response.send_message("⚠️ A cleanup run is already in progress. Please wait for it to finish.", ephemeral=True)
+        await interaction.response.send_message(
+            "⚠️ A cleanup run is already in progress. Please wait for it to finish.",
+            ephemeral=True,
+        )
         return
-    await interaction.response.send_message("🔍 Dry run started — preview report will be posted to the log channel when complete.", ephemeral=True)
+    await interaction.response.send_message(
+        "🔍 Dry run started — preview report will be posted to the log channel when complete.",
+        ephemeral=True,
+    )
     channel_name = getattr(interaction.channel, "name", "DM")
     log.info(f"Dry run triggered by {interaction.user} in #{channel_name}")
     try:
-        await run_cleanup(bot, guild, dry_run=True, triggered_by=f"slash command ({interaction.user})")
+        await run_cleanup(
+            bot, guild, dry_run=True, triggered_by=f"slash command ({interaction.user})"
+        )
     finally:
         release_run()
 
 
-@cleanup_group.command(name="reload", description="Reload channels.yml without restarting the bot")
+@cleanup_group.command(
+    name="reload", description="Reload channels.yml without restarting the bot"
+)
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_reload(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
@@ -171,7 +248,7 @@ async def cleanup_reload(interaction: discord.Interaction):
         title="🔄 channels.yml Reloaded" if success else "🔄 Reload Failed",
         description=f"{'✅' if success else '⛔'} {message}",
         color=0x2ECC71 if success else 0xFF0000,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_followup_send(
@@ -194,7 +271,7 @@ async def cleanup_version(interaction: discord.Interaction):
             f"🕐 Scheduled runs: **{', '.join(cfg.CLEAN_TIMES)}**"
         ),
         color=0x5865F2,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_followup_send(
@@ -205,13 +282,17 @@ async def cleanup_version(interaction: discord.Interaction):
     )
 
 
-@cleanup_group.command(name="status", description="Show current bot configuration and next scheduled run")
+@cleanup_group.command(
+    name="status", description="Show current bot configuration and next scheduled run"
+)
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_status(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     guild = interaction.guild
     if guild is None:
-        await interaction.followup.send("⛔ This command can only be used in a server.", ephemeral=True)
+        await interaction.followup.send(
+            "⛔ This command can only be used in a server.", ephemeral=True
+        )
         return
 
     configured_count = 0
@@ -228,12 +309,20 @@ async def cleanup_status(interaction: discord.Interaction):
                 guild_me = getattr(guild, "me", None)
                 category_text_channels = cast(Any, category).text_channels
                 for sub in category_text_channels:
-                    if guild_me is not None and sub.id not in exclude_ids and sub.permissions_for(guild_me).manage_messages:
+                    if (
+                        guild_me is not None
+                        and sub.id not in exclude_ids
+                        and sub.permissions_for(guild_me).manage_messages
+                    ):
                         configured_count += 1
         else:
             discord_channel = guild.get_channel(ch["id"])
             if discord_channel and discord_channel.category:
-                if any(c["id"] == discord_channel.category.id for c in cfg.raw_channels if c.get("type") == "category"):
+                if any(
+                    c["id"] == discord_channel.category.id
+                    for c in cfg.raw_channels
+                    if c.get("type") == "category"
+                ):
                     continue
             configured_count += 1
 
@@ -250,7 +339,9 @@ async def cleanup_status(interaction: discord.Interaction):
             channel_lines.append(f"📁 **{ch_name}** ({days}d default{deep})")
         else:
             days = ch.get("days", DEFAULT_RETENTION)
-            retention = f"{days}d ⚡override" if days != last_category_days else f"{days}d"
+            retention = (
+                f"{days}d ⚡override" if days != last_category_days else f"{days}d"
+            )
             channel_lines.append(f"\u3000`#{ch_name}` — {retention}{deep}")
 
     # Split channel lines into pages of max 1000 chars
@@ -285,13 +376,13 @@ async def cleanup_status(interaction: discord.Interaction):
             f"⏱️ Uptime: **{get_uptime_str()}**"
         ),
         color=0x5865F2,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     if pages:
         main_embed.add_field(
             name=f"📋 Configured Channels (🧹 = deep clean enabled){f' — Page 1/{total_pages}' if total_pages > 1 else ''}",
             value=pages[0],
-            inline=False
+            inline=False,
         )
     main_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_followup_send(
@@ -302,14 +393,11 @@ async def cleanup_status(interaction: discord.Interaction):
     )
 
     for i, page in enumerate(pages[1:], start=2):
-        continuation_embed = discord.Embed(
-            color=0x5865F2,
-            timestamp=datetime.now()
-        )
+        continuation_embed = discord.Embed(color=0x5865F2, timestamp=datetime.now())
         continuation_embed.add_field(
             name=f"📋 Configured Channels — Page {i}/{total_pages}",
             value=page,
-            inline=False
+            inline=False,
         )
         continuation_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
         await safe_followup_send(
@@ -320,21 +408,28 @@ async def cleanup_status(interaction: discord.Interaction):
         )
 
 
-@cleanup_group.command(name="test", description="Post a test notification to the log channel")
+@cleanup_group.command(
+    name="test", description="Post a test notification to the log channel"
+)
 @app_commands.checks.has_permissions(administrator=True)
 async def cleanup_test(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     bot = get_bot()
     guild = interaction.guild
     if guild is None:
-        await interaction.followup.send("⛔ This command can only be used in a server.", ephemeral=True)
+        await interaction.followup.send(
+            "⛔ This command can only be used in a server.", ephemeral=True
+        )
         return
     if bot is None:
         await interaction.followup.send("⛔ Bot is not ready yet.", ephemeral=True)
         return
     log_channel = bot.get_channel(LOG_CHANNEL_ID)
     if not log_channel:
-        await interaction.followup.send("⛔ Could not find the log channel — check `LOG_CHANNEL_ID` in your env file.", ephemeral=True)
+        await interaction.followup.send(
+            "⛔ Could not find the log channel — check `LOG_CHANNEL_ID` in your env file.",
+            ephemeral=True,
+        )
         return
     embed = discord.Embed(
         title="✅ Test Notification",
@@ -344,7 +439,7 @@ async def cleanup_test(interaction: discord.Interaction):
             f"📋 Log channel is working correctly."
         ),
         color=0x2ECC71,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_send_embed(
@@ -354,46 +449,72 @@ async def cleanup_test(interaction: discord.Interaction):
         context="test notification",
     )
     log.info(f"Test notification posted by {interaction.user}")
-    await interaction.followup.send(f"✅ Test notification posted to {log_channel.mention}.", ephemeral=True)
+    await interaction.followup.send(
+        f"✅ Test notification posted to {log_channel.mention}.", ephemeral=True
+    )
 
 
-@cleanup_group.command(name="report", description="Post the stats report to the report channel on demand")
+@cleanup_group.command(
+    name="report", description="Post the stats report to the report channel on demand"
+)
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(label="Report type to post")
-@app_commands.choices(label=[
-    app_commands.Choice(name="Monthly", value="monthly"),
-    app_commands.Choice(name="Weekly", value="weekly"),
-])
-async def cleanup_report(interaction: discord.Interaction, label: app_commands.Choice[str] | None = None):
+@app_commands.choices(
+    label=[
+        app_commands.Choice(name="Monthly", value="monthly"),
+        app_commands.Choice(name="Weekly", value="weekly"),
+    ]
+)
+async def cleanup_report(
+    interaction: discord.Interaction, label: app_commands.Choice[str] | None = None
+):
     await interaction.response.defer(ephemeral=True)
     bot = get_bot()
     report_label = label.value if label else "monthly"
     guild = interaction.guild
     if guild is None:
-        await interaction.followup.send("⛔ This command can only be used in a server.", ephemeral=True)
+        await interaction.followup.send(
+            "⛔ This command can only be used in a server.", ephemeral=True
+        )
         return
     await post_status_report(bot, guild, report_label)
     log.info(f"On-demand {report_label} report triggered by {interaction.user}")
-    await interaction.followup.send(f"✅ {report_label.capitalize()} report posted to the report channel.", ephemeral=True)
+    await interaction.followup.send(
+        f"✅ {report_label.capitalize()} report posted to the report channel.",
+        ephemeral=True,
+    )
 
 
 class PurgeConfirmView(discord.ui.View):
-    def __init__(self, channel: discord.TextChannel, user: discord.User | discord.Member, bot):
+    def __init__(
+        self, channel: discord.TextChannel, user: discord.User | discord.Member, bot
+    ):
         super().__init__(timeout=30)
         self.channel = channel
         self.user = user
         self.bot = bot
 
     @discord.ui.button(label="Confirm Purge", style=discord.ButtonStyle.danger)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def confirm(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         if interaction.user.id != self.user.id:
-            await interaction.response.send_message("⛔ Only the person who triggered this purge can confirm it.", ephemeral=True)
+            await interaction.response.send_message(
+                "⛔ Only the person who triggered this purge can confirm it.",
+                ephemeral=True,
+            )
             return
         if is_run_in_progress():
-            await interaction.response.send_message("⚠️ A cleanup run is already in progress. Please wait for it to finish.", ephemeral=True)
+            await interaction.response.send_message(
+                "⚠️ A cleanup run is already in progress. Please wait for it to finish.",
+                ephemeral=True,
+            )
             return
         if not try_acquire_run(f"purge ({self.user})"):
-            await interaction.response.send_message("⚠️ A cleanup run is already in progress. Please wait for it to finish.", ephemeral=True)
+            await interaction.response.send_message(
+                "⚠️ A cleanup run is already in progress. Please wait for it to finish.",
+                ephemeral=True,
+            )
             return
         self.stop()
         await interaction.response.edit_message(
@@ -401,9 +522,9 @@ class PurgeConfirmView(discord.ui.View):
                 title="🗑️ Purging...",
                 description=f"Deleting all messages in `#{self.channel.name}` — this may take a while.",
                 color=0xFFA500,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             ).set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}"),
-            view=None
+            view=None,
         )
         try:
             result = await purge_all_channel(self.channel)
@@ -415,7 +536,7 @@ class PurgeConfirmView(discord.ui.View):
                 title="⛔ Purge Failed",
                 description=f"Error purging `#{self.channel.name}`: `{result['error']}`\n{result['count']} messages deleted before failure.",
                 color=0xFF0000,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
         else:
             embed = discord.Embed(
@@ -427,7 +548,7 @@ class PurgeConfirmView(discord.ui.View):
                     f"🗑️ Messages deleted: **{result['count']}**"
                 ),
                 color=0x2ECC71,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
         embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
         if log_channel:
@@ -437,12 +558,17 @@ class PurgeConfirmView(discord.ui.View):
                 fallback_text=f"Purge result for #{self.channel.name} generated, but the full embed could not be delivered.",
                 context="purge result notification",
             )
-        log.info(f"Purge complete on #{self.channel.name} — {result['count']} deleted by {self.user}")
+        log.info(
+            f"Purge complete on #{self.channel.name} — {result['count']} deleted by {self.user}"
+        )
 
     @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.user.id:
-            await interaction.response.send_message("⛔ Only the person who triggered this purge can cancel it.", ephemeral=True)
+            await interaction.response.send_message(
+                "⛔ Only the person who triggered this purge can cancel it.",
+                ephemeral=True,
+            )
             return
         self.stop()
         log.info(f"Purge cancelled by {interaction.user} for #{self.channel.name}")
@@ -451,26 +577,33 @@ class PurgeConfirmView(discord.ui.View):
                 title="🗑️ Purge Cancelled",
                 description="No messages were deleted.",
                 color=0x95A5A6,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             ).set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}"),
-            view=None
+            view=None,
         )
 
     async def on_timeout(self):
         log.info(f"Purge confirmation timed out for #{self.channel.name}")
 
 
-@cleanup_group.command(name="purge", description="Delete ALL messages in a configured channel regardless of retention")
+@cleanup_group.command(
+    name="purge",
+    description="Delete ALL messages in a configured channel regardless of retention",
+)
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(channel="The configured channel to purge")
 async def cleanup_purge(interaction: discord.Interaction, channel: discord.TextChannel):
     guild = interaction.guild
     if guild is None:
-        await interaction.response.send_message("⛔ This command can only be used in a server.", ephemeral=True)
+        await interaction.response.send_message(
+            "⛔ This command can only be used in a server.", ephemeral=True
+        )
         return
     channel_map = build_channel_map(guild)
     if channel.id not in channel_map:
-        await interaction.response.send_message(f"⛔ `#{channel.name}` is not in your configured channels.", ephemeral=True)
+        await interaction.response.send_message(
+            f"⛔ `#{channel.name}` is not in your configured channels.", ephemeral=True
+        )
         return
     bot = get_bot()
     embed = discord.Embed(
@@ -480,7 +613,7 @@ async def cleanup_purge(interaction: discord.Interaction, channel: discord.TextC
             f"⚠️ This ignores retention settings and **cannot be undone**."
         ),
         color=0xFF0000,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
     await safe_response_send(
@@ -500,23 +633,32 @@ async def cleanup_logs(interaction: discord.Interaction):
     log_path = os.path.join(LOG_DIR, f"cleanup-{today}.log")
 
     if not os.path.exists(log_path):
-        await interaction.followup.send("⚠️ No log file found for today.", ephemeral=True)
+        await interaction.followup.send(
+            "⚠️ No log file found for today.", ephemeral=True
+        )
         return
 
     file_size = os.path.getsize(log_path)
     if file_size > 8 * 1024 * 1024:
-        await interaction.followup.send("⚠️ Log file exceeds Discord's 8MB limit — please retrieve it directly from `/config/logs`.", ephemeral=True)
+        await interaction.followup.send(
+            "⚠️ Log file exceeds Discord's 8MB limit — please retrieve it directly from `/config/logs`.",
+            ephemeral=True,
+        )
         return
 
     log.info(f"Log file requested by {interaction.user}")
     await interaction.followup.send(
         content=f"📄 `cleanup-{today}.log`",
         file=discord.File(log_path, filename=f"cleanup-{today}.log"),
-        ephemeral=True
+        ephemeral=True,
     )
 
 
 @cleanup_group.error
-async def cleanup_group_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+async def cleanup_group_error(
+    interaction: discord.Interaction, error: app_commands.AppCommandError
+):
     if isinstance(error, app_commands.MissingPermissions):
-        await interaction.response.send_message("⛔ You need Administrator permissions to use this command.", ephemeral=True)
+        await interaction.response.send_message(
+            "⛔ You need Administrator permissions to use this command.", ephemeral=True
+        )

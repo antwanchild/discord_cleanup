@@ -2,6 +2,7 @@
 cleanup_bot.py — Discord bot entry point. Initialises the bot, schedules tasks,
 and wires together cleanup, reporting, health, and web UI threads.
 """
+
 import asyncio
 import signal
 import warnings
@@ -15,21 +16,37 @@ import logging
 import tempfile
 
 from config import (
-    BOT_VERSION, CATCHUP_MISSED_RUNS, CLEAN_TIMES, DATA_DIR, HEALTH_FILE,
-    MISSED_RUN_THRESHOLD_MINUTES, STATUS_REPORT_TIME, TOKEN, LOG_DIR, LOG_LEVEL,
-    log
+    BOT_VERSION,
+    CATCHUP_MISSED_RUNS,
+    CLEAN_TIMES,
+    DATA_DIR,
+    HEALTH_FILE,
+    MISSED_RUN_THRESHOLD_MINUTES,
+    STATUS_REPORT_TIME,
+    TOKEN,
+    LOG_DIR,
+    LOG_LEVEL,
+    log,
 )
 import config as cfg
 from cleanup import run_cleanup, validate_channels
 from commands import cleanup_group
 from file_utils import atomic_write_text
 from notifications import (
-    post_deploy_notification, post_startup_notification,
-    post_missed_monthly_report_notification, post_missed_run_alert,
+    post_deploy_notification,
+    post_startup_notification,
+    post_missed_monthly_report_notification,
+    post_missed_run_alert,
     post_missed_weekly_report_notification,
-    post_status_report, post_catchup_notification,
+    post_status_report,
+    post_catchup_notification,
 )
-from stats import migrate_stats_categories, load_last_run, load_report_state, record_catchup_run
+from stats import (
+    migrate_stats_categories,
+    load_last_run,
+    load_report_state,
+    record_catchup_run,
+)
 from scheduler import _matches_schedule_exception
 from utils import (
     update_health,
@@ -68,11 +85,14 @@ bot = commands.Bot(command_prefix=lambda *_args, **_kwargs: (), intents=intents)
 
 # --- Scheduler Setup ---
 
+
 def build_task_times():
     """Builds timezone-aware datetime.time objects for discord.ext.tasks."""
     tz_name = os.getenv("TZ")
     if not tz_name:
-        log.warning("TZ not set in environment — defaulting to UTC. Set TZ in your compose file to use local time.")
+        log.warning(
+            "TZ not set in environment — defaulting to UTC. Set TZ in your compose file to use local time."
+        )
         tz_name = "UTC"
     try:
         tz = ZoneInfo(tz_name)
@@ -155,9 +175,17 @@ def _report_labels_due(moment: datetime) -> list[str]:
     freq = config.REPORT_FREQUENCY
     labels = []
 
-    if freq in {"monthly", "both"} and not _report_sent_for_current_month(moment) and moment >= _month_report_due_time(moment):
+    if (
+        freq in {"monthly", "both"}
+        and not _report_sent_for_current_month(moment)
+        and moment >= _month_report_due_time(moment)
+    ):
         labels.append("monthly")
-    if freq in {"weekly", "both"} and not _report_sent_for_current_week(moment) and moment >= _week_report_due_time(moment):
+    if (
+        freq in {"weekly", "both"}
+        and not _report_sent_for_current_week(moment)
+        and moment >= _week_report_due_time(moment)
+    ):
         labels.append("weekly")
     return labels
 
@@ -189,7 +217,9 @@ async def _run_per_guild(guilds, action, action_name: str):
         try:
             await action(guild)
         except Exception:
-            log.exception("%s failed for guild=%s", action_name, getattr(guild, "name", guild))
+            log.exception(
+                "%s failed for guild=%s", action_name, getattr(guild, "name", guild)
+            )
 
 
 def _probe_writable_directory(path: str) -> tuple[bool, str]:
@@ -237,16 +267,22 @@ async def cleanup_task():
     """Runs scheduled cleanup for all guilds."""
     now = datetime.now(TASK_TZ)
     if is_run_in_progress():
-        log.warning("Scheduled cleanup skipped because another cleanup operation is already running")
+        log.warning(
+            "Scheduled cleanup skipped because another cleanup operation is already running"
+        )
         return
     if not try_acquire_run("scheduler"):
-        log.warning("Scheduled cleanup skipped because another cleanup operation is already running")
+        log.warning(
+            "Scheduled cleanup skipped because another cleanup operation is already running"
+        )
         return
 
     try:
         skipped, reason = _matches_schedule_exception(now)
         if skipped:
-            log.info("Scheduled cleanup skipped due to configured exception (%s)", reason)
+            log.info(
+                "Scheduled cleanup skipped due to configured exception (%s)", reason
+            )
             return
 
         # Missed run detection
@@ -256,7 +292,9 @@ async def cleanup_task():
             delay = (now - expected).total_seconds() / 60
             if 0 < delay < 60:
                 if delay > MISSED_RUN_THRESHOLD_MINUTES:
-                    log.warning(f"Cleanup run for {t} is {delay:.1f} minutes late — posting alert")
+                    log.warning(
+                        f"Cleanup run for {t} is {delay:.1f} minutes late — posting alert"
+                    )
                     await _run_per_guild(
                         bot.guilds,
                         lambda guild: post_missed_run_alert(bot, guild, t),
@@ -264,7 +302,9 @@ async def cleanup_task():
                     )
                 break
 
-        log.info(f"Scheduled cleanup run starting | Time: {now.strftime('%H:%M')} {TASK_TZ}")
+        log.info(
+            f"Scheduled cleanup run starting | Time: {now.strftime('%H:%M')} {TASK_TZ}"
+        )
         await _run_per_guild(
             bot.guilds,
             lambda guild: run_cleanup(bot, guild),
@@ -287,7 +327,9 @@ async def monthly_report_task():
             log.info(f"{label.capitalize()} report triggered — posting now")
             await _run_per_guild(
                 bot.guilds,
-                lambda guild, report_label=label: post_status_report(bot, guild, report_label),
+                lambda guild, report_label=label: post_status_report(
+                    bot, guild, report_label
+                ),
                 f"{label.capitalize()} report",
             )
     except Exception:
@@ -321,7 +363,10 @@ register_task(cleanup_task, TASK_TZ, bot)
 
 # --- Missed run catchup ---
 
-def _find_missed_run_time(last_run_time: datetime, now: datetime, clean_times: list) -> datetime | None:
+
+def _find_missed_run_time(
+    last_run_time: datetime, now: datetime, clean_times: list
+) -> datetime | None:
     """Scans all scheduled times between last_run_time and now.
     Returns the most recent missed scheduled time, or None if no runs were missed."""
     missed = None
@@ -329,7 +374,9 @@ def _find_missed_run_time(last_run_time: datetime, now: datetime, clean_times: l
     while current_day <= now.date():
         for t in clean_times:
             hour, minute = map(int, t.split(":"))
-            candidate = datetime(current_day.year, current_day.month, current_day.day, hour, minute)
+            candidate = datetime(
+                current_day.year, current_day.month, current_day.day, hour, minute
+            )
             if last_run_time < candidate < now:
                 skipped, _reason = _matches_schedule_exception(candidate)
                 if skipped:
@@ -355,9 +402,13 @@ async def _check_and_catchup_missed_run(bot, guild):
             return
 
         try:
-            last_run_time = datetime.strptime(last_run_data["timestamp"], "%Y-%m-%d %H:%M:%S")
+            last_run_time = datetime.strptime(
+                last_run_data["timestamp"], "%Y-%m-%d %H:%M:%S"
+            )
         except (KeyError, ValueError) as e:
-            log.warning(f"Could not parse last run timestamp — skipping missed run check: {e}")
+            log.warning(
+                f"Could not parse last run timestamp — skipping missed run check: {e}"
+            )
             return
 
         missed_time = _find_missed_run_time(last_run_time, datetime.now(), CLEAN_TIMES)
@@ -366,14 +417,20 @@ async def _check_and_catchup_missed_run(bot, guild):
             return
 
         if is_run_in_progress():
-            log.warning("Missed-run catchup skipped because another cleanup operation is already running")
+            log.warning(
+                "Missed-run catchup skipped because another cleanup operation is already running"
+            )
             return
         if not try_acquire_run("catchup"):
-            log.warning("Missed-run catchup skipped because another cleanup operation is already running")
+            log.warning(
+                "Missed-run catchup skipped because another cleanup operation is already running"
+            )
             return
 
-        missed_str = missed_time.strftime('%Y-%m-%d %I:%M %p')
-        log.info(f"Missed scheduled run detected for {missed_str} — triggering catchup run")
+        missed_str = missed_time.strftime("%Y-%m-%d %I:%M %p")
+        log.info(
+            f"Missed scheduled run detected for {missed_str} — triggering catchup run"
+        )
         try:
             await post_catchup_notification(bot, guild, missed_str)
             await run_cleanup(bot, guild, triggered_by=f"catchup (missed {missed_str})")
@@ -398,10 +455,14 @@ async def _check_and_catchup_monthly_report(bot):
             return
 
         if is_run_in_progress():
-            log.warning("Report catchup skipped because another operation is already running")
+            log.warning(
+                "Report catchup skipped because another operation is already running"
+            )
             return
         if not try_acquire_run("monthly-report-catchup"):
-            log.warning("Report catchup skipped because another operation is already running")
+            log.warning(
+                "Report catchup skipped because another operation is already running"
+            )
             return
 
         try:
@@ -418,7 +479,9 @@ async def _check_and_catchup_monthly_report(bot):
                     await post_missed_weekly_report_notification(bot, missed_period)
                 await _run_per_guild(
                     bot.guilds,
-                    lambda guild, report_label=label: post_status_report(bot, guild, report_label),
+                    lambda guild, report_label=label: post_status_report(
+                        bot, guild, report_label
+                    ),
                     f"{label.capitalize()} report",
                 )
         finally:
@@ -429,12 +492,15 @@ async def _check_and_catchup_monthly_report(bot):
 
 # --- Events ---
 
+
 @bot.event
 async def on_ready():
     log_restart_separator()
     log.debug(f"Logged in as {bot.user} | v{BOT_VERSION}")
     log.debug(f"Default retention: {cfg.DEFAULT_RETENTION} days")
-    log.debug(f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)} ({TASK_TZ})")
+    log.debug(
+        f"Cleanup scheduled {len(CLEAN_TIMES)} time(s) per day: {', '.join(CLEAN_TIMES)} ({TASK_TZ})"
+    )
     log_startup_path_check()
 
     for guild in bot.guilds:
@@ -477,7 +543,9 @@ async def on_resumed():
 
 
 @bot.tree.error
-async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+async def on_app_command_error(
+    interaction: discord.Interaction, error: app_commands.AppCommandError
+):
     """Logs slash-command failures and sends a friendly ephemeral response."""
     original = getattr(error, "original", error)
 
@@ -501,8 +569,11 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 
 # --- Graceful Shutdown ---
 
+
 def handle_shutdown(signum, frame):
-    log.info("Shutdown signal received — finishing current operation before stopping...")
+    log.info(
+        "Shutdown signal received — finishing current operation before stopping..."
+    )
     for task in [cleanup_task, monthly_report_task, health_task]:
         task.cancel()
     asyncio.get_event_loop().call_soon_threadsafe(asyncio.get_event_loop().stop)
@@ -513,6 +584,7 @@ signal.signal(signal.SIGINT, handle_shutdown)
 
 
 # --- Entry Point ---
+
 
 def main():
     token = TOKEN

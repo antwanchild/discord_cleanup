@@ -5,8 +5,12 @@ from datetime import datetime, timezone, timedelta
 
 import config as cfg
 from config import (
-    BOT_VERSION, DEFAULT_RETENTION, LOG_CHANNEL_ID,
-    RETRY_DELAY, WARN_UNCONFIGURED, log
+    BOT_VERSION,
+    DEFAULT_RETENTION,
+    LOG_CHANNEL_ID,
+    RETRY_DELAY,
+    WARN_UNCONFIGURED,
+    log,
 )
 from stats import record_channel_history, update_stats, load_stats, save_last_run
 from utils import get_next_run_str, setup_run_log, update_health
@@ -120,9 +124,14 @@ def build_channel_map(guild, raw_channels=None):
                     # notification_group or deep_clean should not show a retention override.
                     "is_override": ch_override["days"] != cat_days,
                     "deep_clean": ch_override["deep_clean"] or cat_deep_clean,
-                    "notification_group": ch_override.get("notification_group") or cat_notification_group,
-                    "report_exclude": ch_override.get("report_exclude", cat_report_exclude),
-                    "report_individual": ch_override.get("report_individual", cat_report_individual),
+                    "notification_group": ch_override.get("notification_group")
+                    or cat_notification_group,
+                    "report_exclude": ch_override.get(
+                        "report_exclude", cat_report_exclude
+                    ),
+                    "report_individual": ch_override.get(
+                        "report_individual", cat_report_individual
+                    ),
                     "report_group": ch_override.get("report_group") or cat_report_group,
                     "report_group_override": report_group_override,
                 }
@@ -178,7 +187,9 @@ def build_channel_map(guild, raw_channels=None):
     return channel_map
 
 
-def _build_breakdown_lines(channel_items: list[tuple[str, dict]], dry_run: bool = False) -> list[str]:
+def _build_breakdown_lines(
+    channel_items: list[tuple[str, dict]], dry_run: bool = False
+) -> list[str]:
     """Builds per-channel notification lines for the daily cleanup report."""
     lines = []
 
@@ -222,7 +233,9 @@ def validate_channels(guild):
             days = ch.get("days", DEFAULT_RETENTION)
             count = len(channel.text_channels)
             total_channels += count
-            log.info(f"  📁 #{ch_name} — category | {count} channel(s) | {days}d retention{deep}")
+            log.info(
+                f"  📁 #{ch_name} — category | {count} channel(s) | {days}d retention{deep}"
+            )
         else:
             deep = " | deep_clean: enabled" if ch.get("deep_clean") else ""
             days = ch.get("days", DEFAULT_RETENTION)
@@ -230,9 +243,13 @@ def validate_channels(guild):
             log.info(f"  📄 #{channel.name} — {days}d retention{deep}")
 
     if issues == 0:
-        log.info(f"Validation complete — {total_channels} channel(s) active | {excluded_channels} excluded | 0 issues")
+        log.info(
+            f"Validation complete — {total_channels} channel(s) active | {excluded_channels} excluded | 0 issues"
+        )
     else:
-        log.warning(f"Validation complete — {total_channels} channel(s) active | {excluded_channels} excluded | {issues} issue(s) found")
+        log.warning(
+            f"Validation complete — {total_channels} channel(s) active | {excluded_channels} excluded | {issues} issue(s) found"
+        )
 
     if WARN_UNCONFIGURED:
         accounted_ids = {ch["id"] for ch in cfg.raw_channels}
@@ -240,7 +257,10 @@ def validate_channels(guild):
 
         for discord_channel in guild.text_channels:
             if discord_channel.id not in accounted_ids:
-                if discord_channel.category and discord_channel.category.id in accounted_ids:
+                if (
+                    discord_channel.category
+                    and discord_channel.category.id in accounted_ids
+                ):
                     continue
                 unaccounted.append(discord_channel)
 
@@ -248,12 +268,21 @@ def validate_channels(guild):
             for ch in unaccounted:
                 cat = f" (in category: {ch.category.name})" if ch.category else ""
                 log.warning(f"#{ch.name}{cat} — not configured in channels.yml")
-            log.warning(f"{len(unaccounted)} unconfigured channel(s) found — add to channels.yml or exclude to silence this warning")
+            log.warning(
+                f"{len(unaccounted)} unconfigured channel(s) found — add to channels.yml or exclude to silence this warning"
+            )
         else:
             log.info("All Discord channels are accounted for in channels.yml")
 
 
-async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time: datetime, dry_run: bool = False, deep_clean: bool = False) -> dict:
+async def purge_channel(
+    channel,
+    days_old: int,
+    bulk_cutoff: datetime,
+    run_time: datetime,
+    dry_run: bool = False,
+    deep_clean: bool = False,
+) -> dict:
     """Purges old messages from a single channel. Returns stats dict."""
     cutoff = run_time - timedelta(days=days_old)
     guild = channel.guild
@@ -262,14 +291,32 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
     oldest_message_date = None
 
     if not channel.permissions_for(guild.me).read_message_history:
-        log.warning(f"Skipping #{channel.name} — missing Read Message History permission")
-        return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old, "deep_clean": deep_clean, "error": "Missing Read Message History permission"}
+        log.warning(
+            f"Skipping #{channel.name} — missing Read Message History permission"
+        )
+        return {
+            "count": -1,
+            "rate_limits": 0,
+            "oldest": None,
+            "days": days_old,
+            "deep_clean": deep_clean,
+            "error": "Missing Read Message History permission",
+        }
 
     if not channel.permissions_for(guild.me).manage_messages:
         log.warning(f"Skipping #{channel.name} — missing Manage Messages permission")
-        return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old, "deep_clean": deep_clean, "error": "Missing Manage Messages permission"}
+        return {
+            "count": -1,
+            "rate_limits": 0,
+            "oldest": None,
+            "days": days_old,
+            "deep_clean": deep_clean,
+            "error": "Missing Manage Messages permission",
+        }
 
-    log.info(f"{'[DRY RUN] ' if dry_run else ''}Starting purge on #{channel.name} | Days: {days_old} | Deep clean: {deep_clean}")
+    log.info(
+        f"{'[DRY RUN] ' if dry_run else ''}Starting purge on #{channel.name} | Days: {days_old} | Deep clean: {deep_clean}"
+    )
 
     # Bulk delete — messages between retention cutoff and 14 days old
     while True:
@@ -278,16 +325,23 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
             async for msg in channel.history(limit=100, before=cutoff):
                 if msg.created_at > bulk_cutoff:
                     messages_to_delete.append(msg)
-                    if oldest_message_date is None or msg.created_at < oldest_message_date:
+                    if (
+                        oldest_message_date is None
+                        or msg.created_at < oldest_message_date
+                    ):
                         oldest_message_date = msg.created_at
 
             if not messages_to_delete:
-                log.info(f"#{channel.name} — bulk delete complete | Total: {total_deleted}")
+                log.info(
+                    f"#{channel.name} — bulk delete complete | Total: {total_deleted}"
+                )
                 break
 
             if dry_run:
                 total_deleted += len(messages_to_delete)
-                log.info(f"[DRY RUN] #{channel.name} — would bulk delete {len(messages_to_delete)} | Running total: {total_deleted}")
+                log.info(
+                    f"[DRY RUN] #{channel.name} — would bulk delete {len(messages_to_delete)} | Running total: {total_deleted}"
+                )
                 break
             else:
                 if len(messages_to_delete) == 1:
@@ -295,7 +349,9 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                 else:
                     await channel.delete_messages(messages_to_delete)
                 total_deleted += len(messages_to_delete)
-                log.info(f"#{channel.name} — bulk deleted {len(messages_to_delete)} | Running total: {total_deleted}")
+                log.info(
+                    f"#{channel.name} — bulk deleted {len(messages_to_delete)} | Running total: {total_deleted}"
+                )
                 await asyncio.sleep(1.5)
 
         except asyncio.CancelledError:
@@ -303,12 +359,21 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
             break
         except discord.Forbidden:
             log.error(f"#{channel.name} — Forbidden. Check bot permissions.")
-            return {"count": -1, "rate_limits": 0, "oldest": None, "days": days_old, "deep_clean": deep_clean, "error": "Forbidden — check bot permissions"}
+            return {
+                "count": -1,
+                "rate_limits": 0,
+                "oldest": None,
+                "days": days_old,
+                "deep_clean": deep_clean,
+                "error": "Forbidden — check bot permissions",
+            }
         except discord.errors.HTTPException as e:
             if e.status == 429:
                 rate_limit_count += 1
-                retry_after = getattr(e, 'retry_after', RETRY_DELAY)
-                log.warning(f"#{channel.name} — rate limited (#{rate_limit_count}), retrying in {retry_after:.1f}s")
+                retry_after = getattr(e, "retry_after", RETRY_DELAY)
+                log.warning(
+                    f"#{channel.name} — rate limited (#{rate_limit_count}), retrying in {retry_after:.1f}s"
+                )
                 await asyncio.sleep(retry_after)
             else:
                 log.error(f"#{channel.name} — HTTP error during bulk delete: {e}")
@@ -316,7 +381,9 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
 
     # Deep clean — individual deletion for messages older than 14 days
     if deep_clean:
-        log.info(f"{'[DRY RUN] ' if dry_run else ''}#{channel.name} — starting deep clean")
+        log.info(
+            f"{'[DRY RUN] ' if dry_run else ''}#{channel.name} — starting deep clean"
+        )
         deep_deleted = 0
 
         while True:
@@ -325,16 +392,23 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                 async for msg in channel.history(limit=50, before=bulk_cutoff):
                     if msg.created_at < cutoff:
                         old_messages.append(msg)
-                        if oldest_message_date is None or msg.created_at < oldest_message_date:
+                        if (
+                            oldest_message_date is None
+                            or msg.created_at < oldest_message_date
+                        ):
                             oldest_message_date = msg.created_at
 
                 if not old_messages:
-                    log.info(f"#{channel.name} — deep clean complete | Individual deleted: {deep_deleted}")
+                    log.info(
+                        f"#{channel.name} — deep clean complete | Individual deleted: {deep_deleted}"
+                    )
                     break
 
                 if dry_run:
                     deep_deleted += len(old_messages)
-                    log.info(f"[DRY RUN] #{channel.name} — would individually delete {len(old_messages)} | Deep total: {deep_deleted}")
+                    log.info(
+                        f"[DRY RUN] #{channel.name} — would individually delete {len(old_messages)} | Deep total: {deep_deleted}"
+                    )
                     break
                 else:
                     for msg in old_messages:
@@ -343,7 +417,9 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                             deep_deleted += 1
                             await asyncio.sleep(1.0)
                         except asyncio.CancelledError:
-                            log.info(f"#{channel.name} — task cancelled during deep clean")
+                            log.info(
+                                f"#{channel.name} — task cancelled during deep clean"
+                            )
                             break
                         except discord.Forbidden:
                             log.error(f"#{channel.name} — Forbidden during deep clean.")
@@ -351,12 +427,18 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
                         except discord.errors.HTTPException as e:
                             if e.status == 429:
                                 rate_limit_count += 1
-                                retry_after = getattr(e, 'retry_after', RETRY_DELAY)
-                                log.warning(f"#{channel.name} — rate limited during deep clean, retrying in {retry_after:.1f}s")
+                                retry_after = getattr(e, "retry_after", RETRY_DELAY)
+                                log.warning(
+                                    f"#{channel.name} — rate limited during deep clean, retrying in {retry_after:.1f}s"
+                                )
                                 await asyncio.sleep(retry_after)
                             else:
-                                log.error(f"#{channel.name} — HTTP error during deep clean: {e}")
-                    log.info(f"#{channel.name} — deep clean batch | Deleted: {deep_deleted}")
+                                log.error(
+                                    f"#{channel.name} — HTTP error during deep clean: {e}"
+                                )
+                    log.info(
+                        f"#{channel.name} — deep clean batch | Deleted: {deep_deleted}"
+                    )
                     await asyncio.sleep(2)
 
             except asyncio.CancelledError:
@@ -365,16 +447,27 @@ async def purge_channel(channel, days_old: int, bulk_cutoff: datetime, run_time:
             except discord.errors.HTTPException as e:
                 if e.status == 429:
                     rate_limit_count += 1
-                    retry_after = getattr(e, 'retry_after', RETRY_DELAY)
+                    retry_after = getattr(e, "retry_after", RETRY_DELAY)
                     await asyncio.sleep(retry_after)
                 else:
-                    log.error(f"#{channel.name} — HTTP error fetching old messages: {e}")
+                    log.error(
+                        f"#{channel.name} — HTTP error fetching old messages: {e}"
+                    )
                     break
 
         total_deleted += deep_deleted
 
-    log.info(f"{'[DRY RUN] ' if dry_run else ''}#{channel.name} — complete | Total: {total_deleted} | Rate limits: {rate_limit_count}")
-    return {"count": total_deleted, "rate_limits": rate_limit_count, "oldest": oldest_message_date, "days": days_old, "deep_clean": deep_clean, "error": None}
+    log.info(
+        f"{'[DRY RUN] ' if dry_run else ''}#{channel.name} — complete | Total: {total_deleted} | Rate limits: {rate_limit_count}"
+    )
+    return {
+        "count": total_deleted,
+        "rate_limits": rate_limit_count,
+        "oldest": oldest_message_date,
+        "days": days_old,
+        "deep_clean": deep_clean,
+        "error": None,
+    }
 
 
 async def purge_all_channel(channel) -> dict:
@@ -408,17 +501,30 @@ async def purge_all_channel(channel) -> dict:
             await asyncio.sleep(1)
         except discord.errors.RateLimited as e:
             rate_limit_count += 1
-            log.warning(f"Rate limited on #{channel.name} — waiting {e.retry_after:.1f}s")
+            log.warning(
+                f"Rate limited on #{channel.name} — waiting {e.retry_after:.1f}s"
+            )
             await asyncio.sleep(e.retry_after)
         except discord.Forbidden:
-            log.error(f"Forbidden during bulk purge on #{channel.name} — check bot permissions")
-            return {"count": total_deleted, "error": "Forbidden — check bot permissions"}
+            log.error(
+                f"Forbidden during bulk purge on #{channel.name} — check bot permissions"
+            )
+            return {
+                "count": total_deleted,
+                "error": "Forbidden — check bot permissions",
+            }
         except discord.errors.HTTPException as e:
             log.error(f"HTTP error during bulk purge on #{channel.name} — {e}")
-            return {"count": total_deleted, "error": f"HTTP error during bulk purge: {e}"}
+            return {
+                "count": total_deleted,
+                "error": f"HTTP error during bulk purge: {e}",
+            }
         except Exception:
             log.exception(f"Unexpected error during bulk purge on #{channel.name}")
-            return {"count": total_deleted, "error": "Unexpected error during bulk purge"}
+            return {
+                "count": total_deleted,
+                "error": "Unexpected error during bulk purge",
+            }
 
     # Individual delete for messages older than 14 days
     while True:
@@ -435,31 +541,65 @@ async def purge_all_channel(channel) -> dict:
                     await asyncio.sleep(0.5)
                 except discord.errors.RateLimited as e:
                     rate_limit_count += 1
-                    log.warning(f"Rate limited on #{channel.name} — waiting {e.retry_after:.1f}s")
+                    log.warning(
+                        f"Rate limited on #{channel.name} — waiting {e.retry_after:.1f}s"
+                    )
                     await asyncio.sleep(e.retry_after)
                 except discord.Forbidden:
-                    log.error(f"Forbidden during individual purge on #{channel.name} — check bot permissions")
-                    return {"count": total_deleted, "error": "Forbidden — check bot permissions"}
+                    log.error(
+                        f"Forbidden during individual purge on #{channel.name} — check bot permissions"
+                    )
+                    return {
+                        "count": total_deleted,
+                        "error": "Forbidden — check bot permissions",
+                    }
                 except discord.errors.HTTPException as e:
                     log.warning(f"HTTP error deleting message in #{channel.name} — {e}")
                 except Exception:
-                    log.exception(f"Unexpected error deleting message in #{channel.name}")
-                    return {"count": total_deleted, "error": "Unexpected error deleting message"}
+                    log.exception(
+                        f"Unexpected error deleting message in #{channel.name}"
+                    )
+                    return {
+                        "count": total_deleted,
+                        "error": "Unexpected error deleting message",
+                    }
         except discord.Forbidden:
-            log.error(f"Forbidden fetching messages during individual purge on #{channel.name} — check bot permissions")
-            return {"count": total_deleted, "error": "Forbidden — check bot permissions"}
+            log.error(
+                f"Forbidden fetching messages during individual purge on #{channel.name} — check bot permissions"
+            )
+            return {
+                "count": total_deleted,
+                "error": "Forbidden — check bot permissions",
+            }
         except discord.errors.HTTPException as e:
             log.error(f"HTTP error during individual purge on #{channel.name} — {e}")
-            return {"count": total_deleted, "error": f"HTTP error during individual purge: {e}"}
+            return {
+                "count": total_deleted,
+                "error": f"HTTP error during individual purge: {e}",
+            }
         except Exception:
-            log.exception(f"Unexpected error during individual purge on #{channel.name}")
-            return {"count": total_deleted, "error": "Unexpected error during individual purge"}
+            log.exception(
+                f"Unexpected error during individual purge on #{channel.name}"
+            )
+            return {
+                "count": total_deleted,
+                "error": "Unexpected error during individual purge",
+            }
 
-    log.info(f"Full purge complete on #{channel.name} — deleted {total_deleted} messages")
+    log.info(
+        f"Full purge complete on #{channel.name} — deleted {total_deleted} messages"
+    )
     return {"count": total_deleted, "error": None}
 
 
-async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False, triggered_by: str = "scheduler", raw_channels=None):
+async def run_cleanup(
+    bot,
+    guild,
+    single_channel_id=None,
+    dry_run: bool = False,
+    triggered_by: str = "scheduler",
+    raw_channels=None,
+):
     """Core cleanup logic used by scheduler, slash commands, and web UI."""
     from notifications import safe_send_embed
 
@@ -480,7 +620,9 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             if single_channel_id in channel_map:
                 channel_map = {single_channel_id: channel_map[single_channel_id]}
             else:
-                log.warning(f"Channel ID {single_channel_id} not in configured channels")
+                log.warning(
+                    f"Channel ID {single_channel_id} not in configured channels"
+                )
                 return
 
         setup_run_log(channel_count=len(channel_map))
@@ -496,7 +638,9 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             if ch.get("exclude", False):
                 log.info(f"#{ch.get('name', ch['id'])} — excluded (skipping)")
 
-        log.info(f"Starting {'dry run' if dry_run else 'cleanup run'} on {guild.name} across {len(channel_map)} channel(s) | triggered by: {triggered_by}")
+        log.info(
+            f"Starting {'dry run' if dry_run else 'cleanup run'} on {guild.name} across {len(channel_map)} channel(s) | triggered by: {triggered_by}"
+        )
 
         category_results = {}
         standalone_results = {}
@@ -513,13 +657,19 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             if not channel:
                 ch_name = ch_config.get("name", str(channel_id))
                 log.warning(f"Channel ID {channel_id} not found — skipping")
-                error_lines.append(f"⚠️ `#{ch_name}` — channel not found (ID: `{channel_id}`)")
+                error_lines.append(
+                    f"⚠️ `#{ch_name}` — channel not found (ID: `{channel_id}`)"
+                )
                 has_warnings = True
                 continue
 
             stats = await purge_channel(
-                channel, ch_config["days"], bulk_cutoff, run_time,
-                dry_run=dry_run, deep_clean=ch_config.get("deep_clean", False)
+                channel,
+                ch_config["days"],
+                bulk_cutoff,
+                run_time,
+                dry_run=dry_run,
+                deep_clean=ch_config.get("deep_clean", False),
             )
             stats["is_override"] = ch_config["is_override"]
             stats["notification_group"] = ch_config.get("notification_group")
@@ -529,9 +679,17 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
                 "count": stats["count"],
                 "category": ch_config.get("category_name") or "Standalone",
                 "rate_limits": stats["rate_limits"],
-                "oldest": stats["oldest"].strftime("%Y-%m-%d %H:%M:%S") if stats.get("oldest") else None,
+                "oldest": (
+                    stats["oldest"].strftime("%Y-%m-%d %H:%M:%S")
+                    if stats.get("oldest")
+                    else None
+                ),
                 "error": stats.get("error"),
-                "status": "error" if stats["count"] < 0 or stats.get("error") else ("deleted" if stats["count"] > 0 else "clean"),
+                "status": (
+                    "error"
+                    if stats["count"] < 0 or stats.get("error")
+                    else ("deleted" if stats["count"] > 0 else "clean")
+                ),
             }
 
             if stats["count"] > 0:
@@ -547,16 +705,25 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
 
             grand_rate_limits += stats["rate_limits"]
             if stats["rate_limits"] > 0:
-                error_lines.append(f"⚡ `#{channel.name}` — rate limited **{stats['rate_limits']}** time(s)")
-                log.warning(f"  ⚡ #{channel.name} — rate limited {stats['rate_limits']} time(s)")
+                error_lines.append(
+                    f"⚡ `#{channel.name}` — rate limited **{stats['rate_limits']}** time(s)"
+                )
+                log.warning(
+                    f"  ⚡ #{channel.name} — rate limited {stats['rate_limits']} time(s)"
+                )
 
-            if stats["oldest"] and (oldest_overall is None or stats["oldest"] < oldest_overall):
+            if stats["oldest"] and (
+                oldest_overall is None or stats["oldest"] < oldest_overall
+            ):
                 oldest_overall = stats["oldest"]
 
             cat_name = ch_config["category_name"]
             if cat_name:
                 if cat_name not in category_results:
-                    category_results[cat_name] = {"default_days": ch_config["category_default"], "channels": {}}
+                    category_results[cat_name] = {
+                        "default_days": ch_config["category_default"],
+                        "channels": {},
+                    }
                 category_results[cat_name]["channels"][channel.name] = stats
             else:
                 standalone_results[channel.name] = stats
@@ -569,22 +736,30 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
         duration_str = f"{minutes}m {seconds}s" if minutes else f"{seconds}s"
 
         if not dry_run and not single_channel_id:
-            update_stats(channel_results, run_context={
+            update_stats(
+                channel_results,
+                run_context={
+                    "timestamp": run_end.strftime("%Y-%m-%d %H:%M:%S"),
+                    "triggered_by": triggered_by,
+                    "dry_run": dry_run,
+                },
+            )
+
+        record_channel_history(
+            channel_results,
+            run_context={
                 "timestamp": run_end.strftime("%Y-%m-%d %H:%M:%S"),
                 "triggered_by": triggered_by,
                 "dry_run": dry_run,
-            })
-
-        record_channel_history(channel_results, run_context={
-            "timestamp": run_end.strftime("%Y-%m-%d %H:%M:%S"),
-            "triggered_by": triggered_by,
-            "dry_run": dry_run,
-        })
+            },
+        )
 
         # Build category totals for last run summary
         cat_totals = {}
         for cat_name, cat_data in category_results.items():
-            cat_total = sum(s["count"] for s in cat_data["channels"].values() if s["count"] > 0)
+            cat_total = sum(
+                s["count"] for s in cat_data["channels"].values() if s["count"] > 0
+            )
             if cat_total > 0:
                 cat_totals[cat_name] = cat_total
         for ch_name, s in standalone_results.items():
@@ -602,19 +777,23 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             run_status = "clean"
 
         try:
-            save_last_run({
-                "timestamp":        run_end.strftime("%Y-%m-%d %H:%M:%S"),
-                "triggered_by":     triggered_by,
-                "duration":         duration_str,
-                "total_deleted":    grand_total,
-                "channels_checked": len(channel_map),
-                "rate_limits":      grand_rate_limits,
-                "status":           run_status,
-                "categories":       [
-                    {"name": k, "count": v}
-                    for k, v in sorted(cat_totals.items(), key=lambda x: x[1], reverse=True)[:5]
-                ],
-            })
+            save_last_run(
+                {
+                    "timestamp": run_end.strftime("%Y-%m-%d %H:%M:%S"),
+                    "triggered_by": triggered_by,
+                    "duration": duration_str,
+                    "total_deleted": grand_total,
+                    "channels_checked": len(channel_map),
+                    "rate_limits": grand_rate_limits,
+                    "status": run_status,
+                    "categories": [
+                        {"name": k, "count": v}
+                        for k, v in sorted(
+                            cat_totals.items(), key=lambda x: x[1], reverse=True
+                        )[:5]
+                    ],
+                }
+            )
         except (OSError, ValueError) as e:
             log.warning(f"Could not save last run summary — {e}")
         stats_data = load_stats()
@@ -642,18 +821,26 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
         # Build breakdown
         breakdown_lines = []
         for cat_name, cat_data in category_results.items():
-            active_lines = _build_breakdown_lines(list(cat_data["channels"].items()), dry_run=dry_run)
+            active_lines = _build_breakdown_lines(
+                list(cat_data["channels"].items()), dry_run=dry_run
+            )
             if active_lines:
-                breakdown_lines.append(f"📁 **{cat_name}** ({cat_data['default_days']}d default)")
+                breakdown_lines.append(
+                    f"📁 **{cat_name}** ({cat_data['default_days']}d default)"
+                )
                 breakdown_lines.extend(active_lines)
 
-        standalone_lines = _build_breakdown_lines(list(standalone_results.items()), dry_run=dry_run)
+        standalone_lines = _build_breakdown_lines(
+            list(standalone_results.items()), dry_run=dry_run
+        )
         breakdown_lines.extend([line.lstrip("\u3000") for line in standalone_lines])
 
         if not breakdown_lines:
             breakdown_lines.append("✅ No messages to clean")
 
-        oldest_str = oldest_overall.strftime('%Y-%m-%d %I:%M %p') if oldest_overall else "N/A"
+        oldest_str = (
+            oldest_overall.strftime("%Y-%m-%d %I:%M %p") if oldest_overall else "N/A"
+        )
         title_prefix = "🔍 Dry Run Report" if dry_run else "🧹 Daily Cleanup Report"
 
         summary = (
@@ -692,9 +879,13 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             title=f"{title_prefix} — {status}",
             description=summary,
             color=color,
-            timestamp=run_end
+            timestamp=run_end,
         )
-        page_label = "📋 Category Summary" if total_pages == 1 else f"📋 Category Summary (1/{total_pages})"
+        page_label = (
+            "📋 Category Summary"
+            if total_pages == 1
+            else f"📋 Category Summary (1/{total_pages})"
+        )
         first_embed.add_field(name=page_label, value="\n".join(chunks[0]), inline=False)
         if total_pages == 1:
             first_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
@@ -712,10 +903,16 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
             page_embed.add_field(name=page_label, value="\n".join(chunk), inline=False)
             if i == total_pages:
                 page_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
-            await safe_send_embed(log_channel, page_embed, context=f"daily cleanup report page {i}")
+            await safe_send_embed(
+                log_channel, page_embed, context=f"daily cleanup report page {i}"
+            )
 
-        footer_line1 = f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
-        footer_line2 = f"  Warnings: {len(error_lines)} | Rate limits: {grand_rate_limits}"
+        footer_line1 = (
+            f"  Run Complete | Deleted: {grand_total} | Duration: {duration_str}"
+        )
+        footer_line2 = (
+            f"  Warnings: {len(error_lines)} | Rate limits: {grand_rate_limits}"
+        )
         log.info("╔══════════════════════════════════════════════════════════╗")
         log.info(f"║{footer_line1:<58}║")
         log.info(f"║{footer_line2:<58}║")
@@ -726,7 +923,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
                 title=f"⚠️ Run Errors — {len(error_lines)} issue(s) found",
                 description="\n".join(error_lines),
                 color=0xFF0000,
-                timestamp=run_end
+                timestamp=run_end,
             )
             error_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
             await safe_send_embed(
@@ -755,7 +952,7 @@ async def run_cleanup(bot, guild, single_channel_id=None, dry_run: bool = False,
                     f"An unexpected error interrupted the cleanup run. Check the container logs for the traceback."
                 ),
                 color=0xFF0000,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
             error_embed.set_footer(text=f"Discord Cleanup Bot v{BOT_VERSION}")
             await safe_send_embed(

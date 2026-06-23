@@ -4,6 +4,7 @@ utils.py — Bot state management, health checks, uptime, and logging helpers.
 Config file updates → config_backups.py / config_channels.py / config_settings.py
 Schedule management → scheduler.py
 """
+
 import os
 import logging
 import threading
@@ -11,13 +12,21 @@ from datetime import datetime, timedelta
 from file_utils import atomic_write_text
 
 from config import (
-    BOT_START_TIME, BOT_VERSION, CLEAN_TIMES,
-    HEALTH_FILE, LOG_DIR, LOG_MAX_FILES,
-    LOG_LEVEL, numeric_level, formatter, logger, log
+    BOT_START_TIME,
+    BOT_VERSION,
+    CLEAN_TIMES,
+    HEALTH_FILE,
+    LOG_DIR,
+    LOG_MAX_FILES,
+    LOG_LEVEL,
+    numeric_level,
+    formatter,
+    logger,
+    log,
 )
 
 # Re-export for backwards compatibility — importers can use utils.* as before
-from config_utils import (                          # noqa: F401
+from config_utils import (  # noqa: F401
     reload_channels,
     update_env_value,
     update_retention,
@@ -28,7 +37,7 @@ from config_utils import (                          # noqa: F401
     update_schedule_skip_dates,
     update_schedule_skip_weekdays,
 )
-from scheduler import (                             # noqa: F401
+from scheduler import (  # noqa: F401
     get_next_run_str,
     update_schedule,
 )
@@ -37,9 +46,9 @@ from scheduler import (                             # noqa: F401
 
 # Set by cleanup_bot.py after tasks are created
 _cleanup_task = None
-_task_tz      = None
-_bot          = None
-_bot_loop     = None
+_task_tz = None
+_bot = None
+_bot_loop = None
 _startup_path_status = {}
 
 # Prevents simultaneous cleanup runs across the bot and web UI
@@ -51,10 +60,11 @@ run_in_progress = False
 def register_task(cleanup_task, task_tz, bot):
     """Called from cleanup_bot.py after tasks are initialized."""
     from scheduler import register_task_ref
+
     global _cleanup_task, _task_tz, _bot
     _cleanup_task = cleanup_task
-    _task_tz      = task_tz
-    _bot          = bot
+    _task_tz = task_tz
+    _bot = bot
     register_task_ref(cleanup_task, task_tz)
 
 
@@ -116,6 +126,7 @@ def get_run_owner() -> str | None:
 
 # ── Health ────────────────────────────────────────────────────────────────────
 
+
 def update_health():
     """Updates the health file timestamp. Used by Docker HEALTHCHECK."""
     try:
@@ -126,10 +137,11 @@ def update_health():
 
 # ── Uptime ────────────────────────────────────────────────────────────────────
 
+
 def get_uptime_str() -> str:
     """Returns the bot uptime as a human-readable string."""
-    uptime  = datetime.now() - BOT_START_TIME
-    days    = uptime.days
+    uptime = datetime.now() - BOT_START_TIME
+    days = uptime.days
     hours, remainder = divmod(uptime.seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     if days > 0:
@@ -142,6 +154,7 @@ def get_uptime_str() -> str:
 
 # ── Logging helpers ───────────────────────────────────────────────────────────
 
+
 def setup_run_log(channel_count=None):
     """Creates a date-stamped log file for this run and cleans up old ones."""
     try:
@@ -150,7 +163,7 @@ def setup_run_log(channel_count=None):
         log.error(f"Could not create {LOG_DIR} — check directory permissions.")
         return
 
-    today    = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now().strftime("%Y-%m-%d")
     log_path = os.path.join(LOG_DIR, f"cleanup-{today}.log")
 
     for h in logger.handlers[:]:
@@ -164,12 +177,16 @@ def setup_run_log(channel_count=None):
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
     except PermissionError:
-        log.error(f"Could not create log file {log_path} — check directory permissions.")
+        log.error(
+            f"Could not create log file {log_path} — check directory permissions."
+        )
         return
 
-    next_run       = get_next_run_str()
-    channel_suffix = f"  |  Channels: {channel_count}" if channel_count is not None else ""
-    header_line    = f"  Next run: {next_run}{channel_suffix}"
+    next_run = get_next_run_str()
+    channel_suffix = (
+        f"  |  Channels: {channel_count}" if channel_count is not None else ""
+    )
+    header_line = f"  Next run: {next_run}{channel_suffix}"
     log.info("╔══════════════════════════════════════════════════════════╗")
     log.info(f"║  Discord Cleanup Bot  v{BOT_VERSION:<34}║")
     log.info(f"║{header_line:<58}║")
@@ -194,20 +211,28 @@ def setup_run_log(channel_count=None):
             except ValueError:
                 pass
             except PermissionError:
-                log.warning(f"Could not delete old log file {filename} — check directory permissions.")
+                log.warning(
+                    f"Could not delete old log file {filename} — check directory permissions."
+                )
 
 
 def log_restart_separator():
     """Logs a separator line to mark a bot restart in the log file."""
-    now            = datetime.now().strftime("%Y-%m-%d %I:%M %p")
+    now = datetime.now().strftime("%Y-%m-%d %I:%M %p")
     separator_line = f" Bot Restarted | {now} | v{BOT_VERSION} "
     log.info(f"{'═' * 4}{separator_line:{'═'}<54}{'═' * 2}")
+
+
 def list_cleanup_logs() -> list[str]:
     """Returns available cleanup log filenames sorted newest-first."""
-    return sorted([
-        f for f in os.listdir(LOG_DIR)
-        if f.startswith("cleanup-") and f.endswith(".log")
-    ], reverse=True)
+    return sorted(
+        [
+            f
+            for f in os.listdir(LOG_DIR)
+            if f.startswith("cleanup-") and f.endswith(".log")
+        ],
+        reverse=True,
+    )
 
 
 def read_cleanup_log(filename: str, lines_requested: int = 200) -> dict:
@@ -247,9 +272,11 @@ def list_cleanup_logs_with_sizes() -> list[dict]:
     for filename in list_cleanup_logs():
         path = os.path.join(LOG_DIR, filename)
         size = os.path.getsize(path)
-        files.append({
-            "filename": filename,
-            "date": filename.replace("cleanup-", "").replace(".log", ""),
-            "size_kb": round(size / 1024, 1),
-        })
+        files.append(
+            {
+                "filename": filename,
+                "date": filename.replace("cleanup-", "").replace(".log", ""),
+                "size_kb": round(size / 1024, 1),
+            }
+        )
     return files

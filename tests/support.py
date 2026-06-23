@@ -1,6 +1,7 @@
 """
 Test helpers for importing project modules with lightweight stub dependencies.
 """
+
 from __future__ import annotations
 
 import importlib

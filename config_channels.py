@@ -1,6 +1,7 @@
 """
 config_channels.py — channels.yml validation, preview, save, and restore helpers.
 """
+
 import logging
 import os
 import yaml
@@ -21,9 +22,12 @@ logger = logging.getLogger("discord-cleanup")
 def reload_channels() -> tuple[bool, str]:
     """Reloads channels.yml and updates raw_channels. Returns (success, message)."""
     import config
+
     with config_lock:
         try:
-            config.raw_channels = load_channels_config_file(f"{config.CONFIG_DIR}/channels.yml")
+            config.raw_channels = load_channels_config_file(
+                f"{config.CONFIG_DIR}/channels.yml"
+            )
             log.info("channels.yml reloaded successfully")
             return True, f"Loaded {len(config.raw_channels)} channel entries"
         except FileNotFoundError:
@@ -47,7 +51,11 @@ def validate_channels_content(content: str) -> tuple[bool, str, list[dict] | Non
     try:
         channels = load_channels_config(content)
         label = "entry" if len(channels) == 1 else "entries"
-        return True, f"channels.yml is valid — {len(channels)} channel {label}", channels
+        return (
+            True,
+            f"channels.yml is valid — {len(channels)} channel {label}",
+            channels,
+        )
     except ChannelsConfigError as e:
         return False, f"Invalid channels.yml — {e}", None
     except yaml.YAMLError as e:
@@ -76,8 +84,14 @@ def _channel_preview_label(channel: dict) -> str:
 
 
 def _channel_preview_overview(channels: list[dict]) -> dict:
-    notification_groups = {ch.get("notification_group") for ch in channels if ch.get("notification_group")}
-    report_groups = {ch.get("report_group") or ch.get("notification_group") for ch in channels if (ch.get("report_group") or ch.get("notification_group"))}
+    notification_groups = {
+        ch.get("notification_group") for ch in channels if ch.get("notification_group")
+    }
+    report_groups = {
+        ch.get("report_group") or ch.get("notification_group")
+        for ch in channels
+        if (ch.get("report_group") or ch.get("notification_group"))
+    }
     return {
         "entries": len(channels),
         "categories": sum(1 for ch in channels if ch.get("type") == "category"),
@@ -86,16 +100,36 @@ def _channel_preview_overview(channels: list[dict]) -> dict:
         "with_notification_groups": len(notification_groups),
         "with_report_groups": len(report_groups),
         "report_excluded": sum(1 for ch in channels if ch.get("report_exclude", False)),
-        "report_individual": sum(1 for ch in channels if ch.get("report_individual", False)),
+        "report_individual": sum(
+            1 for ch in channels if ch.get("report_individual", False)
+        ),
     }
 
 
 def _channel_preview_diff(current: list[dict], proposed: list[dict]) -> dict:
     current_by_id = {ch["id"]: ch for ch in current}
     proposed_by_id = {ch["id"]: ch for ch in proposed}
-    keys = ["name", "type", "days", "exclude", "deep_clean", "report_exclude", "report_individual", "report_group", "notification_group"]
-    added = [_channel_preview_snapshot(proposed_by_id[ch_id]) for ch_id in proposed_by_id.keys() if ch_id not in current_by_id]
-    removed = [_channel_preview_snapshot(current_by_id[ch_id]) for ch_id in current_by_id.keys() if ch_id not in proposed_by_id]
+    keys = [
+        "name",
+        "type",
+        "days",
+        "exclude",
+        "deep_clean",
+        "report_exclude",
+        "report_individual",
+        "report_group",
+        "notification_group",
+    ]
+    added = [
+        _channel_preview_snapshot(proposed_by_id[ch_id])
+        for ch_id in proposed_by_id.keys()
+        if ch_id not in current_by_id
+    ]
+    removed = [
+        _channel_preview_snapshot(current_by_id[ch_id])
+        for ch_id in current_by_id.keys()
+        if ch_id not in proposed_by_id
+    ]
     updated = []
     field_counts: dict[str, int] = {}
     for ch_id in proposed_by_id.keys():
@@ -108,17 +142,26 @@ def _channel_preview_diff(current: list[dict], proposed: list[dict]) -> dict:
             before_value = before.get(key, "channel" if key == "type" else None)
             after_value = after.get(key, "channel" if key == "type" else None)
             if before_value != after_value:
-                changed_fields.append({"field": key, "before": before_value, "after": after_value})
+                changed_fields.append(
+                    {"field": key, "before": before_value, "after": after_value}
+                )
                 field_counts[key] = field_counts.get(key, 0) + 1
         if changed_fields:
-            updated.append({
-                "id": ch_id,
-                "label": _channel_preview_label(after),
-                "before": _channel_preview_snapshot(before),
-                "after": _channel_preview_snapshot(after),
-                "changes": changed_fields,
-            })
-    return {"added": added, "removed": removed, "updated": updated, "field_counts": field_counts}
+            updated.append(
+                {
+                    "id": ch_id,
+                    "label": _channel_preview_label(after),
+                    "before": _channel_preview_snapshot(before),
+                    "after": _channel_preview_snapshot(after),
+                    "changes": changed_fields,
+                }
+            )
+    return {
+        "added": added,
+        "removed": removed,
+        "updated": updated,
+        "field_counts": field_counts,
+    }
 
 
 def preview_channels_content(content: str) -> tuple[bool, str, dict | None]:
@@ -137,13 +180,19 @@ def preview_channels_content(content: str) -> tuple[bool, str, dict | None]:
         "proposed": proposed_overview,
         "delta": {
             "entries": proposed_overview["entries"] - current_overview["entries"],
-            "categories": proposed_overview["categories"] - current_overview["categories"],
+            "categories": proposed_overview["categories"]
+            - current_overview["categories"],
             "excluded": proposed_overview["excluded"] - current_overview["excluded"],
-            "deep_clean": proposed_overview["deep_clean"] - current_overview["deep_clean"],
-            "with_notification_groups": proposed_overview["with_notification_groups"] - current_overview["with_notification_groups"],
-            "with_report_groups": proposed_overview["with_report_groups"] - current_overview["with_report_groups"],
-            "report_excluded": proposed_overview["report_excluded"] - current_overview["report_excluded"],
-            "report_individual": proposed_overview["report_individual"] - current_overview["report_individual"],
+            "deep_clean": proposed_overview["deep_clean"]
+            - current_overview["deep_clean"],
+            "with_notification_groups": proposed_overview["with_notification_groups"]
+            - current_overview["with_notification_groups"],
+            "with_report_groups": proposed_overview["with_report_groups"]
+            - current_overview["with_report_groups"],
+            "report_excluded": proposed_overview["report_excluded"]
+            - current_overview["report_excluded"],
+            "report_individual": proposed_overview["report_individual"]
+            - current_overview["report_individual"],
         },
         "counts": {
             "added": len(diff["added"]),
@@ -153,7 +202,12 @@ def preview_channels_content(content: str) -> tuple[bool, str, dict | None]:
         },
     }
     label = "entry" if len(channels) == 1 else "entries"
-    preview = {"summary": summary, "changes": diff, "parsed_channels": channels, "message": f"channels.yml preview ready — {len(channels)} channel {label}"}
+    preview = {
+        "summary": summary,
+        "changes": diff,
+        "parsed_channels": channels,
+        "message": f"channels.yml preview ready — {len(channels)} channel {label}",
+    }
     return True, preview["message"], preview
 
 
@@ -171,7 +225,13 @@ def preview_channel_restore(filename: str) -> tuple[bool, str, dict | None]:
     valid, message, preview = preview_channels_content(content)
     if not valid or preview is None:
         return False, message, None
-    preview["backup"] = {"type": backup["type"], "filename": backup["filename"], "path": backup["path"], "modified": backup["modified"], "size_bytes": backup["size_bytes"]}
+    preview["backup"] = {
+        "type": backup["type"],
+        "filename": backup["filename"],
+        "path": backup["path"],
+        "modified": backup["modified"],
+        "size_bytes": backup["size_bytes"],
+    }
     preview["message"] = f"Restore preview ready — {backup['filename']}"
     return True, preview["message"], preview
 
@@ -196,7 +256,11 @@ def restore_channels_backup(filename: str) -> tuple[bool, str, str | None]:
     message = f"Restored channels.yml from {backup['filename']} — {len(config.raw_channels)} channel {label}"
     if current_backup_path:
         message = f"{message} | Backup: {current_backup_path}"
-    log.info("channels.yml restored from backup %s%s", backup["path"], f" | backup={current_backup_path}" if current_backup_path else "")
+    log.info(
+        "channels.yml restored from backup %s%s",
+        backup["path"],
+        f" | backup={current_backup_path}" if current_backup_path else "",
+    )
     return True, message, current_backup_path
 
 
@@ -222,7 +286,9 @@ def save_channels_content(content: str) -> tuple[bool, str, str | None]:
                 channel_backup_dir = _channel_backup_dirs()[0]
                 os.makedirs(channel_backup_dir, exist_ok=True)
                 timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-                backup_path = os.path.join(channel_backup_dir, f"channels-{timestamp}.yml.bak")
+                backup_path = os.path.join(
+                    channel_backup_dir, f"channels-{timestamp}.yml.bak"
+                )
                 atomic_write_text(backup_path, previous_content)
             except PermissionError:
                 log.error("Permission denied creating channels.yml backup")
@@ -238,5 +304,8 @@ def save_channels_content(content: str) -> tuple[bool, str, str | None]:
     message = f"Saved and reloaded channels.yml — {len(channels)} channel {label}"
     if backup_path:
         message = f"{message} | Backup: {backup_path}"
-    log.info("channels.yml saved successfully%s", f" | backup={backup_path}" if backup_path else "")
+    log.info(
+        "channels.yml saved successfully%s",
+        f" | backup={backup_path}" if backup_path else "",
+    )
     return True, message, backup_path

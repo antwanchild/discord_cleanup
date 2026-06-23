@@ -2,6 +2,7 @@
 api.py — Flask Blueprint for read-only /api/* endpoints.
 Registered in web.py — do not instantiate a separate Flask app here.
 """
+
 from flask import Blueprint, jsonify, request
 
 from config import BOT_VERSION, log
@@ -41,31 +42,33 @@ def _format_startup_path_check() -> dict:
 def _get_status_context() -> dict:
     """Shared status context — imported by web.py for template rendering and exposed here as JSON."""
     import config as cfg
+
     fallbacks = get_recent_notification_fallbacks()
     return {
-        "version":          BOT_VERSION,
-        "uptime":           get_uptime_str(),
-        "next_run":         get_next_run_str(),
-        "schedule":         cfg.CLEAN_TIMES,
+        "version": BOT_VERSION,
+        "uptime": get_uptime_str(),
+        "next_run": get_next_run_str(),
+        "schedule": cfg.CLEAN_TIMES,
         "default_retention": cfg.DEFAULT_RETENTION,
-        "log_level":        cfg.LOG_LEVEL,
+        "log_level": cfg.LOG_LEVEL,
         "warn_unconfigured": cfg.WARN_UNCONFIGURED,
         "report_frequency": cfg.REPORT_FREQUENCY,
         "report_group_monthly": cfg.REPORT_GROUP_MONTHLY,
         "report_group_weekly": cfg.REPORT_GROUP_WEEKLY,
-        "log_max_files":    cfg.LOG_MAX_FILES,
+        "log_max_files": cfg.LOG_MAX_FILES,
         "schedule_skip_dates": getattr(cfg, "SCHEDULE_SKIP_DATES", []),
         "schedule_skip_weekdays": getattr(cfg, "SCHEDULE_SKIP_WEEKDAYS", []),
         "stats_backup_retention_days": cfg.STATS_BACKUP_RETENTION_DAYS,
         "startup_path_check": _format_startup_path_check(),
         "notification_fallbacks_recent": len(fallbacks),
         "last_notification_fallback": fallbacks[0] if fallbacks else None,
-        "run_in_progress":  is_run_in_progress(),
-        "run_owner":        get_run_owner(),
+        "run_in_progress": is_run_in_progress(),
+        "run_owner": get_run_owner(),
     }
 
 
 # ── Status & config ───────────────────────────────────────────────────────────
+
 
 @api.route("/api/status")
 def api_status():
@@ -95,24 +98,30 @@ def api_last_run():
 def api_stats_backups():
     """Lists available stats.json and last_run.json backup files."""
     import config as cfg
+
     backups = list_stats_backups()
-    return jsonify({
-        "retention_days": cfg.STATS_BACKUP_RETENTION_DAYS,
-        "total": len(backups),
-        "backups": backups,
-    })
+    return jsonify(
+        {
+            "retention_days": cfg.STATS_BACKUP_RETENTION_DAYS,
+            "total": len(backups),
+            "backups": backups,
+        }
+    )
 
 
 @api.route("/api/backups/channels")
 def api_channels_backups():
     """Lists available channels.yml backup files."""
     import config as cfg
+
     backups = list_channel_backups()
-    return jsonify({
-        "retention_days": cfg.CHANNELS_BACKUP_RETENTION_DAYS,
-        "total": len(backups),
-        "backups": backups,
-    })
+    return jsonify(
+        {
+            "retention_days": cfg.CHANNELS_BACKUP_RETENTION_DAYS,
+            "total": len(backups),
+            "backups": backups,
+        }
+    )
 
 
 @api.route("/api/notifications/fallbacks")
@@ -126,33 +135,39 @@ def api_notification_fallbacks():
 def api_schedule():
     """Current schedule and next run time."""
     import config as cfg
-    return jsonify({
-        "schedule": cfg.CLEAN_TIMES,
-        "next_run": get_next_run_str(),
-    })
+
+    return jsonify(
+        {
+            "schedule": cfg.CLEAN_TIMES,
+            "next_run": get_next_run_str(),
+        }
+    )
 
 
 @api.route("/api/channels")
 def api_channels():
     """Configured channel list with category, retention, and deep clean info."""
     from cleanup import build_channel_map
+
     bot = get_bot()
     if not bot or not bot.guilds:
         return jsonify({"error": "Bot not ready"}), 503
 
-    guild       = bot.guilds[0]
+    guild = bot.guilds[0]
     channel_map = build_channel_map(guild)
-    channels    = []
+    channels = []
     for ch_id, data in channel_map.items():
         discord_channel = guild.get_channel(ch_id)
-        channels.append({
-            "id":          ch_id,
-            "name":        discord_channel.name if discord_channel else str(ch_id),
-            "category":    data.get("category_name") or "Standalone",
-            "days":        data.get("days"),
-            "is_override": data.get("is_override", False),
-            "deep_clean":  data.get("deep_clean", False),
-        })
+        channels.append(
+            {
+                "id": ch_id,
+                "name": discord_channel.name if discord_channel else str(ch_id),
+                "category": data.get("category_name") or "Standalone",
+                "days": data.get("days"),
+                "is_override": data.get("is_override", False),
+                "deep_clean": data.get("deep_clean", False),
+            }
+        )
 
     channels.sort(key=lambda x: (x["category"], x["name"]))
     return jsonify({"guild": guild.name, "channels": channels, "total": len(channels)})
@@ -168,11 +183,13 @@ def api_logs_latest():
 
     try:
         data = read_latest_cleanup_log(lines_requested=lines_requested)
-        return jsonify({
-            "log_file": data["log_file"],
-            "lines_returned": data["lines_returned"],
-            "lines": data["lines"],
-        })
+        return jsonify(
+            {
+                "log_file": data["log_file"],
+                "lines_returned": data["lines_returned"],
+                "lines": data["lines"],
+            }
+        )
     except OSError as e:
         return _internal_error_response("Could not serve latest log API", e)
 
@@ -180,7 +197,9 @@ def api_logs_latest():
 @api.route("/api/run_status")
 def api_run_status():
     """Returns whether a cleanup run is currently in progress."""
-    return jsonify({"run_in_progress": is_run_in_progress(), "run_owner": get_run_owner()})
+    return jsonify(
+        {"run_in_progress": is_run_in_progress(), "run_owner": get_run_owner()}
+    )
 
 
 @api.route("/api/health")
@@ -193,17 +212,19 @@ def api_health():
 def api_channels_unconfigured():
     """List of Discord channels not in channels.yml — requires WARN_UNCONFIGURED to be meaningful."""
     import config as cfg
+
     bot = get_bot()
     if not bot or not bot.guilds:
         return jsonify({"error": "Bot not ready"}), 503
 
-    guild       = bot.guilds[0]
-    configured  = set()
+    guild = bot.guilds[0]
+    configured = set()
 
     # Collect all configured channel IDs including category sub-channels
     from cleanup import build_channel_map
+
     channel_map = build_channel_map(guild)
-    configured  = set(channel_map.keys())
+    configured = set(channel_map.keys())
 
     # Also add excluded channel IDs
     excluded_ids = {ch["id"] for ch in cfg.raw_channels if ch.get("exclude")}
@@ -213,18 +234,24 @@ def api_channels_unconfigured():
     unconfigured = []
     for channel in guild.text_channels:
         if channel.id not in configured:
-            unconfigured.append({
-                "id":       channel.id,
-                "name":     channel.name,
-                "category": channel.category.name if channel.category else "No Category",
-            })
+            unconfigured.append(
+                {
+                    "id": channel.id,
+                    "name": channel.name,
+                    "category": (
+                        channel.category.name if channel.category else "No Category"
+                    ),
+                }
+            )
 
     unconfigured.sort(key=lambda x: (x["category"], x["name"]))
-    return jsonify({
-        "guild":       guild.name,
-        "total":       len(unconfigured),
-        "channels":    unconfigured,
-    })
+    return jsonify(
+        {
+            "guild": guild.name,
+            "total": len(unconfigured),
+            "channels": unconfigured,
+        }
+    )
 
 
 @api.route("/api/logs")
@@ -247,11 +274,13 @@ def api_logs_file(filename):
 
     try:
         data = read_cleanup_log(filename, lines_requested=lines_requested)
-        return jsonify({
-            "log_file": data["log_file"],
-            "lines_returned": data["lines_returned"],
-            "lines": data["lines"],
-        })
+        return jsonify(
+            {
+                "log_file": data["log_file"],
+                "lines_returned": data["lines_returned"],
+                "lines": data["lines"],
+            }
+        )
     except FileNotFoundError:
         return jsonify({"error": "Log file not found"}), 404
     except OSError as e:
