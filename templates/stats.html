@@ -623,5 +623,15 @@
     const saved = localStorage.getItem(STORAGE_VIEW) || "detail";
     setView(saved);
   })();
+
+  function wireDrilldownSelect() {
+    const select = document.getElementById("drilldown-channel-select");
+    if (!select) return;
+    const handler = event => setDrilldownChannel(event.target.value);
+    select.addEventListener("change", handler);
+    select.addEventListener("input", handler);
+  }
+
+  wireDrilldownSelect();
 </script>
 {% endblock %}
