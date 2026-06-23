@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.68 - 2026-06-23
+
+### Changes
+- Fix sticky breakdown header overlap
+
+
 ## 5.11.67 - 2026-06-23
 
 ### Changes
