@@ -240,11 +240,19 @@
   <div class="card-header">
     <span class="card-title">Channel Drilldown</span>
     {% if history_channels %}
-    <select id="drilldown-channel-select" onchange="setDrilldownChannel(this.value)" class="drilldown-select" style="margin-left:auto; max-width:320px; min-width:240px; padding:0.35rem 0.75rem; border-radius:6px; appearance:auto; -webkit-appearance:menulist;">
+    <div class="theme-dropdown" id="drilldown-dropdown" style="margin-left:auto">
+      <div class="theme-dropdown-btn" onclick="toggleDrilldownDropdown()" style="min-width:320px; justify-content:space-between">
+        <span id="drilldown-label" style="flex:1; min-width:0; text-align:left">{{ (selected_history_channel or history_channels[0]).name }} · {{ (selected_history_channel or history_channels[0]).history_total }} recorded run{{ 's' if (selected_history_channel or history_channels[0]).history_total != 1 else '' }}</span>
+        <span class="chevron">⌄</span>
+      </div>
+      <div class="theme-dropdown-menu" id="drilldown-menu" style="right:0; left:auto">
         {% for ch in history_channels %}
-        <option value="history-{{ ch.id }}" {% if selected_history_channel and selected_history_channel.id == ch.id %}selected{% endif %}>{{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}</option>
+        <button type="button" class="theme-option" onclick="setDrilldownChannel('history-{{ ch.id }}')">
+          {{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}
+        </button>
         {% endfor %}
-    </select>
+      </div>
+    </div>
     {% endif %}
   </div>
 
@@ -582,6 +590,7 @@
 <script>
   const STORAGE_VIEW = "dcb-stats-view";
   const STORAGE_HISTORY = "dcb-stats-history";
+  const STORAGE_DRILLDOWN = "dcb-stats-drilldown";
   const HISTORY_CHANNELS = {{ history_channels | tojson }};
   let pendingResetScope = null;
   let pendingRepair = false;
@@ -594,6 +603,16 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#39;");
+  }
+
+  function toggleDrilldownDropdown() {
+    const menu = document.getElementById("drilldown-menu");
+    if (menu) menu.classList.toggle("open");
+  }
+
+  function closeDrilldownDropdown() {
+    const menu = document.getElementById("drilldown-menu");
+    if (menu) menu.classList.remove("open");
   }
 
   function confirmReset(scope, label) {
@@ -675,19 +694,29 @@
   }
 
   function setDrilldownChannel(id) {
-    const select = document.getElementById("drilldown-channel-select");
     const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === id || String(ch.id) === id) || null;
     if (!data) return;
-    if (select) select.value = `history-${data.id}`;
+    syncDrilldownLabel(data);
     renderDrilldownChannel(data);
     updateDrilldownUrl(data.id);
-    localStorage.setItem(STORAGE_HISTORY, `history-${data.id}`);
+    closeDrilldownDropdown();
+    localStorage.setItem(STORAGE_DRILLDOWN, `history-${data.id}`);
   }
 
   function updateDrilldownUrl(channelId) {
     const url = new URL(window.location.href);
     url.searchParams.set("drilldown_channel", `history-${channelId}`);
     window.history.replaceState({}, "", url.toString());
+  }
+
+  function syncDrilldownLabel(data) {
+    const label = document.getElementById("drilldown-label");
+    if (!label) return;
+    if (!data) {
+      label.textContent = "Select a channel";
+      return;
+    }
+    label.textContent = `${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
   }
 
   function renderDrilldownChannel(data) {
@@ -779,17 +808,20 @@
       }
       setHistoryChannel(historySelect.value);
     }
-    const drilldownSelect = document.getElementById("drilldown-channel-select");
-    if (drilldownSelect) {
-      const params = new URLSearchParams(window.location.search);
-      const selected = params.get("drilldown_channel") || localStorage.getItem(STORAGE_HISTORY) || drilldownSelect.value;
-      const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === selected || String(ch.id) === selected) || HISTORY_CHANNELS[0];
-      if (data) {
-        drilldownSelect.value = `history-${data.id}`;
-        renderDrilldownChannel(data);
-        updateDrilldownUrl(data.id);
-      }
+    const params = new URLSearchParams(window.location.search);
+    const defaultDrilldown = document.getElementById("drilldown-preview")?.dataset.channelId;
+    const selected = params.get("drilldown_channel") || localStorage.getItem(STORAGE_DRILLDOWN) || defaultDrilldown;
+    const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === selected || String(ch.id) === selected) || HISTORY_CHANNELS[0];
+    if (data) {
+      setDrilldownChannel(`history-${data.id}`);
     }
   })();
+
+  document.addEventListener("click", function(e) {
+    const dropdown = document.getElementById("drilldown-dropdown");
+    if (dropdown && !dropdown.contains(e.target)) {
+      closeDrilldownDropdown();
+    }
+  });
 </script>
 {% endblock %}
