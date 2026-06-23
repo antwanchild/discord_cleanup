@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.38 - 2026-06-23
+
+### Changes
+- Fix stats drilldown dropdown
+
+
 ## 5.11.37 - 2026-06-23
 
 ### Changes
