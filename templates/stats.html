@@ -613,10 +613,19 @@
       if (requestId !== drilldownRequestId) return;
 
       const parsed = new DOMParser().parseFromString(html, "text/html");
-      const currentCard = document.getElementById("drilldown-card");
-      const nextCard = parsed.getElementById("drilldown-card");
-      if (currentCard && nextCard) {
-        currentCard.replaceWith(nextCard);
+      const nextSelect = parsed.getElementById("drilldown-channel-select");
+      const nextStatus = parsed.getElementById("drilldown-status");
+      const nextPreview = parsed.getElementById("drilldown-preview");
+      if (select && nextSelect) {
+        select.value = nextSelect.value;
+      }
+      const currentStatus = document.getElementById("drilldown-status");
+      if (currentStatus && nextStatus) {
+        currentStatus.innerHTML = nextStatus.innerHTML;
+      }
+      const currentPreview = document.getElementById("drilldown-preview");
+      if (currentPreview && nextPreview) {
+        currentPreview.innerHTML = nextPreview.innerHTML;
         history.replaceState({}, "", url.pathname + url.search + url.hash);
         return;
       }
