@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.44 - 2026-06-23
+
+### Changes
+- Restore drilldown link navigation
+
+
 ## 5.11.43 - 2026-06-23
 
 ### Changes
