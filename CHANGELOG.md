@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.34 - 2026-06-23
+
+### Changes
+- Make stats drilldown actually switch channels
+
+
 ## 5.11.33 - 2026-06-23
 
 ### Changes
