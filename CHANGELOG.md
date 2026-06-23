@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.66 - 2026-06-23
+
+### Changes
+- Add scrollbox breakdown views
+
+
 ## 5.11.65 - 2026-06-23
 
 ### Changes
