@@ -176,7 +176,7 @@
   {% endif %}
   <div id="drilldown-preview" style="display:grid; gap:1rem; margin-bottom:1rem">
     {% for ch in history_channels %}
-    <div class="drilldown-pane" id="drilldown-pane-{{ ch.id }}" style="display: {% if selected_history_channel and selected_history_channel.id == ch.id %}grid{% else %}none{% endif %}; gap:1rem">
+    <div class="drilldown-pane" id="drilldown-pane-{{ ch.id }}" data-channel-id="{{ ch.id }}" style="display: {% if selected_history_channel and selected_history_channel.id == ch.id %}grid{% else %}none{% endif %}; gap:1rem">
       <div class="stat-grid" style="margin-bottom:1rem">
         <div class="stat-box">
           <div class="stat-value">{{ ch.all_time_deleted | default(0) }}</div>
@@ -586,7 +586,8 @@
   }
 
   function setDrilldownChannel(id) {
-    const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === id || String(ch.id) === id) || null;
+    const normalizedId = String(id ?? "").replace(/^history-/, "");
+    const data = HISTORY_CHANNELS.find(ch => String(ch.id) === normalizedId || `history-${ch.id}` === id) || null;
     if (!data) return;
     const select = document.getElementById("drilldown-channel-select");
     if (select) select.value = `history-${data.id}`;
@@ -596,9 +597,8 @@
     if (status) {
       status.textContent = `Showing ${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
     }
-    const activePane = document.getElementById(`drilldown-pane-${data.id}`);
     document.querySelectorAll("#drilldown-preview .drilldown-pane").forEach(pane => {
-      pane.style.display = pane === activePane ? "grid" : "none";
+      pane.style.display = String(pane.dataset.channelId) === String(data.id) ? "grid" : "none";
     });
   };
 
