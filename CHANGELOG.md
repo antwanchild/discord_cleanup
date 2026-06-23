@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.49 - 2026-06-23
+
+### Changes
+- Simplify drilldown click handler
+
+
 ## 5.11.48 - 2026-06-23
 
 ### Changes
