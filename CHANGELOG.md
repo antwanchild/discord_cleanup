@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.65 - 2026-06-23
+
+### Changes
+- Polish drilldown dashboard chrome
+
+
 ## 5.11.64 - 2026-06-23
 
 ### Changes
