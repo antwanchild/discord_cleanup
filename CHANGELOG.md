@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.75 - 2026-06-23
+
+### Changes
+- Remove Black autoformat workflow
+
+
 ## 5.11.74 - 2026-06-23
 
 ### Changes
