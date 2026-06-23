@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.71 - 2026-06-23
+
+### Changes
+- Restore drilldown arrow and unstick headers
+
+
 ## 5.11.70 - 2026-06-23
 
 ### Changes
