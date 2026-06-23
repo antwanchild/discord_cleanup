@@ -817,6 +817,12 @@
     }
   })();
 
+  document.querySelectorAll("#drilldown-menu .theme-option").forEach(option => {
+    option.addEventListener("click", function() {
+      closeDrilldownDropdown();
+    });
+  });
+
   document.addEventListener("click", function(e) {
     const dropdown = document.getElementById("drilldown-dropdown");
     if (dropdown && !dropdown.contains(e.target)) {
