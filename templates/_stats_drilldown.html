@@ -1,0 +1,142 @@
+<div class="card" id="drilldown-card">
+  <div class="card-header">
+    <span class="card-title">Channel Drilldown</span>
+    {% if history_channels %}
+    <select id="drilldown-channel-select" onchange="setDrilldownChannel(this.value)" style="margin-left:auto; max-width:320px; min-width:260px">
+        {% for ch in history_channels %}
+        <option value="history-{{ ch.id }}" {% if selected_history_channel and selected_history_channel.id == ch.id %}selected{% endif %}>
+          {{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}
+        </option>
+        {% endfor %}
+    </select>
+    {% endif %}
+  </div>
+
+  {% if history_channels %}
+  <div id="drilldown-empty" style="color:var(--text-muted); font-size:0.875rem; margin:0">Select a channel to inspect its current config and recent run history.</div>
+  <div id="drilldown-status" style="color:var(--text-muted); font-size:0.875rem; margin:0.5rem 0 1rem">
+    {% if selected_history_channel %}
+      Showing {{ selected_history_channel.name }} · {{ selected_history_channel.history_total }} recorded run{{ 's' if selected_history_channel.history_total != 1 else '' }}
+    {% endif %}
+  </div>
+  {% if history_channels_fallback %}
+  <p style="color:var(--text-muted); font-size:0.75rem; margin:0 0 1rem">Live channel config is not loaded, so this view is based on stored stats history only.</p>
+  {% endif %}
+  <div id="drilldown-preview" style="display:grid; gap:1rem; margin-bottom:1rem">
+    {% for ch in history_channels %}
+    <div class="drilldown-pane" id="drilldown-pane-{{ ch.id }}" data-channel-id="{{ ch.id }}" style="display: {% if selected_history_channel and selected_history_channel.id == ch.id %}grid{% else %}none{% endif %}; gap:1rem">
+      <div class="stat-grid" style="margin-bottom:1rem">
+        <div class="stat-box">
+          <div class="stat-value">{{ ch.all_time_deleted | default(0) }}</div>
+          <div class="stat-label">All-Time Deleted</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ ch.history_total }}</div>
+          <div class="stat-label">Recorded Runs</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ ch.days ~ 'd' if ch.days is not none else '—' }}</div>
+          <div class="stat-label">Retention</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ "Yes" if ch.deep_clean else "No" }}</div>
+          <div class="stat-label">Deep Clean</div>
+        </div>
+      </div>
+
+      <table style="margin-bottom:1rem">
+        <tbody>
+          <tr>
+            <td>Channel</td>
+            <td class="mono">{{ ch.name }}</td>
+          </tr>
+          <tr>
+            <td>Category</td>
+            <td class="mono">{{ ch.category }}</td>
+          </tr>
+          <tr>
+            <td>Override</td>
+            <td class="mono">{{ "Yes" if ch.is_override else "No" }}</td>
+          </tr>
+          <tr>
+            <td>Report Group</td>
+            <td class="mono">{{ ch.report_group or ch.notification_group or "—" }}</td>
+          </tr>
+          <tr>
+            <td>Report Control</td>
+            <td class="mono">
+              {% if ch.report_exclude %}
+                Excluded
+              {% elif ch.report_individual %}
+                Individual
+              {% else %}
+                Default
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td>Latest Trigger</td>
+            <td class="mono">{{ ch.latest.triggered_by if ch.latest else "—" }}</td>
+          </tr>
+          <tr>
+            <td>Latest Status</td>
+            <td class="mono">
+              {% if ch.latest %}
+                {% if ch.latest.status == "error" %}
+                  ⛔ error
+                {% elif ch.latest.status == "clean" %}
+                  ℹ️ clean
+                {% elif ch.latest.dry_run %}
+                  🔍 dry run
+                {% else %}
+                  ✅ deleted
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {% if ch.history %}
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Deleted</th>
+            <th>Status</th>
+            <th>Triggered By</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in ch.history %}
+          <tr>
+            <td class="mono">{{ entry.timestamp }}</td>
+            <td class="mono">{{ entry.count }}</td>
+            <td class="mono">
+              {% if entry.status == "error" %}
+                ⛔ error
+              {% elif entry.status == "clean" %}
+                ℹ️ clean
+              {% elif entry.dry_run %}
+                🔍 dry run
+              {% else %}
+                ✅ deleted
+              {% endif %}
+            </td>
+            <td class="mono">{{ entry.triggered_by }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No recorded runs for this channel yet.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color:var(--text-muted); font-size:0.875rem; margin:0">No channel history yet.</p>
+  {% endif %}
+</div>

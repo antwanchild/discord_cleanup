@@ -352,6 +352,10 @@ def stats_page():
     context["stats_backups"] = stats_backups
     context["last_run_backups"] = last_run_backups
     context["channel_backups"] = list_channel_backups()[:10]
+
+    if request.args.get("drilldown_partial") == "1":
+        return render_template("_stats_drilldown.html", **context)
+
     return render_template("stats.html", **context)
 
 
