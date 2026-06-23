@@ -240,13 +240,11 @@
   <div class="card-header">
     <span class="card-title">Channel Drilldown</span>
     {% if history_channels %}
-    <form id="drilldown-form" method="get" action="/stats" style="margin-left:auto">
-      <select id="drilldown-channel-select" name="drilldown_channel" onchange="this.form.submit()" style="max-width:320px">
+    <select id="drilldown-channel-select" onchange="setDrilldownChannel(this.value)" style="margin-left:auto; max-width:320px">
         {% for ch in history_channels %}
         <option value="history-{{ ch.id }}" {% if selected_history_channel and selected_history_channel.id == ch.id %}selected{% endif %}>{{ ch.name }} · {{ ch.history_total }} run{{ 's' if ch.history_total != 1 else '' }}</option>
         {% endfor %}
-      </select>
-    </form>
+    </select>
     {% endif %}
   </div>
 
@@ -260,7 +258,7 @@
   {% if history_channels_fallback %}
   <p style="color:var(--text-muted); font-size:0.75rem; margin:0 0 1rem">Live channel config is not loaded, so this view is based on stored stats history only.</p>
   {% endif %}
-  <div id="drilldown-preview" style="display:grid; gap:1rem; margin-bottom:1rem">
+  <div id="drilldown-preview" data-channel-id="{{ (selected_history_channel or history_channels[0]).id }}" style="display:grid; gap:1rem; margin-bottom:1rem">
     {% set ch = selected_history_channel or history_channels[0] %}
     <div class="stat-grid" style="margin-bottom:1rem">
       <div class="stat-box">
@@ -692,9 +690,19 @@
 <script>
   const STORAGE_VIEW = "dcb-stats-view";
   const STORAGE_HISTORY = "dcb-stats-history";
+  const HISTORY_CHANNELS = {{ history_channels | tojson }};
   let pendingResetScope = null;
   let pendingRepair = false;
   let pendingRepairAndRepost = false;
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
 
   function confirmReset(scope, label) {
     pendingResetScope = scope;
@@ -775,20 +783,93 @@
   }
 
   function setDrilldownChannel(id) {
-    const form = document.getElementById("drilldown-form");
     const select = document.getElementById("drilldown-channel-select");
-    if (select) select.value = id;
-    if (form) form.submit();
+    const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === id || String(ch.id) === id) || null;
+    if (!data) return;
+    if (select) select.value = `history-${data.id}`;
+    renderDrilldownChannel(data);
+    updateDrilldownUrl(data.id);
     localStorage.setItem(STORAGE_HISTORY, id);
   }
 
-  function syncDrilldownFromQuery() {
-    const params = new URLSearchParams(window.location.search);
-    const selected = params.get("drilldown_channel");
-    const select = document.getElementById("drilldown-channel-select");
-    if (!selected || !select) return;
-    if (select.value !== selected) {
-      select.value = selected;
+  function updateDrilldownUrl(channelId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("drilldown_channel", `history-${channelId}`);
+    window.history.replaceState({}, "", url.toString());
+  }
+
+  function renderDrilldownChannel(data) {
+    const preview = document.getElementById("drilldown-preview");
+    const status = document.getElementById("drilldown-status");
+    if (!preview || !data) return;
+
+    const historyRows = (data.history || []).map(entry => `
+      <tr>
+        <td class="mono">${escapeHtml(entry.timestamp)}</td>
+        <td class="mono">${escapeHtml(entry.count)}</td>
+        <td class="mono">
+          ${entry.status === "error" ? "⛔ error" : entry.status === "clean" ? "ℹ️ clean" : entry.dry_run ? "🔍 dry run" : "✅ deleted"}
+        </td>
+        <td class="mono">${escapeHtml(entry.triggered_by)}</td>
+      </tr>
+    `).join("");
+
+    const retention = data.days != null ? `${escapeHtml(data.days)}d` : "—";
+    const reportGroup = escapeHtml(data.report_group || data.notification_group || "—");
+    const latestTrigger = escapeHtml(data.latest?.triggered_by || "—");
+    const latestStatus = data.latest
+      ? (data.latest.status === "error" ? "⛔ error" : data.latest.status === "clean" ? "ℹ️ clean" : data.latest.dry_run ? "🔍 dry run" : "✅ deleted")
+      : "—";
+
+    preview.innerHTML = `
+      <div class="stat-grid" style="margin-bottom:1rem">
+        <div class="stat-box">
+          <div class="stat-value">${escapeHtml(data.all_time_deleted ?? 0)}</div>
+          <div class="stat-label">All-Time Deleted</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${escapeHtml(data.history_total ?? 0)}</div>
+          <div class="stat-label">Recorded Runs</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${retention}</div>
+          <div class="stat-label">Retention</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${data.deep_clean ? "Yes" : "No"}</div>
+          <div class="stat-label">Deep Clean</div>
+        </div>
+      </div>
+      <table style="margin-bottom:1rem">
+        <tbody>
+          <tr><td>Channel</td><td class="mono">${escapeHtml(data.name)}</td></tr>
+          <tr><td>Category</td><td class="mono">${escapeHtml(data.category || "Standalone")}</td></tr>
+          <tr><td>Override</td><td class="mono">${data.is_override ? "Yes" : "No"}</td></tr>
+          <tr><td>Report Group</td><td class="mono">${reportGroup}</td></tr>
+          <tr><td>Report Control</td><td class="mono">${data.report_exclude ? "Excluded" : data.report_individual ? "Individual" : "Default"}</td></tr>
+          <tr><td>Latest Trigger</td><td class="mono">${latestTrigger}</td></tr>
+          <tr><td>Latest Status</td><td class="mono">${latestStatus}</td></tr>
+        </tbody>
+      </table>
+      ${data.history && data.history.length ? `
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Deleted</th>
+              <th>Status</th>
+              <th>Triggered By</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${historyRows}
+          </tbody>
+        </table>
+      ` : `<p style="color:var(--text-muted); font-size:0.875rem; margin:0">No recorded runs for this channel yet.</p>`}
+    `;
+
+    if (status) {
+      status.textContent = `Showing ${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
     }
   }
 
@@ -808,9 +889,13 @@
     }
     const drilldownSelect = document.getElementById("drilldown-channel-select");
     if (drilldownSelect) {
-      syncDrilldownFromQuery();
-      if (!window.location.search.includes("drilldown_channel=") && localStorage.getItem(STORAGE_HISTORY) && drilldownSelect.value !== localStorage.getItem(STORAGE_HISTORY)) {
-        drilldownSelect.value = localStorage.getItem(STORAGE_HISTORY);
+      const params = new URLSearchParams(window.location.search);
+      const selected = params.get("drilldown_channel") || localStorage.getItem(STORAGE_HISTORY) || drilldownSelect.value;
+      const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === selected || String(ch.id) === selected) || HISTORY_CHANNELS[0];
+      if (data) {
+        drilldownSelect.value = `history-${data.id}`;
+        renderDrilldownChannel(data);
+        updateDrilldownUrl(data.id);
       }
     }
   })();
