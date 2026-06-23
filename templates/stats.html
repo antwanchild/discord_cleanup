@@ -504,7 +504,6 @@
   let pendingResetScope = null;
   let pendingRepair = false;
   let pendingRepairAndRepost = false;
-  let drilldownRequestId = 0;
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -586,54 +585,26 @@
     localStorage.setItem(STORAGE_VIEW, view);
   }
 
-  async function setDrilldownChannel(id) {
+  function setDrilldownChannel(id) {
     const normalizedId = String(id ?? "").replace(/^history-/, "");
     const data = HISTORY_CHANNELS.find(ch => String(ch.id) === normalizedId || `history-${ch.id}` === id) || null;
     if (!data) return;
+    const channelId = String(data.id);
     const select = document.getElementById("drilldown-channel-select");
-    if (select) {
-      select.value = `history-${data.id}`;
+    if (select) select.value = `history-${channelId}`;
+
+    document.querySelectorAll("#drilldown-preview .drilldown-pane").forEach((pane) => {
+      pane.style.display = pane.dataset.channelId === channelId ? "grid" : "none";
+    });
+
+    const status = document.getElementById("drilldown-status");
+    if (status) {
+      status.textContent = `Showing ${data.name} · ${data.history_total} recorded run${data.history_total !== 1 ? "s" : ""}`;
     }
+
     const url = new URL(window.location.href);
-    url.searchParams.set("drilldown_channel", `history-${data.id}`);
-    url.hash = "drilldown-card";
-
-    const requestId = ++drilldownRequestId;
-    try {
-      const response = await fetch(url.toString(), {
-        headers: {
-          "Accept": "text/html",
-          "X-Requested-With": "XMLHttpRequest",
-        },
-        credentials: "same-origin",
-      });
-      if (!response.ok) throw new Error(`Failed to load drilldown: ${response.status}`);
-
-      const html = await response.text();
-      if (requestId !== drilldownRequestId) return;
-
-      const parsed = new DOMParser().parseFromString(html, "text/html");
-      const nextSelect = parsed.getElementById("drilldown-channel-select");
-      const nextStatus = parsed.getElementById("drilldown-status");
-      const nextPreview = parsed.getElementById("drilldown-preview");
-      if (select && nextSelect) {
-        select.value = nextSelect.value;
-      }
-      const currentStatus = document.getElementById("drilldown-status");
-      if (currentStatus && nextStatus) {
-        currentStatus.innerHTML = nextStatus.innerHTML;
-      }
-      const currentPreview = document.getElementById("drilldown-preview");
-      if (currentPreview && nextPreview) {
-        currentPreview.innerHTML = nextPreview.innerHTML;
-        history.replaceState({}, "", url.pathname + url.search + url.hash);
-        return;
-      }
-    } catch (error) {
-      console.error("Could not update drilldown without a refresh", error);
-    }
-
-    window.location.assign(url.toString());
+    url.searchParams.set("drilldown_channel", `history-${channelId}`);
+    history.replaceState({}, "", url.pathname + url.search + "#drilldown-card");
   }
 
   // Restore saved view preference on load
