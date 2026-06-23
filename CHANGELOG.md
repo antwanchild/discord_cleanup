@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.47 - 2026-06-23
+
+### Changes
+- Bind drilldown selection inline
+
+
 ## 5.11.46 - 2026-06-23
 
 ### Changes
