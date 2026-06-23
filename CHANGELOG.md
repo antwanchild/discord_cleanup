@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.51 - 2026-06-23
+
+### Changes
+- Tighten drilldown pane switching
+
+
 ## 5.11.50 - 2026-06-23
 
 ### Changes
