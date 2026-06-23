@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.61 - 2026-06-23
+
+### Changes
+- Remove unsupported drilldown syntax
+
+
 ## 5.11.60 - 2026-06-23
 
 ### Changes
