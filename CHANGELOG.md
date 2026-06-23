@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.37 - 2026-06-23
+
+### Changes
+- Simplify stats drilldown display
+
+
 ## 5.11.36 - 2026-06-23
 
 ### Changes
