@@ -105,6 +105,14 @@ def _build_history_channel_entry(
     }
 
 
+def _fallback_history_channel_name(ch_id, stats_entry: object) -> str:
+    """Returns a stable display name for drilldown fallback entries."""
+    if isinstance(stats_entry, dict):
+        name = stats_entry.get("name")
+        if isinstance(name, str) and name:
+            return name
+    return str(ch_id)
+
 def _select_history_channel(
     history_channels: list[dict], selected_id: str | None
 ) -> dict | None:
@@ -408,11 +416,7 @@ def stats_page():
         )
         for ch_id in channel_ids:
             stats_entry = all_time_channels.get(ch_id, {})
-            fallback_name = (
-                stats_entry.get("name")
-                if isinstance(stats_entry, dict) and stats_entry.get("name")
-                else str(ch_id)
-            )
+            fallback_name = _fallback_history_channel_name(ch_id, stats_entry)
             history_channels.append(
                 _build_history_channel_entry(
                     ch_id, fallback_name, {}, channel_history, all_time_channels
