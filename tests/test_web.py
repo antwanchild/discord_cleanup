@@ -139,6 +139,88 @@ class WebConfigTests(unittest.TestCase):
         self.assertIn(b"Repair Monthly Snapshot", response.data)
         self.assertIn(b"Repair + Repost Monthly Report", response.data)
 
+    def test_stats_page_shows_ten_of_each_backup_type(self):
+        config_stub = self._config_stub()
+        config_stub.BOT_VERSION = "1.0.0"
+        config_stub.CLEAN_TIMES = ["03:00"]
+        config_stub.DEFAULT_RETENTION = 7
+        config_stub.LOG_LEVEL = "INFO"
+        config_stub.WARN_UNCONFIGURED = False
+        config_stub.REPORT_FREQUENCY = "monthly"
+        config_stub.LOG_MAX_FILES = 7
+        config_stub.STATS_BACKUP_RETENTION_DAYS = 10
+        config_stub.REPORT_GROUP_MONTHLY = True
+        config_stub.REPORT_GROUP_WEEKLY = True
+        config_stub.SCHEDULE_SKIP_DATES = []
+        config_stub.SCHEDULE_SKIP_WEEKDAYS = []
+
+        stats_backups = [
+            {
+                "type": "stats",
+                "filename": f"stats-20260622-000{i}.json.bak",
+                "path": f"/tmp/stats-{i}.json.bak",
+                "modified": f"2026-06-22 00:00:{i:02d}",
+                "size_bytes": 100 + i,
+            }
+            for i in range(11)
+        ]
+        last_run_backups = [
+            {
+                "type": "last_run",
+                "filename": f"last-run-20260622-000{i}.json.bak",
+                "path": f"/tmp/last-run-{i}.json.bak",
+                "modified": f"2026-06-22 00:01:{i:02d}",
+                "size_bytes": 200 + i,
+            }
+            for i in range(11)
+        ]
+
+        with isolated_module_import(
+            "web",
+            {
+                "config": config_stub,
+                "config_utils": types.SimpleNamespace(
+                    list_channel_backups=lambda: [],
+                    list_env_backups=lambda: [],
+                ),
+                "cleanup": types.SimpleNamespace(build_channel_map=lambda *_a, **_k: {}),
+                "utils": types.SimpleNamespace(
+                    get_bot=lambda: None,
+                    get_run_owner=lambda: None,
+                    is_run_in_progress=lambda: False,
+                    read_cleanup_log=lambda *_a, **_k: {},
+                    read_latest_cleanup_log=lambda *_a, **_k: {},
+                    get_uptime_str=lambda: "1m",
+                    get_next_run_str=lambda: "tomorrow",
+                ),
+                "stats": types.SimpleNamespace(
+                    list_stats_backups=lambda: stats_backups + last_run_backups,
+                    load_stats=lambda: {
+                        "all_time": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}},
+                        "rolling_30": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+                        "monthly": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}, "reset": "2026-06-01"},
+                        "last_month": None,
+                        "previous_month": None,
+                        "channel_history": {},
+                    },
+                    load_last_run=lambda: None,
+                ),
+                "api": self._api_stub(),
+                "admin": self._admin_stub(),
+            },
+        ) as web_module:
+            client = web_module.app.test_client()
+            response = client.get("/stats")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Stats Backups", response.data)
+        self.assertIn(b"Last-Run Backups", response.data)
+        self.assertIn(b"Showing the 10 most recent stats backups and the 10 most recent last-run backups.", response.data)
+        self.assertIn(b"stats-20260622-0009.json.bak", response.data)
+        self.assertNotIn(b"stats-20260622-0010.json.bak", response.data)
+        self.assertIn(b"last-run-20260622-0009.json.bak", response.data)
+        self.assertNotIn(b"last-run-20260622-0010.json.bak", response.data)
+
 
 if __name__ == "__main__":
     unittest.main()

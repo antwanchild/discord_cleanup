@@ -250,6 +250,7 @@
 
   {% if history_channels %}
   <div id="drilldown-empty" style="color:var(--text-muted); font-size:0.875rem; margin:0">Select a channel to inspect its current config and recent run history.</div>
+  <div id="drilldown-status" style="color:var(--text-muted); font-size:0.875rem; margin:0.5rem 0 1rem"></div>
   {% for ch in history_channels %}
   <div class="drilldown-pane" id="drilldown-{{ ch.id }}" data-channel-name="{{ ch.name }}" data-channel-id="{{ ch.id }}" data-history-count="{{ ch.history_total }}" style="display:none">
     <div class="stat-grid" style="margin-bottom:1rem">
@@ -393,31 +394,60 @@
   <div class="card-header">
     <span class="card-title">Stats &amp; Last-Run Backups</span>
   </div>
-  {% if stats_backups %}
-  <table>
-    <thead>
-      <tr>
-        <th>Type</th>
-        <th>File</th>
-        <th>Modified</th>
-        <th>Size</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for backup in stats_backups %}
-      <tr>
-        <td class="mono">{{ backup.type }}</td>
-        <td class="mono">{{ backup.filename }}</td>
-        <td class="mono">{{ backup.modified }}</td>
-        <td class="mono">{{ backup.size_bytes }} B</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <p style="color:var(--text-muted); font-size:0.875rem; margin-top:0.75rem">Showing the 10 most recent stats and last-run backups.</p>
-  {% else %}
-  <p style="color:var(--text-muted); font-size:0.875rem">No stats backups yet.</p>
-  {% endif %}
+  <div style="display:grid; gap:1rem">
+    <div>
+      <h3 style="font-size:1rem; margin:0 0 0.5rem">Stats Backups</h3>
+      {% if stats_backups %}
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Modified</th>
+            <th>Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for backup in stats_backups %}
+          <tr>
+            <td class="mono">{{ backup.filename }}</td>
+            <td class="mono">{{ backup.modified }}</td>
+            <td class="mono">{{ backup.size_bytes }} B</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:var(--text-muted); font-size:0.875rem">No stats backups yet.</p>
+      {% endif %}
+    </div>
+
+    <div>
+      <h3 style="font-size:1rem; margin:0 0 0.5rem">Last-Run Backups</h3>
+      {% if last_run_backups %}
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Modified</th>
+            <th>Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for backup in last_run_backups %}
+          <tr>
+            <td class="mono">{{ backup.filename }}</td>
+            <td class="mono">{{ backup.modified }}</td>
+            <td class="mono">{{ backup.size_bytes }} B</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:var(--text-muted); font-size:0.875rem">No last-run backups yet.</p>
+      {% endif %}
+    </div>
+  </div>
+  <p style="color:var(--text-muted); font-size:0.875rem; margin-top:0.75rem">Showing the 10 most recent stats backups and the 10 most recent last-run backups.</p>
 </div>
 
 <div class="card">
@@ -622,15 +652,23 @@
 
   function renderDrilldownChannel(data) {
     const empty = document.getElementById("drilldown-empty");
+    const status = document.getElementById("drilldown-status");
     const panes = document.querySelectorAll(".drilldown-pane");
     panes.forEach(pane => pane.style.display = "none");
     if (!data) {
       if (empty) empty.style.display = "";
+      if (status) status.textContent = "";
       return;
     }
     if (empty) empty.style.display = "none";
+    if (status) {
+      status.textContent = `Showing ${data.name} · ${data.history_total} recorded run${data.history_total === 1 ? "" : "s"}`;
+    }
     const pane = document.getElementById(`drilldown-${data.id}`);
-    if (pane) pane.style.display = "";
+    if (pane) {
+      pane.style.display = "";
+      pane.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   function setDrilldownChannel(id) {

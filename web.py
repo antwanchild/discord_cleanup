@@ -59,6 +59,13 @@ _rate_limit_lock = threading.Lock()
 _rate_limit_state: dict[tuple[str, str], list[float]] = {}
 
 
+def _split_stats_backups(backups: list[dict], limit: int = 10) -> tuple[list[dict], list[dict]]:
+    """Splits the shared backup inventory into stats and last-run lists."""
+    stats_backups = [backup for backup in backups if backup.get("type") == "stats"][:limit]
+    last_run_backups = [backup for backup in backups if backup.get("type") == "last_run"][:limit]
+    return stats_backups, last_run_backups
+
+
 def _csrf_token() -> str:
     """Returns the current session CSRF token, creating one when needed."""
     token = session.get("csrf_token")
@@ -310,7 +317,9 @@ def stats_page():
     context["grouped_categories"] = grouped_categories
     context["standalone_channels"] = standalone_channels
     context["history_channels"] = history_channels
-    context["stats_backups"] = list_stats_backups()[:10]
+    stats_backups, last_run_backups = _split_stats_backups(list_stats_backups())
+    context["stats_backups"] = stats_backups
+    context["last_run_backups"] = last_run_backups
     context["channel_backups"] = list_channel_backups()[:10]
     return render_template("stats.html", **context)
 
