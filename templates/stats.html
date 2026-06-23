@@ -706,13 +706,6 @@
   (function() {
     const saved = localStorage.getItem(STORAGE_VIEW) || "detail";
     setView(saved);
-    const params = new URLSearchParams(window.location.search);
-    const defaultDrilldown = document.getElementById("drilldown-preview")?.dataset.channelId;
-    const selected = params.get("drilldown_channel") || defaultDrilldown;
-    const data = HISTORY_CHANNELS.find(ch => `history-${ch.id}` === selected || String(ch.id) === selected) || HISTORY_CHANNELS[0];
-    if (data) {
-      setDrilldownChannel(`history-${data.id}`);
-    }
   })();
 
   document.querySelectorAll("#drilldown-menu .theme-option").forEach(option => {
