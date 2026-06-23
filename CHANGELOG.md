@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.74 - 2026-06-23
+
+### Changes
+- Add pre-commit hooks
+
+
 ## 5.11.73 - 2026-06-23
 
 ### Changes
