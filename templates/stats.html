@@ -467,7 +467,12 @@
       const html = await response.text();
       const currentCard = document.getElementById("drilldown-card");
       if (currentCard) {
-        currentCard.outerHTML = html;
+        const template = document.createElement("template");
+        template.innerHTML = html.trim();
+        const nextCard = template.content.firstElementChild;
+        if (nextCard) {
+          currentCard.replaceWith(nextCard);
+        }
         history.replaceState({}, "", fullUrl.pathname + fullUrl.search + "#drilldown-card");
       }
     } catch (error) {
