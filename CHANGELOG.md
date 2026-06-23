@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.29 - 2026-06-23
+
+### Changes
+- Align stats backup tables
+
+
 ## 5.11.28 - 2026-06-23
 
 ### Changes
