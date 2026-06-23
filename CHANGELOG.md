@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.57 - 2026-06-23
+
+### Changes
+- Make drilldown update in place
+
+
 ## 5.11.56 - 2026-06-23
 
 ### Changes
