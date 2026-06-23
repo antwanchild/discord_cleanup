@@ -881,6 +881,8 @@
       max-width: 340px;
       margin: 0;
       cursor: pointer;
+      position: relative;
+      z-index: 1;
       overflow: visible;
     }
 
@@ -897,6 +899,7 @@
       pointer-events: none;
       font-size: 0.7rem;
       line-height: 1;
+      z-index: 2;
     }
 
     .drilldown-card-titlewrap {
@@ -975,16 +978,19 @@
 
     .breakdown-scrollbox table {
       margin-bottom: 0;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .breakdown-scrollbox thead th {
       position: sticky;
       top: 0;
-      z-index: 5;
+      z-index: 100 !important;
       background-color: var(--surface-alt) !important;
       background: var(--surface-alt) !important;
       background-clip: padding-box;
-      box-shadow: 0 1px 0 var(--border);
+      opacity: 1;
+      box-shadow: 0 1px 0 var(--border), 0 12px 18px rgba(0, 0, 0, 0.08);
       padding-top: 0.62rem;
       padding-bottom: 0.62rem;
     }
@@ -992,6 +998,7 @@
     .breakdown-scrollbox thead tr {
       background-color: var(--surface-alt) !important;
       background: var(--surface-alt) !important;
+      z-index: 99;
     }
 
     .breakdown-scrollbox tbody tr:last-child td {
