@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.77 - 2026-06-29
+
+### Changes
+- Auto bump version to 5.11.76 [skip ci]
+
+
 ## 5.11.76 - 2026-06-29
 
 ### Changes
