@@ -1,5 +1,22 @@
 # Changelog
 
+## 5.11.76 - 2026-06-29
+
+### Changes
+- Bump actions/setup-python from 5 to 6
+- Bumps [actions/setup-python](https://github.com/actions/setup-python) from 5 to 6.
+- [Release notes](https://github.com/actions/setup-python/releases)
+- [Commits](https://github.com/actions/setup-python/compare/v5...v6)
+- ---
+- updated-dependencies:
+- dependency-name: actions/setup-python
+- dependency-version: '6'
+- dependency-type: direct:production
+- update-type: version-update:semver-major
+- ...
+- Signed-off-by: dependabot[bot] <support@github.com>
+
+
 ## 5.11.75 - 2026-06-23
 
 ### Changes
