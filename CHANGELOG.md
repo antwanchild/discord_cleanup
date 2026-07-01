@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.79 - 2026-07-01
+
+### Changes
+- Repair stale monthly report comparison
+
+
 ## 5.11.78 - 2026-07-01
 
 ### Changes
