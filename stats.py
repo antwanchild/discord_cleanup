@@ -1025,6 +1025,19 @@ def load_monthly_report_source() -> dict | None:
     return None
 
 
+def refresh_monthly_report_source() -> dict | None:
+    """Rebuilds and persists the frozen monthly report source from live stats."""
+    try:
+        current_stats = load_stats(strict=False, repair_snapshots=False)
+    except StatsLoadError:
+        current_stats = None
+
+    source = _monthly_report_source_from_stats(current_stats or {})
+    if source:
+        save_monthly_report_source(source)
+    return source
+
+
 def load_report_state() -> dict:
     """Loads report state. Returns an empty structure if not found."""
     if not os.path.exists(REPORT_STATE_FILE):
