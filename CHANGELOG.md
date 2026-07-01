@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.93 - 2026-07-01
+
+### Changes
+- Prune old monthly report snapshots
+
+
 ## 5.11.92 - 2026-07-01
 
 ### Changes
