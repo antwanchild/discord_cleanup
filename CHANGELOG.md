@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.87 - 2026-07-01
+
+### Changes
+- Prefer live stats for monthly reports
+
+
 ## 5.11.86 - 2026-07-01
 
 ### Changes
