@@ -509,8 +509,7 @@ def _prune_old_monthly_report_sources() -> None:
 
     for filename in entries:
         if not (
-            filename.startswith("monthly_report_source-")
-            and filename.endswith(".json")
+            filename.startswith("monthly_report_source-") and filename.endswith(".json")
         ):
             continue
         path = os.path.join(DATA_DIR, filename)
@@ -988,9 +987,10 @@ def save_monthly_report_source(source: dict) -> None:
     if not normalized.get("display", {}).get("channels"):
         return
 
-    month_key = str(normalized.get("month_key") or "").strip() or normalized.get(
-        "display", {}
-    ).get("reset", "")[:7]
+    month_key = (
+        str(normalized.get("month_key") or "").strip()
+        or normalized.get("display", {}).get("reset", "")[:7]
+    )
     month_specific_path = _monthly_report_source_path(month_key)
     try:
         with open(month_specific_path, "r") as f:
@@ -1015,9 +1015,7 @@ def save_monthly_report_source(source: dict) -> None:
 
     try:
         atomic_write_text(month_specific_path, json.dumps(normalized, indent=2))
-        atomic_write_text(
-            MONTHLY_REPORT_SOURCE_FILE, json.dumps(normalized, indent=2)
-        )
+        atomic_write_text(MONTHLY_REPORT_SOURCE_FILE, json.dumps(normalized, indent=2))
         _prune_old_monthly_report_sources()
     except (OSError, ValueError) as e:
         log.warning(f"Could not save monthly report source — {e}")
