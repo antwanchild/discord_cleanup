@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.81 - 2026-07-01
+
+### Changes
+- Fix stale monthly report cache
+
+
 ## 5.11.80 - 2026-07-01
 
 ### Changes
