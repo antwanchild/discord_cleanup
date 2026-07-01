@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.92 - 2026-07-01
+
+### Changes
+- Use month-scoped monthly report snapshots
+
+
 ## 5.11.91 - 2026-07-01
 
 ### Changes
