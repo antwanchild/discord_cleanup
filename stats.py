@@ -833,6 +833,8 @@ def _monthly_report_source_from_stats(stats: dict) -> dict | None:
     if not isinstance(stats, dict):
         return None
 
+    current_month_key = datetime.now().strftime("%Y-%m")
+
     monthly = _normalize_stats_bucket(
         stats.get("monthly", {}), default_reset=datetime.now().strftime("%Y-%m-%d")
     )
@@ -843,11 +845,15 @@ def _monthly_report_source_from_stats(stats: dict) -> dict | None:
         stats.get("previous_month"), default_reset=datetime.now().strftime("%Y-%m-%d")
     )
 
-    display = monthly
-    comparison = last_month
-    if last_month and last_month.get("channels") and not monthly.get("channels"):
+    monthly_month_key = str(monthly.get("reset") or "")[:7]
+    if last_month and last_month.get("channels") and monthly_month_key == current_month_key:
+        # The live monthly bucket has already rolled into the new month, so the
+        # report should describe the most recently completed month instead.
         display = last_month
         comparison = previous_month
+    else:
+        display = monthly
+        comparison = last_month
 
     if not display.get("channels"):
         return None
@@ -925,6 +931,12 @@ def load_monthly_report_source() -> dict | None:
                 normalized.get("display", {}).get("channels")
                 and normalized.get("month_key") != current_month_key
             ):
+                backup_path = _latest_monthly_report_backup_path(current_month_key)
+                if backup_path:
+                    backup_stats = _load_stats_backup(backup_path)
+                    derived = _derive_from_stats_payload(backup_stats)
+                    if derived:
+                        return _backfill_comparison(derived)
                 return _backfill_comparison(normalized)
         except (OSError, ValueError, json.JSONDecodeError):
             pass
