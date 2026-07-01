@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.78 - 2026-07-01
+
+### Changes
+- Fix monthly catchup test expectation
+
+
 ## 5.11.77 - 2026-06-29
 
 ### Changes
