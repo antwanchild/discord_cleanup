@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.80 - 2026-07-01
+
+### Changes
+- Add Docker build cache to publish workflow
+
+
 ## 5.11.79 - 2026-07-01
 
 ### Changes
