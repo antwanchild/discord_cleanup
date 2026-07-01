@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.85 - 2026-07-01
+
+### Changes
+- Keep monthly cache authoritative
+
+
 ## 5.11.84 - 2026-07-01
 
 ### Changes
