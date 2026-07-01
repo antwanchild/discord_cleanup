@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.84 - 2026-07-01
+
+### Changes
+- Keep current monthly report cache
+
+
 ## 5.11.83 - 2026-07-01
 
 ### Changes
