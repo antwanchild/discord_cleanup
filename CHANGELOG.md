@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.83 - 2026-07-01
+
+### Changes
+- Tidy monthly report signature check
+
+
 ## 5.11.82 - 2026-07-01
 
 ### Changes
