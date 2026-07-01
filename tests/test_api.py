@@ -416,6 +416,7 @@ class ApiTests(unittest.TestCase):
                 True,
                 "Monthly stats snapshots repaired from backup",
             ),
+            clear_monthly_report_source=lambda: None,
         )
 
         with isolated_module_import(

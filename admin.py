@@ -737,6 +737,12 @@ def stats_repair_and_repost():
             500,
         )
 
+    import stats as stats_module
+
+    clear_cache = getattr(stats_module, "clear_monthly_report_source", None)
+    if callable(clear_cache):
+        clear_cache()
+
     bot = get_bot()
     loop = get_bot_loop()
     if not bot or not loop:
