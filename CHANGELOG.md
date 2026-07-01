@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.91 - 2026-07-01
+
+### Changes
+- Protect monthly report source comparison
+
+
 ## 5.11.90 - 2026-07-01
 
 ### Changes
