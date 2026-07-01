@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.86 - 2026-07-01
+
+### Changes
+- Wrap monthly report test name
+
+
 ## 5.11.85 - 2026-07-01
 
 ### Changes
