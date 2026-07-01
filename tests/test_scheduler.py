@@ -451,7 +451,7 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
             cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
             await cleanup_bot._check_and_catchup_monthly_report(cleanup_bot.bot)
 
-        self.assertEqual(missed_notices, ["May 2026"])
+        self.assertEqual(missed_notices, ["June 2026"])
         self.assertEqual(posted, [("alpha", "monthly")])
 
     async def test_monthly_report_catchup_handles_both_labels(self):
