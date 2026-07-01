@@ -945,6 +945,27 @@ def save_monthly_report_source(source: dict) -> None:
         return
 
     try:
+        with open(MONTHLY_REPORT_SOURCE_FILE, "r") as f:
+            existing = _normalize_monthly_report_source_payload(json.load(f))
+    except (OSError, ValueError, json.JSONDecodeError):
+        existing = {}
+
+    existing_display = existing.get("display") or {}
+    existing_comparison = existing.get("comparison") or {}
+    incoming_display = normalized.get("display") or {}
+    incoming_comparison = normalized.get("comparison") or {}
+    if (
+        existing_display.get("reset") == incoming_display.get("reset")
+        and existing_comparison.get("channels")
+        and existing_comparison.get("reset") != existing_display.get("reset")
+        and (
+            not incoming_comparison.get("channels")
+            or incoming_comparison.get("reset") == incoming_display.get("reset")
+        )
+    ):
+        normalized["comparison"] = deepcopy(existing_comparison)
+
+    try:
         atomic_write_text(MONTHLY_REPORT_SOURCE_FILE, json.dumps(normalized, indent=2))
     except (OSError, ValueError) as e:
         log.warning(f"Could not save monthly report source — {e}")
