@@ -144,6 +144,18 @@ def _normalize_month_summary(value, default_reset: str) -> dict | None:
     }
 
 
+def _previous_month_reset(reset_date: str | None) -> str | None:
+    """Returns the first day of the month immediately before the given reset date."""
+    if not isinstance(reset_date, str) or not reset_date.strip():
+        return None
+    try:
+        parsed = datetime.strptime(reset_date, "%Y-%m-%d")
+    except ValueError:
+        return None
+    prior_month = parsed.replace(day=1) - timedelta(days=1)
+    return prior_month.strftime("%Y-%m-%d")
+
+
 def _normalize_monthly_report_source_payload(payload) -> dict:
     """Normalizes the frozen monthly report source payload."""
     if not isinstance(payload, dict):
@@ -169,6 +181,39 @@ def _normalize_monthly_report_source_payload(payload) -> dict:
         normalized["month_key"] = month_key
 
     return normalized
+
+
+def _repair_monthly_report_source_comparison(source: dict) -> dict:
+    """Repairs a stale monthly comparison when the saved source points at the wrong month."""
+    if not isinstance(source, dict):
+        return source
+
+    display = source.get("display") or {}
+    comparison = source.get("comparison") or {}
+    expected_reset = _previous_month_reset(display.get("reset"))
+    if not display.get("channels") or not expected_reset:
+        return source
+    if comparison.get("channels") and comparison.get("reset") == expected_reset:
+        return source
+
+    try:
+        current_stats = load_stats(strict=False, repair_snapshots=False)
+    except StatsLoadError:
+        current_stats = None
+
+    derived = _monthly_report_source_from_stats(current_stats or {})
+    if not derived:
+        return source
+    if derived.get("display", {}).get("reset") != display.get("reset"):
+        return source
+
+    repaired_comparison = derived.get("comparison") or {}
+    if not repaired_comparison.get("channels"):
+        return source
+
+    source["comparison"] = deepcopy(repaired_comparison)
+    save_monthly_report_source(source)
+    return source
 
 
 def _coerce_timestamp(value: str | None, default: str) -> str:
@@ -931,6 +976,7 @@ def load_monthly_report_source() -> dict | None:
             with open(MONTHLY_REPORT_SOURCE_FILE, "r") as f:
                 payload = json.load(f)
             normalized = _normalize_monthly_report_source_payload(payload)
+            normalized = _repair_monthly_report_source_comparison(normalized)
             if (
                 normalized.get("display", {}).get("channels")
                 and normalized.get("month_key") != current_month_key
