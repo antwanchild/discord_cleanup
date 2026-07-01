@@ -1014,10 +1014,9 @@ def load_monthly_report_source() -> dict | None:
             normalized = _repair_monthly_report_source_comparison(normalized)
             expected = _build_expected_source()
             if expected and expected.get("display", {}).get("channels"):
-                if (
-                    _monthly_report_source_signature(normalized)
-                    != _monthly_report_source_signature(expected)
-                ):
+                normalized_signature = _monthly_report_source_signature(normalized)
+                expected_signature = _monthly_report_source_signature(expected)
+                if normalized_signature != expected_signature:
                     save_monthly_report_source(expected)
                     return expected
             if (
