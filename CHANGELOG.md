@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.82 - 2026-07-01
+
+### Changes
+- Wrap monthly report signature check
+
+
 ## 5.11.81 - 2026-07-01
 
 ### Changes
