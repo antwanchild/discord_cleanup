@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.90 - 2026-07-01
+
+### Changes
+- Refresh monthly report source on repair
+
+
 ## 5.11.89 - 2026-07-01
 
 ### Changes
