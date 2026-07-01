@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.88 - 2026-07-01
+
+### Changes
+- Fix monthly report snapshot selection
+
+
 ## 5.11.87 - 2026-07-01
 
 ### Changes
