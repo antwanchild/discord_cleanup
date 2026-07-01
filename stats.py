@@ -493,6 +493,43 @@ def _prune_old_stats_backups() -> None:
         log.info("Pruned %s old stats backup(s)", removed)
 
 
+def _prune_old_monthly_report_sources() -> None:
+    """Deletes month-scoped report snapshots older than the retention window."""
+    retention_days = getattr(cfg, "STATS_BACKUP_RETENTION_DAYS", 10)
+    cutoff = datetime.now() - timedelta(days=retention_days)
+
+    removed = 0
+    try:
+        entries = os.listdir(DATA_DIR)
+    except FileNotFoundError:
+        return
+    except PermissionError:
+        log.warning("Permission denied listing monthly report sources")
+        return
+
+    for filename in entries:
+        if not (
+            filename.startswith("monthly_report_source-")
+            and filename.endswith(".json")
+        ):
+            continue
+        path = os.path.join(DATA_DIR, filename)
+        try:
+            modified = datetime.fromtimestamp(os.path.getmtime(path))
+            if modified < cutoff:
+                os.remove(path)
+                removed += 1
+        except FileNotFoundError:
+            continue
+        except PermissionError:
+            log.warning(
+                "Permission denied deleting old monthly report source: %s", filename
+            )
+
+    if removed:
+        log.info("Pruned %s old monthly report source(s)", removed)
+
+
 def list_stats_backups() -> list[dict]:
     """Lists available stats and last-run backup files newest-first."""
     backups = []
@@ -633,6 +670,7 @@ def save_stats(stats: dict):
         )
         atomic_write_text(STATS_FILE, new_content)
         _prune_old_stats_backups()
+        _prune_old_monthly_report_sources()
         if backup_path:
             log.info("Saved stats file with backup: %s", backup_path)
     except (OSError, ValueError) as e:
@@ -980,6 +1018,7 @@ def save_monthly_report_source(source: dict) -> None:
         atomic_write_text(
             MONTHLY_REPORT_SOURCE_FILE, json.dumps(normalized, indent=2)
         )
+        _prune_old_monthly_report_sources()
     except (OSError, ValueError) as e:
         log.warning(f"Could not save monthly report source — {e}")
 

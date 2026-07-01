@@ -1019,6 +1019,84 @@ class StatsTests(unittest.TestCase):
             self.assertEqual(july_persisted["comparison"]["deleted"], 5712)
             self.assertEqual(legacy_persisted["display"]["reset"], "2026-07-01")
 
+    def test_save_stats_prunes_old_monthly_report_source_files(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            stats_path = os.path.join(tempdir, "stats.json")
+            with open(stats_path, "w") as f:
+                json.dump({"all_time": {"runs": 1}}, f)
+
+            old_source_path = os.path.join(
+                tempdir, "monthly_report_source-2026-01.json"
+            )
+            current_source_path = os.path.join(
+                tempdir, "monthly_report_source-2026-07.json"
+            )
+            with open(old_source_path, "w") as f:
+                json.dump(
+                    {
+                        "display": {
+                            "runs": 1,
+                            "deleted": 1,
+                            "channels": {
+                                "1": {
+                                    "name": "old",
+                                    "count": 1,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-01-01",
+                        },
+                        "comparison": {
+                            "runs": 1,
+                            "deleted": 0,
+                            "channels": {},
+                            "reset": "2025-12-01",
+                        },
+                    },
+                    f,
+                )
+            with open(current_source_path, "w") as f:
+                json.dump(
+                    {
+                        "display": {
+                            "runs": 1,
+                            "deleted": 2,
+                            "channels": {
+                                "2": {
+                                    "name": "new",
+                                    "count": 2,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-07-01",
+                        },
+                        "comparison": {
+                            "runs": 1,
+                            "deleted": 1,
+                            "channels": {
+                                "1": {
+                                    "name": "old",
+                                    "count": 1,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-06-01",
+                        },
+                    },
+                    f,
+                )
+
+            old_time = datetime(2026, 1, 1, 0, 0, 0).timestamp()
+            os.utime(old_source_path, (old_time, old_time))
+
+            with isolated_module_import(
+                "stats", {"config": self._config_stub(tempdir)}
+            ) as stats:
+                stats.save_stats(stats._empty_stats())
+
+            self.assertFalse(os.path.exists(old_source_path))
+            self.assertTrue(os.path.exists(current_source_path))
+
     def test_save_stats_creates_backup_when_replacing_existing_file(self):
         with tempfile.TemporaryDirectory() as tempdir:
             stats_path = os.path.join(tempdir, "stats.json")
