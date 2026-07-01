@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.89 - 2026-07-01
+
+### Changes
+- Refresh monthly snapshot on repair
+
+
 ## 5.11.88 - 2026-07-01
 
 ### Changes
