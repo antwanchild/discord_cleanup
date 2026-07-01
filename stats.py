@@ -1019,6 +1019,9 @@ def load_monthly_report_source() -> dict | None:
                 if normalized_signature != expected_signature:
                     save_monthly_report_source(expected)
                     return expected
+            if normalized.get("display", {}).get("channels"):
+                if normalized.get("month_key") == current_month_key:
+                    return normalized
             if (
                 normalized.get("display", {}).get("channels")
                 and normalized.get("month_key") != current_month_key

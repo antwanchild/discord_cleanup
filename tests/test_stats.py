@@ -540,6 +540,90 @@ class StatsTests(unittest.TestCase):
             self.assertEqual(source["comparison"]["reset"], "2026-05-01")
             self.assertEqual(source["month_key"], "2026-06")
 
+    def test_load_monthly_report_source_keeps_current_cached_source(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            stats_path = os.path.join(tempdir, "stats.json")
+            with open(stats_path, "w") as f:
+                json.dump(
+                    {
+                        "all_time": {"runs": 1},
+                        "monthly": {
+                            "runs": 31,
+                            "deleted": 156,
+                            "channels": {"999": {"name": "partial", "count": 156}},
+                            "reset": "2026-07-01",
+                        },
+                        "last_month": {
+                            "runs": 31,
+                            "deleted": 5712,
+                            "channels": {
+                                "101": {
+                                    "name": "notifications-kometa",
+                                    "count": 1342,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-06-01",
+                        },
+                        "previous_month": {
+                            "runs": 33,
+                            "deleted": 8640,
+                            "channels": {
+                                "202": {
+                                    "name": "crowdsec",
+                                    "count": 649,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-05-01",
+                        },
+                    },
+                    f,
+                )
+
+            with open(os.path.join(tempdir, "monthly_report_source.json"), "w") as f:
+                json.dump(
+                    {
+                        "display": {
+                            "runs": 31,
+                            "deleted": 5712,
+                            "channels": {
+                                "101": {
+                                    "name": "notifications-kometa",
+                                    "count": 1342,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-06-01",
+                        },
+                        "comparison": {
+                            "runs": 33,
+                            "deleted": 8640,
+                            "channels": {
+                                "202": {
+                                    "name": "crowdsec",
+                                    "count": 649,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-05-01",
+                        },
+                        "captured_at": "2026-07-01 11:54:00",
+                        "month_key": "2026-06",
+                    },
+                    f,
+                )
+
+            with isolated_module_import(
+                "stats", {"config": self._config_stub(tempdir)}
+            ) as stats:
+                source = stats.load_monthly_report_source()
+
+            self.assertIsNotNone(source)
+            self.assertEqual(source["display"]["deleted"], 5712)
+            self.assertEqual(source["comparison"]["deleted"], 8640)
+            self.assertEqual(source["month_key"], "2026-06")
+
     def test_load_monthly_report_source_repairs_stale_comparison(self):
         with tempfile.TemporaryDirectory() as tempdir:
             stats_path = os.path.join(tempdir, "stats.json")
