@@ -1020,18 +1020,6 @@ def load_monthly_report_source() -> dict | None:
                     save_monthly_report_source(expected)
                     return expected
             if normalized.get("display", {}).get("channels"):
-                if normalized.get("month_key") == current_month_key:
-                    return normalized
-            if (
-                normalized.get("display", {}).get("channels")
-                and normalized.get("month_key") != current_month_key
-            ):
-                backup_path = _latest_monthly_report_backup_path(current_month_key)
-                if backup_path:
-                    backup_stats = _load_stats_backup(backup_path)
-                    derived = _derive_from_stats_payload(backup_stats)
-                    if derived:
-                        return _backfill_comparison(derived)
                 return _backfill_comparison(normalized)
         except (OSError, ValueError, json.JSONDecodeError):
             pass
