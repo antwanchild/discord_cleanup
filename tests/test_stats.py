@@ -839,7 +839,7 @@ class StatsTests(unittest.TestCase):
         self,
     ):
         with tempfile.TemporaryDirectory() as tempdir:
-            source_path = os.path.join(tempdir, "monthly_report_source.json")
+            source_path = os.path.join(tempdir, "monthly_report_source-2026-06.json")
             with open(source_path, "w") as f:
                 json.dump(
                     {
@@ -873,43 +873,151 @@ class StatsTests(unittest.TestCase):
                     f,
                 )
 
+            class FixedJune(datetime):
+                @classmethod
+                def now(cls, tz=None):
+                    return cls(2026, 6, 1, 9, 0, 0)
+
             with isolated_module_import(
                 "stats", {"config": self._config_stub(tempdir)}
             ) as stats:
-                stats.save_monthly_report_source(
-                    {
-                        "display": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
-                                "101": {
-                                    "name": "notifications-kometa",
-                                    "count": 1342,
-                                    "category": "Standalone",
-                                }
+                original_datetime = stats.datetime
+                set_module_attr(stats, "datetime", FixedJune)
+                try:
+                    stats.save_monthly_report_source(
+                        {
+                            "display": {
+                                "runs": 31,
+                                "deleted": 5712,
+                                "channels": {
+                                    "101": {
+                                        "name": "notifications-kometa",
+                                        "count": 1342,
+                                        "category": "Standalone",
+                                    }
+                                },
+                                "reset": "2026-06-01",
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "comparison": {
-                            "runs": 1,
-                            "deleted": 156,
-                            "channels": {
-                                "999": {
-                                    "name": "partial",
-                                    "count": 156,
-                                    "category": "Standalone",
-                                }
+                            "comparison": {
+                                "runs": 1,
+                                "deleted": 156,
+                                "channels": {
+                                    "999": {
+                                        "name": "partial",
+                                        "count": 156,
+                                        "category": "Standalone",
+                                    }
+                                },
+                                "reset": "2026-06-01",
                             },
-                            "reset": "2026-06-01",
-                        },
-                    }
-                )
+                        }
+                    )
+                finally:
+                    set_module_attr(stats, "datetime", original_datetime)
 
             with open(source_path, "r") as f:
                 persisted = json.load(f)
 
             self.assertEqual(persisted["comparison"]["deleted"], 8640)
             self.assertEqual(persisted["comparison"]["reset"], "2026-05-01")
+
+    def test_save_monthly_report_source_writes_month_scoped_snapshot_files(self):
+        with tempfile.TemporaryDirectory() as tempdir:
+            june_source = {
+                "display": {
+                    "runs": 31,
+                    "deleted": 5712,
+                    "channels": {
+                        "101": {
+                            "name": "notifications-kometa",
+                            "count": 1342,
+                            "category": "Standalone",
+                        }
+                    },
+                    "reset": "2026-06-01",
+                },
+                "comparison": {
+                    "runs": 33,
+                    "deleted": 8640,
+                    "channels": {
+                        "202": {
+                            "name": "crowdsec",
+                            "count": 649,
+                            "category": "Standalone",
+                        }
+                    },
+                    "reset": "2026-05-01",
+                },
+            }
+            july_source = {
+                "display": {
+                    "runs": 1,
+                    "deleted": 156,
+                    "channels": {
+                        "999": {
+                            "name": "partial",
+                            "count": 156,
+                            "category": "Standalone",
+                        }
+                    },
+                    "reset": "2026-07-01",
+                },
+                "comparison": {
+                    "runs": 31,
+                    "deleted": 5712,
+                    "channels": {
+                        "101": {
+                            "name": "notifications-kometa",
+                            "count": 1342,
+                            "category": "Standalone",
+                        }
+                    },
+                    "reset": "2026-06-01",
+                },
+            }
+
+            class FixedJune(datetime):
+                @classmethod
+                def now(cls, tz=None):
+                    return cls(2026, 6, 1, 9, 0, 0)
+
+            class FixedJuly(datetime):
+                @classmethod
+                def now(cls, tz=None):
+                    return cls(2026, 7, 1, 9, 0, 0)
+
+            with isolated_module_import(
+                "stats", {"config": self._config_stub(tempdir)}
+            ) as stats:
+                original_datetime = stats.datetime
+                set_module_attr(stats, "datetime", FixedJune)
+                try:
+                    stats.save_monthly_report_source(june_source)
+                finally:
+                    set_module_attr(stats, "datetime", original_datetime)
+
+                set_module_attr(stats, "datetime", FixedJuly)
+                try:
+                    stats.save_monthly_report_source(july_source)
+                finally:
+                    set_module_attr(stats, "datetime", original_datetime)
+
+            june_path = os.path.join(tempdir, "monthly_report_source-2026-06.json")
+            july_path = os.path.join(tempdir, "monthly_report_source-2026-07.json")
+            legacy_path = os.path.join(tempdir, "monthly_report_source.json")
+
+            with open(june_path, "r") as f:
+                june_persisted = json.load(f)
+            with open(july_path, "r") as f:
+                july_persisted = json.load(f)
+            with open(legacy_path, "r") as f:
+                legacy_persisted = json.load(f)
+
+            self.assertEqual(june_persisted["display"]["reset"], "2026-06-01")
+            self.assertEqual(june_persisted["comparison"]["deleted"], 8640)
+            self.assertEqual(july_persisted["display"]["reset"], "2026-07-01")
+            self.assertEqual(july_persisted["comparison"]["deleted"], 5712)
+            self.assertEqual(legacy_persisted["display"]["reset"], "2026-07-01")
 
     def test_save_stats_creates_backup_when_replacing_existing_file(self):
         with tempfile.TemporaryDirectory() as tempdir:

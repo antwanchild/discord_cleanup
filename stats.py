@@ -156,6 +156,12 @@ def _previous_month_reset(reset_date: str | None) -> str | None:
     return prior_month.strftime("%Y-%m-%d")
 
 
+def _monthly_report_source_path(month_key: str | None = None) -> str:
+    """Returns the month-scoped file used for frozen monthly report snapshots."""
+    month_key = month_key or datetime.now().strftime("%Y-%m")
+    return os.path.join(DATA_DIR, f"monthly_report_source-{month_key}.json")
+
+
 def _normalize_monthly_report_source_payload(payload) -> dict:
     """Normalizes the frozen monthly report source payload."""
     if not isinstance(payload, dict):
@@ -944,8 +950,12 @@ def save_monthly_report_source(source: dict) -> None:
     if not normalized.get("display", {}).get("channels"):
         return
 
+    month_key = str(normalized.get("month_key") or "").strip() or normalized.get(
+        "display", {}
+    ).get("reset", "")[:7]
+    month_specific_path = _monthly_report_source_path(month_key)
     try:
-        with open(MONTHLY_REPORT_SOURCE_FILE, "r") as f:
+        with open(month_specific_path, "r") as f:
             existing = _normalize_monthly_report_source_payload(json.load(f))
     except (OSError, ValueError, json.JSONDecodeError):
         existing = {}
@@ -966,24 +976,29 @@ def save_monthly_report_source(source: dict) -> None:
         normalized["comparison"] = deepcopy(existing_comparison)
 
     try:
-        atomic_write_text(MONTHLY_REPORT_SOURCE_FILE, json.dumps(normalized, indent=2))
+        atomic_write_text(month_specific_path, json.dumps(normalized, indent=2))
+        atomic_write_text(
+            MONTHLY_REPORT_SOURCE_FILE, json.dumps(normalized, indent=2)
+        )
     except (OSError, ValueError) as e:
         log.warning(f"Could not save monthly report source — {e}")
 
 
 def clear_monthly_report_source() -> None:
     """Deletes the frozen monthly report source, if present."""
-    try:
-        os.remove(MONTHLY_REPORT_SOURCE_FILE)
-    except FileNotFoundError:
-        return
-    except OSError as e:
-        log.warning(f"Could not clear monthly report source — {e}")
+    for path in (MONTHLY_REPORT_SOURCE_FILE, _monthly_report_source_path()):
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            continue
+        except OSError as e:
+            log.warning(f"Could not clear monthly report source — {e}")
 
 
 def load_monthly_report_source() -> dict | None:
     """Loads the frozen monthly report source, deriving it from backup when needed."""
     current_month_key = datetime.now().strftime("%Y-%m")
+    current_month_path = _monthly_report_source_path(current_month_key)
 
     def _derive_from_stats_payload(payload: dict | None) -> dict | None:
         source = _monthly_report_source_from_stats(payload or {})
@@ -1021,9 +1036,11 @@ def load_monthly_report_source() -> dict | None:
             save_monthly_report_source(source)
         return source
 
-    if os.path.exists(MONTHLY_REPORT_SOURCE_FILE):
+    for source_path in (current_month_path, MONTHLY_REPORT_SOURCE_FILE):
+        if not os.path.exists(source_path):
+            continue
         try:
-            with open(MONTHLY_REPORT_SOURCE_FILE, "r") as f:
+            with open(source_path, "r") as f:
                 payload = json.load(f)
             normalized = _normalize_monthly_report_source_payload(payload)
             normalized = _repair_monthly_report_source_comparison(normalized)
