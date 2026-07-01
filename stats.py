@@ -216,6 +216,21 @@ def _repair_monthly_report_source_comparison(source: dict) -> dict:
     return source
 
 
+def _monthly_report_source_signature(source: dict) -> tuple:
+    """Returns the comparison-relevant fields for a monthly report source."""
+    display = source.get("display") or {}
+    comparison = source.get("comparison") or {}
+    return (
+        display.get("reset"),
+        _coerce_non_negative_int(display.get("deleted", 0)),
+        len(display.get("channels") or {}),
+        comparison.get("reset"),
+        _coerce_non_negative_int(comparison.get("deleted", 0)),
+        len(comparison.get("channels") or {}),
+        str(source.get("month_key") or ""),
+    )
+
+
 def _coerce_timestamp(value: str | None, default: str) -> str:
     """Normalizes persisted timestamps to the current log-friendly format."""
     if isinstance(value, str) and value.strip():
@@ -955,6 +970,26 @@ def load_monthly_report_source() -> dict | None:
             save_monthly_report_source(source)
         return source
 
+    def _build_expected_source() -> dict | None:
+        try:
+            current_stats = load_stats(strict=False, repair_snapshots=False)
+        except StatsLoadError:
+            current_stats = None
+
+        source = _monthly_report_source_from_stats(current_stats or {})
+        if source:
+            return source
+
+        backup_path = _latest_monthly_report_backup_path(current_month_key)
+        if not backup_path:
+            return None
+
+        backup_stats = _load_stats_backup(backup_path)
+        if not backup_stats:
+            return None
+
+        return _monthly_report_source_from_stats(backup_stats)
+
     def _backfill_comparison(source: dict) -> dict:
         comparison = source.get("comparison") or {}
         if comparison.get("deleted"):
@@ -977,6 +1012,11 @@ def load_monthly_report_source() -> dict | None:
                 payload = json.load(f)
             normalized = _normalize_monthly_report_source_payload(payload)
             normalized = _repair_monthly_report_source_comparison(normalized)
+            expected = _build_expected_source()
+            if expected and expected.get("display", {}).get("channels"):
+                if _monthly_report_source_signature(normalized) != _monthly_report_source_signature(expected):
+                    save_monthly_report_source(expected)
+                    return expected
             if (
                 normalized.get("display", {}).get("channels")
                 and normalized.get("month_key") != current_month_key
