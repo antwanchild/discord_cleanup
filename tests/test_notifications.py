@@ -452,10 +452,21 @@ class NotificationGroupingTests(unittest.TestCase):
                 "stats": types.SimpleNamespace(
                     load_stats=lambda: report_payload,
                     load_monthly_report_source=lambda: {
-                        "display": report_payload["last_month"],
-                        "comparison": report_payload["previous_month"],
+                        "display": {
+                            "runs": 1,
+                            "deleted": 156,
+                            "channels": {
+                                "999": {
+                                    "name": "wrong",
+                                    "count": 1,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-06-01",
+                        },
+                        "comparison": report_payload["last_month"],
                         "captured_at": "2026-06-01 03:00:00",
-                        "month_key": "2026-05",
+                        "month_key": "2026-06",
                     },
                     record_report_sent=lambda *_a, **_k: None,
                 ),
