@@ -486,18 +486,13 @@ async def post_status_report(bot, guild, label: str = "monthly"):
     display = monthly
     comparison = last_month
     if label == "monthly":
-        rollover_reset = datetime.now().strftime("%Y-%m-%d")
-        if last_month and monthly.get("reset") == rollover_reset:
+        report_source = load_monthly_report_source()
+        if report_source and report_source.get("display", {}).get("channels"):
+            display = report_source["display"]
+            comparison = report_source.get("comparison") or {}
+        elif last_month and monthly.get("reset") == datetime.now().strftime("%Y-%m-%d"):
             display = last_month
             comparison = previous_month
-        elif monthly.get("channels"):
-            display = monthly
-            comparison = last_month
-        else:
-            report_source = load_monthly_report_source()
-            if report_source and report_source.get("display", {}).get("channels"):
-                display = report_source["display"]
-                comparison = report_source.get("comparison") or {}
 
     channels = display.get("channels", {})
     channel_map = build_channel_map(guild)

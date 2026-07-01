@@ -970,16 +970,7 @@ def load_monthly_report_source() -> dict | None:
             save_monthly_report_source(source)
         return source
 
-    def _build_expected_source() -> dict | None:
-        try:
-            current_stats = load_stats(strict=False, repair_snapshots=False)
-        except StatsLoadError:
-            current_stats = None
-
-        source = _monthly_report_source_from_stats(current_stats or {})
-        if source:
-            return source
-
+    def _derive_from_latest_backup() -> dict | None:
         backup_path = _latest_monthly_report_backup_path(current_month_key)
         if not backup_path:
             return None
@@ -988,7 +979,10 @@ def load_monthly_report_source() -> dict | None:
         if not backup_stats:
             return None
 
-        return _monthly_report_source_from_stats(backup_stats)
+        source = _monthly_report_source_from_stats(backup_stats)
+        if source:
+            save_monthly_report_source(source)
+        return source
 
     def _backfill_comparison(source: dict) -> dict:
         comparison = source.get("comparison") or {}
@@ -1012,24 +1006,14 @@ def load_monthly_report_source() -> dict | None:
                 payload = json.load(f)
             normalized = _normalize_monthly_report_source_payload(payload)
             normalized = _repair_monthly_report_source_comparison(normalized)
-            expected = _build_expected_source()
-            if expected and expected.get("display", {}).get("channels"):
-                normalized_signature = _monthly_report_source_signature(normalized)
-                expected_signature = _monthly_report_source_signature(expected)
-                if normalized_signature != expected_signature:
-                    save_monthly_report_source(expected)
-                    return expected
             if normalized.get("display", {}).get("channels"):
                 return _backfill_comparison(normalized)
         except (OSError, ValueError, json.JSONDecodeError):
             pass
 
-    backup_path = _latest_monthly_report_backup_path(current_month_key)
-    if backup_path:
-        backup_stats = _load_stats_backup(backup_path)
-        derived = _derive_from_stats_payload(backup_stats)
-        if derived:
-            return _backfill_comparison(derived)
+    backup_source = _derive_from_latest_backup()
+    if backup_source:
+        return _backfill_comparison(backup_source)
 
     try:
         current_stats = load_stats(strict=False, repair_snapshots=False)

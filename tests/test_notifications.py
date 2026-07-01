@@ -453,18 +453,23 @@ class NotificationGroupingTests(unittest.TestCase):
                     load_stats=lambda: report_payload,
                     load_monthly_report_source=lambda: {
                         "display": {
-                            "runs": 1,
-                            "deleted": 156,
+                            "runs": 33,
+                            "deleted": 8640,
                             "channels": {
-                                "999": {
-                                    "name": "wrong",
-                                    "count": 1,
+                                "101": {
+                                    "name": "notifications-kometa",
+                                    "count": 1342,
                                     "category": "Standalone",
-                                }
+                                },
+                                "102": {
+                                    "name": "crowdsec",
+                                    "count": 649,
+                                    "category": "Standalone",
+                                },
                             },
                             "reset": "2026-06-01",
                         },
-                        "comparison": report_payload["last_month"],
+                        "comparison": report_payload["previous_month"],
                         "captured_at": "2026-06-01 03:00:00",
                         "month_key": "2026-06",
                     },

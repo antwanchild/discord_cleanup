@@ -357,28 +357,6 @@ class StatsTests(unittest.TestCase):
                     f,
                 )
 
-            with open(os.path.join(tempdir, "monthly_report_source.json"), "w") as f:
-                json.dump(
-                    {
-                        "display": {
-                            "runs": 1,
-                            "deleted": 156,
-                            "channels": {
-                                "999": {
-                                    "name": "wrong",
-                                    "count": 1,
-                                    "category": "Standalone",
-                                }
-                            },
-                            "reset": "2026-06-01",
-                        },
-                        "comparison": None,
-                        "captured_at": "2026-06-01 09:00:00",
-                        "month_key": "2026-06",
-                    },
-                    f,
-                )
-
             with open(
                 os.path.join(backups_dir, "stats-20260601-090000.json.bak"), "w"
             ) as f:
