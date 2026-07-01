@@ -846,7 +846,11 @@ def _monthly_report_source_from_stats(stats: dict) -> dict | None:
     )
 
     monthly_month_key = str(monthly.get("reset") or "")[:7]
-    if last_month and last_month.get("channels") and monthly_month_key == current_month_key:
+    if (
+        last_month
+        and last_month.get("channels")
+        and monthly_month_key == current_month_key
+    ):
         # The live monthly bucket has already rolled into the new month, so the
         # report should describe the most recently completed month instead.
         display = last_month
