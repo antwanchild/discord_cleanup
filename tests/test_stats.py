@@ -624,7 +624,9 @@ class StatsTests(unittest.TestCase):
             self.assertEqual(source["comparison"]["deleted"], 8640)
             self.assertEqual(source["month_key"], "2026-06")
 
-    def test_load_monthly_report_source_does_not_overwrite_with_backup_when_cached_source_exists(self):
+    def test_load_monthly_report_source_does_not_overwrite_with_backup_when_cached_source_exists(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as tempdir:
             stats_path = os.path.join(tempdir, "stats.json")
             backups_dir = os.path.join(tempdir, "backups", "stats")
