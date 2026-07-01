@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.94 - 2026-07-01
+
+### Changes
+- Fix monthly report formatting
+
+
 ## 5.11.93 - 2026-07-01
 
 ### Changes
