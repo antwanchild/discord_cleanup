@@ -1002,10 +1002,12 @@ def save_monthly_report_source(source: dict) -> None:
     existing_comparison = existing.get("comparison") or {}
     incoming_display = normalized.get("display") or {}
     incoming_comparison = normalized.get("comparison") or {}
+    current_month_key = datetime.now().strftime("%Y-%m")
     if (
         existing_display.get("reset") == incoming_display.get("reset")
         and existing_comparison.get("channels")
         and existing_comparison.get("reset") != existing_display.get("reset")
+        and str(existing_comparison.get("reset") or "")[:7] != current_month_key
         and (
             not incoming_comparison.get("channels")
             or incoming_comparison.get("reset") == incoming_display.get("reset")

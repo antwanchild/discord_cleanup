@@ -921,6 +921,94 @@ class StatsTests(unittest.TestCase):
             self.assertEqual(persisted["comparison"]["deleted"], 8640)
             self.assertEqual(persisted["comparison"]["reset"], "2026-05-01")
 
+    def test_save_monthly_report_source_does_not_preserve_current_month_partial_comparison(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as tempdir:
+            source_path = os.path.join(tempdir, "monthly_report_source-2026-06.json")
+            with open(source_path, "w") as f:
+                json.dump(
+                    {
+                        "display": {
+                            "runs": 31,
+                            "deleted": 5712,
+                            "channels": {
+                                "101": {
+                                    "name": "notifications-kometa",
+                                    "count": 1342,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-06-01",
+                        },
+                        "comparison": {
+                            "runs": 1,
+                            "deleted": 156,
+                            "channels": {
+                                "999": {
+                                    "name": "partial",
+                                    "count": 156,
+                                    "category": "Standalone",
+                                }
+                            },
+                            "reset": "2026-07-01",
+                        },
+                        "captured_at": "2026-06-01 09:00:00",
+                        "month_key": "2026-06",
+                    },
+                    f,
+                )
+
+            class FixedJuly(datetime):
+                @classmethod
+                def now(cls, tz=None):
+                    return cls(2026, 7, 1, 9, 0, 0)
+
+            with isolated_module_import(
+                "stats", {"config": self._config_stub(tempdir)}
+            ) as stats:
+                original_datetime = stats.datetime
+                set_module_attr(stats, "datetime", FixedJuly)
+                try:
+                    stats.save_monthly_report_source(
+                        {
+                            "display": {
+                                "runs": 31,
+                                "deleted": 5712,
+                                "channels": {
+                                    "101": {
+                                        "name": "notifications-kometa",
+                                        "count": 1342,
+                                        "category": "Standalone",
+                                    }
+                                },
+                                "reset": "2026-06-01",
+                            },
+                            "comparison": {
+                                "runs": 33,
+                                "deleted": 8640,
+                                "channels": {
+                                    "202": {
+                                        "name": "crowdsec",
+                                        "count": 649,
+                                        "category": "Standalone",
+                                    }
+                                },
+                                "reset": "2026-05-01",
+                            },
+                        }
+                    )
+                finally:
+                    set_module_attr(stats, "datetime", original_datetime)
+
+            with open(source_path, "r") as f:
+                persisted = json.load(f)
+
+            self.assertNotEqual(persisted.get("comparison", {}).get("deleted"), 156)
+            self.assertNotEqual(
+                persisted.get("comparison", {}).get("reset"), "2026-07-01"
+            )
+
     def test_save_monthly_report_source_writes_month_scoped_snapshot_files(self):
         with tempfile.TemporaryDirectory() as tempdir:
             june_source = {
