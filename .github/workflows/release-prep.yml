@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   prepare:
@@ -35,6 +36,7 @@ jobs:
         env:
           BUMP_TYPE_INPUT: ${{ inputs.bump_type }}
           SUMMARY: ${{ inputs.summary || '' }}
+        id: prepare
         run: |
           set -euo pipefail
 
@@ -113,3 +115,62 @@ jobs:
           git add VERSION CHANGELOG.md
           git commit -m "Prepare release v${new_version}"
           git push -u origin "$branch"
+          printf 'branch=%s\n' "$branch" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "$new_version" >> "$GITHUB_OUTPUT"
+
+      - name: Open release pull request
+        uses: actions/github-script@v7
+        env:
+          BRANCH: ${{ steps.prepare.outputs.branch }}
+          VERSION: ${{ steps.prepare.outputs.version }}
+          SUMMARY: ${{ inputs.summary || '' }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const head = process.env.BRANCH;
+            const version = process.env.VERSION;
+            const summary = process.env.SUMMARY.trim();
+
+            const { data: existing } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              head: `${owner}:${head}`,
+              base: 'main',
+              per_page: 100,
+            });
+
+            if (existing.length > 0) {
+              core.notice(`Release PR already exists: ${existing[0].html_url}`);
+              core.setOutput('pull_request_url', existing[0].html_url);
+              return;
+            }
+
+            const bodyLines = [
+              'This PR was created by the release-prep workflow.',
+              '',
+              'It bumps `VERSION` and updates `CHANGELOG.md`.',
+            ];
+
+            if (summary) {
+              bodyLines.push('');
+              bodyLines.push('Release summary:');
+              bodyLines.push('');
+              bodyLines.push('```text');
+              bodyLines.push(summary);
+              bodyLines.push('```');
+            }
+
+            const { data: pr } = await github.rest.pulls.create({
+              owner,
+              repo,
+              head,
+              base: 'main',
+              title: `Release v${version}`,
+              body: bodyLines.join('\n'),
+              draft: false,
+            });
+
+            core.notice(`Created release PR: ${pr.html_url}`);
+            core.setOutput('pull_request_url', pr.html_url);

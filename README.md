@@ -82,8 +82,7 @@ Use `release-prep.yml` from the GitHub Actions tab when you are ready to create 
 2. Bumps `VERSION` based on the selected patch, minor, or major release type
 3. Prepends a new `CHANGELOG.md` entry from your optional summary input, one item per line
 4. Creates and pushes a `release/<version>` branch for you
-
-After that, open a pull request from the new release branch into `main` and merge it when you are ready.
+5. Opens the release pull request into `main`
 
 Once that PR is merged into `main`, `docker-publish.yml` takes over:
 
