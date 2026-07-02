@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
@@ -131,6 +132,27 @@ jobs:
             const head = process.env.BRANCH;
             const version = process.env.VERSION;
             const summary = process.env.SUMMARY.trim();
+            const labelName = 'release';
+
+            try {
+              await github.rest.issues.getLabel({
+                owner,
+                repo,
+                name: labelName,
+              });
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: labelName,
+                color: '0E8A16',
+                description: 'Release branch pull request',
+              });
+            }
 
             const { data: existing } = await github.rest.pulls.list({
               owner,
@@ -142,6 +164,12 @@ jobs:
             });
 
             if (existing.length > 0) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: existing[0].number,
+                labels: [labelName],
+              });
               core.notice(`Release PR already exists: ${existing[0].html_url}`);
               core.setOutput('pull_request_url', existing[0].html_url);
               return;
@@ -170,6 +198,13 @@ jobs:
               title: `Release v${version}`,
               body: bodyLines.join('\n'),
               draft: false,
+            });
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: pr.number,
+              labels: [labelName],
             });
 
             core.notice(`Created release PR: ${pr.html_url}`);
