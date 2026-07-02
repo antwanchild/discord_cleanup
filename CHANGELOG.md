@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.11.97 - 2026-07-02
+
+### Changes
+- Adjust release prep for push-based branch flow
+- Refactor release workflow for protected main
+
+
 ## 5.11.96 - 2026-07-02
 
 ### Changes

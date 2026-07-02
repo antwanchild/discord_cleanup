@@ -55,7 +55,9 @@ An automated Discord bot that cleans up old messages from configured channels on
     │   ├── bug_report.yml
     │   └── feature_request.yml
     └── workflows/
-        ├── docker-publish.yml          # Build, test, and push workflow
+        ├── ci.yml                     # Validation on PRs and feature-branch pushes
+        ├── release-prep.yml            # Bump VERSION and CHANGELOG on a branch
+        ├── docker-publish.yml          # Build and publish workflow after merge
         ├── discord-notify.yml          # Build success/failure notifications
         ├── dependabot-notify.yml       # Dependabot PR notifications
         ├── dependabot-automerge.yml    # Auto-merge patch and minor Dependabot PRs
@@ -67,24 +69,33 @@ An automated Discord bot that cleans up old messages from configured channels on
 
 ## CI/CD Pipeline
 
-Every push to `main` triggers `docker-publish.yml` which:
+Feature branches and pull requests trigger validation workflows that:
 
 1. Runs `actionlint` — validates all workflow files for syntax, expressions, and shellcheck compliance
-2. Runs `py_compile` syntax check — blocks build on syntax errors
-3. Runs `ruff` lint and security check — warns on issues, build continues
-4. Auto-bumps the version based on commit message tags:
-   - Default — patch bump (e.g. `3.1.1` → `3.1.2`)
-   - `#minor` in commit message — minor bump (e.g. `3.1.1` → `3.2.0`) — also creates a GitHub Release
-   - `#major` in commit message — major bump (e.g. `3.1.1` → `4.0.0`) — also creates a GitHub Release
-5. Prepends a new `CHANGELOG.md` entry using the triggering commit message/body
-6. Builds and pushes Docker image to GHCR with `:latest` and `:version` tags
-7. Creates a GitHub Release (minor and major only)
-8. Cleans up old GHCR images keeping the last 10
-9. Posts a success or failure notification to Discord
+2. Runs `py_compile` syntax checks — blocks the workflow on syntax errors
+3. Runs `pytest` — keeps the regression suite green before merge
+4. Runs `ruff` lint and security checks — warns on issues, build continues
 
-Pushes that only modify `README.md`, `CHANGELOG.md`, `docs/**`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped entirely — no build, no version bump, no release.
+When you push to a feature or release branch, `release-prep.yml` runs automatically. It:
 
-All workflow files are linted on every push using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
+1. Bumps `VERSION` based on the selected patch, minor, or major release type, or by reading `#minor` / `#major` from the latest commit message
+2. Prepends a new `CHANGELOG.md` entry from the branch commit subjects, or from your manual summary input
+3. Commits and pushes those changes back to the same branch
+4. Opens a pull request to `main` if one does not already exist
+
+You can also run the same workflow manually with `workflow_dispatch` if you want to override the bump type or changelog summary.
+
+Once that PR is merged into `main`, `docker-publish.yml` takes over:
+
+1. Reads the merged `VERSION` and `CHANGELOG.md`
+2. Builds and pushes the Docker image to GHCR with `:latest` and `:version` tags
+3. Creates a GitHub Release for the merged version
+4. Cleans up old GHCR images keeping the last 10
+5. Posts a success or failure notification to Discord
+
+Merges that only modify `README.md`, `CHANGELOG.md`, `docs/**`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped by the release workflow — no build, no version bump, no release.
+
+Workflow linting runs in CI on pull requests and feature-branch pushes using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
 
 ---
 
@@ -103,20 +114,20 @@ Black is the formatter that rewrites Python files in place. The GitHub Black wor
 
 ---
 
-## Commit Message Conventions
+## Release Prep Conventions
 
-| Commit message | Version bump | GitHub Release |
-|----------------|-------------|----------------|
-| Any message | Patch (e.g. `3.1.1` → `3.1.2`) | ❌ |
-| Contains `#minor` | Minor (e.g. `3.1.1` → `3.2.0`) | ✅ |
-| Contains `#major` | Major (e.g. `3.1.1` → `4.0.0`) | ✅ |
+The release-prep workflow uses a manual bump type instead of commit-message tags:
 
-**When to use each:**
 - **Patch** — bug fixes, log improvements, formatting tweaks
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
 
-The changelog entry is generated from the triggering commit message/body. A short subject line plus 1-5 body lines works well because each non-empty line becomes a bullet in `CHANGELOG.md`. The workflow strips `#minor` and `#major` tags automatically.
+When you run `release-prep.yml`, it prepends a new `CHANGELOG.md` entry from either:
+
+- the commit subjects on your branch since it diverged from `main`
+- a manual summary input if you want to override the generated notes
+
+That keeps the release notes tied to the branch you are actually merging instead of relying on special commit tags.
 
 ---
 

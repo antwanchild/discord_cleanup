@@ -10,7 +10,6 @@ on:
       - 'docs/**'
       - '.github/dependabot.yml'
       - '.gitignore'
-  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -20,157 +19,47 @@ jobs:
       packages: write
 
     steps:
-      # ── Checkout ────────────────────────────────────────────────────────────
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0  # Full history needed for changelog generation
+          fetch-depth: 1
 
-      # ── Security scanning ───────────────────────────────────────────────────
-      - name: Scan for secrets
-        uses: gitleaks/gitleaks-action@v3
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release notes
+        id: notes
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      # ── Code quality ────────────────────────────────────────────────────────
-      - name: Lint workflow
-        uses: raven-actions/actionlint@v2
-
-      - name: Syntax check
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          python3 -m py_compile cleanup_bot.py config.py stats.py utils.py \
-            notifications.py cleanup.py commands.py commands_stats.py web.py api.py \
-            config_utils.py scheduler.py
-          echo "✅ Syntax check passed"
+          release_notes=$(mktemp)
+          awk -v version="$VERSION" '
+            BEGIN { found = 0 }
+            /^## / {
+              if (found) {
+                exit
+              }
+              if ($0 ~ "^## " version " - ") {
+                found = 1
+                next
+              }
+            }
+            found {
+              print
+            }
+          ' CHANGELOG.md > "$release_notes"
 
-      - name: Install test dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install -r requirements.txt pytest
-
-      - name: Run tests
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-        run: pytest -q
-
-      - name: Lint and security check
-        continue-on-error: true
-        run: |
-          pip install ruff --quiet
-          ruff check --select F,S \
-            cleanup_bot.py config.py stats.py utils.py \
-            notifications.py cleanup.py commands.py commands_stats.py web.py api.py \
-            config_utils.py scheduler.py \
-            || echo "⚠️ Warnings found — build continues"
-
-      # ── Version bump ────────────────────────────────────────────────────────
-      - name: Bump version
-        id: bump
-        run: |
-          current_version=$(cat VERSION)
-          major=$(echo "$current_version" | cut -d. -f1)
-          minor=$(echo "$current_version" | cut -d. -f2)
-          patch=$(echo "$current_version" | cut -d. -f3)
-
-          # Read the full commit message to detect bump type tags
-          git log --format=%B --no-merges -n 1 > /tmp/commit_body.txt
-
-          if grep -q "#major" /tmp/commit_body.txt; then
-            new_version="$((major + 1)).0.0"
-            bump_type="major"
-          elif grep -q "#minor" /tmp/commit_body.txt; then
-            new_version="$major.$((minor + 1)).0"
-            bump_type="minor"
-          else
-            new_version="$major.$minor.$((patch + 1))"
-            bump_type="patch"
-          fi
-
-          echo "$new_version" > VERSION
-          release_title=$(head -n 1 /tmp/commit_body.txt | sed -E 's/(^|[[:space:]])#(major|minor)\b//g' | sed -E 's/[[:space:]]+/ /g' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
-          if [ -z "$release_title" ]; then
-            release_title="Release ${new_version}"
-          fi
-
-          echo "$release_title" > release_title.txt
-
-          {
-            echo "version=$new_version"
-            echo "bump_type=$bump_type"
-            echo "release_title=$release_title"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Upload release title artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-title
-          path: release_title.txt
-          retention-days: 1
-
-      - name: Update changelog
-        env:
-          CURRENT_VERSION: ${{ steps.bump.outputs.version }}
-        run: |
-          current_version="${CURRENT_VERSION}"
-          release_date=$(date -u +"%Y-%m-%d")
-
-          cleaned_body_file=$(mktemp)
-          sed -E 's/(^|[[:space:]])#(major|minor)\b//g' /tmp/commit_body.txt | sed -E 's/[[:space:]]+$//' > "$cleaned_body_file"
-
-          {
-            echo "## ${current_version} - ${release_date}"
-            echo
-            echo "### Changes"
-
-            found_line=0
-            while IFS= read -r line || [ -n "$line" ]; do
-              trimmed=$(echo "$line" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
-              if [ -n "$trimmed" ]; then
-                found_line=1
-                case "$trimmed" in
-                  -\ *|\*\ *)
-                    trimmed="${trimmed#??}"
-                    ;;
-                esac
-                echo "- $trimmed"
-              fi
-            done < "$cleaned_body_file"
-
-            if [ "$found_line" -eq 0 ]; then
-              echo "- Release ${current_version}"
-            fi
-
-            echo
-          } > changelog_entry.md
-          rm -f "$cleaned_body_file"
-
-          if [ -f CHANGELOG.md ]; then
+          if [ ! -s "$release_notes" ]; then
             {
-              head -n 1 CHANGELOG.md
+              echo "## ${VERSION}"
               echo
-              cat changelog_entry.md
-              tail -n +2 CHANGELOG.md
-            } > CHANGELOG.md.tmp
-          else
-            {
-              echo "# Changelog"
-              echo
-              cat changelog_entry.md
-            } > CHANGELOG.md.tmp
+              echo "Release ${VERSION}"
+            } > "$release_notes"
           fi
 
-          mv CHANGELOG.md.tmp CHANGELOG.md
+          echo "release_notes=$release_notes" >> "$GITHUB_OUTPUT"
 
-      - name: Commit bumped version and changelog
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add VERSION CHANGELOG.md
-          git commit -m "Auto bump version to ${{ steps.bump.outputs.version }} [skip ci]"
-          git push
-
-      # ── Docker build ────────────────────────────────────────────────────────
       - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
@@ -187,10 +76,10 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/discord_cleanup
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=${{ steps.bump.outputs.version }}
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.version }}
           labels: |
-            org.opencontainers.image.version=${{ steps.bump.outputs.version }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
 
       - name: Build and push image
         uses: docker/build-push-action@v7
@@ -202,7 +91,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            VERSION=${{ steps.bump.outputs.version }}
+            VERSION=${{ steps.version.outputs.version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             SOURCE_URL=https://github.com/${{ github.repository }}
 
@@ -210,23 +99,20 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         continue-on-error: true
         with:
-          image-ref: ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.bump.outputs.version }}
+          image-ref: ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.version.outputs.version }}
           format: table
           exit-code: 0
           severity: CRITICAL,HIGH
 
-      # ── GitHub Release ───────────────────────────────────────────────────────
       - name: Create GitHub Release
-        if: steps.bump.outputs.bump_type != 'patch'
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ steps.bump.outputs.version }}
-          name: v${{ steps.bump.outputs.version }}
-          body: ${{ steps.bump.outputs.release_title }}
-          generate_release_notes: true
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body_path: ${{ steps.notes.outputs.release_notes }}
+          generate_release_notes: false
 
       - name: Delete old GitHub Releases
-        if: steps.bump.outputs.bump_type != 'patch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

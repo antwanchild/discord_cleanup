@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["Build and Push to GHCR"]
     types: [completed]
-  workflow_dispatch:
 
 jobs:
   notify:
@@ -16,23 +15,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          ref: main
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Get version
         id: version
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
-      - name: Download release title artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: release-title
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Read release title
+      - name: Read commit message
         id: commit
         run: |
-          MSG=$(sed "s/'/\`/g" release_title.txt)
+          MSG=$(git log -1 --format=%s | sed "s/'/\`/g")
           echo "msg=${MSG}" >> "$GITHUB_OUTPUT"
 
       - name: Notify Discord — Success
