@@ -53,6 +53,7 @@ class WebConfigTests(unittest.TestCase):
                             list_stats_backups=lambda: [],
                             load_stats=lambda: {},
                             load_last_run=lambda: None,
+                            load_monthly_report_source=lambda: None,
                         ),
                         "api": self._api_stub(),
                         "admin": self._admin_stub(),
@@ -125,6 +126,22 @@ class WebConfigTests(unittest.TestCase):
                     list_stats_backups=lambda: [],
                     load_stats=lambda: stats_payload,
                     load_last_run=lambda: None,
+                    load_monthly_report_source=lambda: {
+                        "display": {
+                            "runs": 31,
+                            "deleted": 5712,
+                            "channels": {},
+                            "reset": "2026-06-01",
+                        },
+                        "comparison": {
+                            "runs": 33,
+                            "deleted": 8640,
+                            "channels": {},
+                            "reset": "2026-05-01",
+                        },
+                        "captured_at": "2026-06-01 09:00:00",
+                        "month_key": "2026-06",
+                    },
                 ),
                 "api": types.SimpleNamespace(
                     api=Blueprint("api", __name__),
@@ -152,6 +169,7 @@ class WebConfigTests(unittest.TestCase):
             response = client.get("/stats")
 
         self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Monthly Report Snapshot", response.data)
         self.assertIn(b"Repair Monthly Snapshot", response.data)
         self.assertIn(b"Repair + Repost Monthly Report", response.data)
 
@@ -239,6 +257,7 @@ class WebConfigTests(unittest.TestCase):
                         "channel_history": {},
                     },
                     load_last_run=lambda: None,
+                    load_monthly_report_source=lambda: None,
                 ),
                 "api": self._api_stub(),
                 "admin": self._admin_stub(),
@@ -340,6 +359,7 @@ class WebConfigTests(unittest.TestCase):
                     list_stats_backups=lambda: [],
                     load_stats=lambda: stats_payload,
                     load_last_run=lambda: None,
+                    load_monthly_report_source=lambda: None,
                 ),
                 "api": self._api_stub(),
                 "admin": self._admin_stub(),
@@ -450,6 +470,7 @@ class WebConfigTests(unittest.TestCase):
                     list_stats_backups=lambda: [],
                     load_stats=lambda: stats_payload,
                     load_last_run=lambda: None,
+                    load_monthly_report_source=lambda: None,
                 ),
                 "api": self._api_stub(),
                 "admin": self._admin_stub(),

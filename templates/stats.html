@@ -168,12 +168,28 @@
 <!-- Stats repair -->
 <div class="card">
   <div class="card-header">
-    <span class="card-title">Repair Snapshot</span>
+    <span class="card-title">Monthly Report Snapshot</span>
   </div>
+  {% if monthly_report_source and monthly_report_source.display %}
+  <div style="display:grid; gap:0.4rem; margin-bottom:0.75rem">
+    <div><strong>Display:</strong> Since {{ monthly_report_source.display.reset }} ({{ monthly_report_source.display.deleted }} deleted)</div>
+    <div><strong>Comparison:</strong>
+      {% if monthly_report_source.comparison %}
+      Since {{ monthly_report_source.comparison.reset }} ({{ monthly_report_source.comparison.deleted }} deleted)
+      {% else %}
+      None
+      {% endif %}
+    </div>
+    <div><strong>Month Key:</strong> {{ monthly_report_source.month_key or "N/A" }}</div>
+    <div><strong>Captured:</strong> {{ monthly_report_source.captured_at or "N/A" }}</div>
+  </div>
+  {% else %}
   <p style="color:var(--text-muted); font-size:0.875rem; margin:0 0 0.75rem">
-    Rebuild the monthly report snapshot from the latest stats backup so the next report can include the full breakdown.
+    No monthly report snapshot is currently cached.
   </p>
+  {% endif %}
   <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center">
+    <a class="btn btn-ghost" href="/api/monthly-report-source" target="_blank" rel="noreferrer">Open Raw JSON</a>
     <button class="btn btn-primary" onclick="confirmRepair()">Repair Monthly Snapshot</button>
     <button class="btn btn-ghost" onclick="confirmRepairAndRepost()">Repair + Repost Monthly Report</button>
   </div>

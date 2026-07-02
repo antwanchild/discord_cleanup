@@ -172,6 +172,39 @@ List available `channels.yml` backup files.
 
 ---
 
+### `GET /api/monthly-report-source`
+
+Resolved monthly report snapshot used for the Discord monthly embed and the Stats page snapshot panel.
+
+**Response**
+```json
+{
+  "resolved": true,
+  "source": {
+    "display": {
+      "runs": 31,
+      "deleted": 5712,
+      "channels": {},
+      "reset": "2026-06-01"
+    },
+    "comparison": {
+      "runs": 33,
+      "deleted": 8640,
+      "channels": {},
+      "reset": "2026-05-01"
+    },
+    "captured_at": "2026-06-01 09:00:00",
+    "month_key": "2026-06"
+  }
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| `200` | Snapshot data returned; `resolved` is `false` if no usable source is cached |
+
+---
+
 ### `GET /api/notifications/fallbacks`
 
 List recent notification fallback events where an embed degraded to a plain-text send.

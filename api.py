@@ -19,7 +19,13 @@ from utils import (
 )
 from config_utils import list_channel_backups
 from notifications import get_recent_notification_fallbacks
-from stats import StatsLoadError, list_stats_backups, load_stats, load_last_run
+from stats import (
+    StatsLoadError,
+    list_stats_backups,
+    load_last_run,
+    load_monthly_report_source,
+    load_stats,
+)
 
 # All read-only /api/* routes live here, registered as a Blueprint in web.py
 api = Blueprint("api", __name__)
@@ -122,6 +128,15 @@ def api_channels_backups():
             "backups": backups,
         }
     )
+
+
+@api.route("/api/monthly-report-source")
+def api_monthly_report_source():
+    """Resolved monthly report snapshot used for Discord monthly embeds."""
+    source = load_monthly_report_source()
+    if not source:
+        return jsonify({"source": None, "resolved": False})
+    return jsonify({"source": source, "resolved": True})
 
 
 @api.route("/api/notifications/fallbacks")

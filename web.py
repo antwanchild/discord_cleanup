@@ -22,7 +22,12 @@ from utils import (
     read_cleanup_log,
     read_latest_cleanup_log,
 )
-from stats import list_stats_backups, load_stats, load_last_run
+from stats import (
+    list_stats_backups,
+    load_last_run,
+    load_monthly_report_source,
+    load_stats,
+)
 from api import api, _get_status_context
 from admin import admin
 
@@ -446,6 +451,7 @@ def stats_page():
     context["stats_backups"] = stats_backups
     context["last_run_backups"] = last_run_backups
     context["channel_backups"] = list_channel_backups()[:10]
+    context["monthly_report_source"] = load_monthly_report_source()
 
     if request.args.get("drilldown_partial") == "1":
         return render_template("_stats_drilldown.html", **context)

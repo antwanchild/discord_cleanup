@@ -36,6 +36,7 @@ class ApiTests(unittest.TestCase):
                 StatsLoadError("bad stats")
             ),
             load_last_run=lambda: None,
+            load_monthly_report_source=lambda: None,
             list_stats_backups=lambda: [
                 {
                     "type": "stats",
@@ -115,6 +116,22 @@ class ApiTests(unittest.TestCase):
             StatsLoadError=RuntimeError,
             load_stats=lambda strict=False: {"all_time": {}},
             load_last_run=lambda: None,
+            load_monthly_report_source=lambda: {
+                "display": {
+                    "runs": 31,
+                    "deleted": 5712,
+                    "channels": {},
+                    "reset": "2026-06-01",
+                },
+                "comparison": {
+                    "runs": 33,
+                    "deleted": 8640,
+                    "channels": {},
+                    "reset": "2026-05-01",
+                },
+                "captured_at": "2026-06-01 09:00:00",
+                "month_key": "2026-06",
+            },
             list_stats_backups=lambda: [
                 {
                     "type": "stats",
@@ -174,6 +191,65 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(
             status_response.get_json()["startup_path_check"]["/config/data"]["ok"]
         )
+
+    def test_api_exposes_monthly_report_source(self):
+        config_stub = types.SimpleNamespace(
+            BOT_VERSION="1.0.0",
+            STATS_BACKUP_RETENTION_DAYS=10,
+            CHANNELS_BACKUP_RETENTION_DAYS=10,
+            CLEAN_TIMES=["03:00"],
+            DEFAULT_RETENTION=7,
+            LOG_LEVEL="INFO",
+            WARN_UNCONFIGURED=False,
+            REPORT_FREQUENCY="monthly",
+            REPORT_GROUP_MONTHLY=True,
+            REPORT_GROUP_WEEKLY=True,
+            LOG_MAX_FILES=7,
+            log=logging.getLogger("test-api"),
+        )
+        stats_stub = types.SimpleNamespace(
+            StatsLoadError=RuntimeError,
+            load_stats=lambda strict=False: {"all_time": {}},
+            load_last_run=lambda: None,
+            load_monthly_report_source=lambda: {
+                "display": {
+                    "runs": 31,
+                    "deleted": 5712,
+                    "channels": {},
+                    "reset": "2026-06-01",
+                },
+                "comparison": {
+                    "runs": 33,
+                    "deleted": 8640,
+                    "channels": {},
+                    "reset": "2026-05-01",
+                },
+                "captured_at": "2026-06-01 09:00:00",
+                "month_key": "2026-06",
+            },
+            list_stats_backups=lambda: [],
+        )
+        with isolated_module_import(
+            "api",
+            {
+                "config": config_stub,
+                "config_utils": types.SimpleNamespace(list_channel_backups=lambda: []),
+                "notifications": types.SimpleNamespace(
+                    get_recent_notification_fallbacks=lambda: []
+                ),
+                "utils": self._utils_stub(),
+                "stats": stats_stub,
+            },
+        ) as api_module:
+            app = Flask(__name__)
+            app.register_blueprint(api_module.api)
+            client = app.test_client()
+
+            response = client.get("/api/monthly-report-source")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.get_json()["resolved"])
+        self.assertEqual(response.get_json()["source"]["display"]["deleted"], 5712)
 
     def test_admin_restore_routes_expose_backup_preview_and_restore(self):
         config_stub = types.SimpleNamespace(
