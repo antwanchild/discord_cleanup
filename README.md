@@ -56,7 +56,7 @@ An automated Discord bot that cleans up old messages from configured channels on
     │   └── feature_request.yml
     └── workflows/
         ├── ci.yml                     # Validation on PRs and feature-branch pushes
-        ├── release-prep.yml            # Bump VERSION and CHANGELOG on a branch
+        ├── release-prep.yml            # Create a release branch and prep VERSION/CHANGELOG
         ├── docker-publish.yml          # Build and publish workflow after merge
         ├── discord-notify.yml          # Build success/failure notifications
         ├── dependabot-notify.yml       # Dependabot PR notifications
@@ -76,22 +76,14 @@ Feature branches and pull requests trigger validation workflows that:
 3. Runs `pytest` — keeps the regression suite green before merge
 4. Runs `ruff` lint and security checks — warns on issues, build continues
 
-When you push to a `release/**` branch, `release-prep.yml` runs automatically. It:
+Use `release-prep.yml` from the GitHub Actions tab when you are ready to create a release branch. It:
 
-1. Bumps `VERSION` based on the selected patch, minor, or major release type, or by reading `#minor` / `#major` from the latest commit message
-2. Prepends a new `CHANGELOG.md` entry from the branch commit subjects, or from your manual summary input
-3. Commits and pushes those changes back to the same branch
-4. Leaves PR creation to you, so the PR comes from your account instead of `github-actions[bot]`
+1. Reads the current `VERSION` from `main`
+2. Bumps `VERSION` based on the selected patch, minor, or major release type
+3. Prepends a new `CHANGELOG.md` entry from your optional summary input
+4. Creates and pushes a `release/<version>` branch for you
 
-You can still run the same workflow manually with `workflow_dispatch` if you want to override the bump type or changelog summary.
-
-To create a release branch quickly, use:
-
-```bash
-bash scripts/create-release-branch.sh 5.11.100
-```
-
-If you omit the version, the script reads it from `VERSION` and creates `release/<that-version>` from `origin/main`.
+After that, open a pull request from the new release branch into `main` and merge it when you are ready.
 
 Once that PR is merged into `main`, `docker-publish.yml` takes over:
 
@@ -124,18 +116,13 @@ Black is the formatter that rewrites Python files in place. The GitHub Black wor
 
 ## Release Prep Conventions
 
-The release-prep workflow infers bump type from the latest commit message on `release/**` branches, and you can override it manually with `workflow_dispatch`:
+The release-prep workflow is started manually from GitHub Actions, and you choose the bump type there:
 
 - **Patch** — bug fixes, log improvements, formatting tweaks
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
 
-When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from either:
-
-- the commit subjects on your branch since it diverged from `main`
-- a manual summary input if you want to override the generated notes
-
-That keeps the release notes tied to the release branch you are actually merging instead of relying on special commit tags, and you can open the PR yourself after the branch commit is pushed.
+When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from the optional summary input, or falls back to a simple release note if you leave it blank.
 
 ---
 
