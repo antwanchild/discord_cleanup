@@ -1,10 +1,6 @@
 name: Pyright
 
 on:
-  pull_request:
-  push:
-    branches-ignore:
-      - main
   workflow_dispatch:
 
 permissions:

@@ -107,9 +107,9 @@ The recommended local workflow is:
    pre-commit install
    ```
 2. Let `pre-commit` run Black automatically before each commit.
-3. Let GitHub Actions verify formatting with the `Black` workflow and run type checks with `Pyright`.
+3. Let GitHub Actions verify formatting and type checks through the `CI` workflow.
 
-Black is the formatter that rewrites Python files in place. The GitHub Black workflow is check-only, so formatting happens locally through `pre-commit` rather than in CI.
+Black is the formatter that rewrites Python files in place. The standalone Black and Pyright workflows are still available in the Actions tab for manual runs, but the required PR checks should come from `CI`.
 
 ---
 
