@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.96 - 2026-07-02
+
+### Changes
+- Document monthly snapshot inspection
+
+
 ## 5.11.95 - 2026-07-02
 
 ### Changes
