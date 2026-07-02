@@ -144,3 +144,12 @@ jobs:
           git push -u origin "$branch"
           printf 'branch=%s\n' "$branch" >> "$GITHUB_OUTPUT"
           printf 'version=%s\n' "$new_version" >> "$GITHUB_OUTPUT"
+
+          compare_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${branch}"
+          {
+            echo "## Release branch ready"
+            echo
+            echo "- Branch: \`${branch}\`"
+            echo "- Version: \`${new_version}\`"
+            echo "- [Create the release pull request](${compare_url})"
+          } >> "$GITHUB_STEP_SUMMARY"
