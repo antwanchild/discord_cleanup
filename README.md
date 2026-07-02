@@ -80,7 +80,7 @@ Use `release-prep.yml` from the GitHub Actions tab when you are ready to create 
 
 1. Reads the current `VERSION` from `main`
 2. Bumps `VERSION` based on the selected patch, minor, or major release type
-3. Prepends a new `CHANGELOG.md` entry from the commits since the last release tag, unless you provide a manual summary override
+3. Prepends a new `CHANGELOG.md` entry from the commits since the last release tag, filtering out workflow-only and release housekeeping commits unless you provide a manual summary override
 4. Creates and pushes a `release/<version>` branch for you
 5. Opens and labels the release pull request into `main`
 
@@ -121,7 +121,7 @@ The release-prep workflow is started manually from GitHub Actions, and you choos
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
 
-When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from the commit subjects since the last release tag. If you want a curated note instead, fill in the optional summary input and each line becomes a bullet. If neither produces anything useful, it falls back to a simple release note.
+When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from the commit subjects since the last release tag. It filters out workflow-only commits, `[skip ci]` bumps, and release housekeeping messages. If you want a curated note instead, fill in the optional summary input and each line becomes a bullet. If neither produces anything useful, it falls back to a simple release note.
 
 ---
 

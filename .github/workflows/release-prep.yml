@@ -74,16 +74,27 @@ jobs:
           git switch -c "$branch" origin/main
 
           release_date=$(date -u +"%Y-%m-%d")
-          previous_tag="v${current_version}"
-          if ! git rev-parse -q --verify "refs/tags/${previous_tag}" >/dev/null; then
-            previous_tag=$(git describe --tags --abbrev=0)
+          if ! previous_tag=$(git describe --tags --abbrev=0 origin/main 2>/dev/null); then
+            previous_tag="v${current_version}"
           fi
 
           notes_source=$(mktemp)
           if [ -n "${SUMMARY}" ]; then
             printf '%s\n' "$SUMMARY" > "$notes_source"
           else
-            git log --format=%s --no-merges "${previous_tag}..origin/main" > "$notes_source"
+            git log --format='%H%x1f%s' --no-merges "${previous_tag}..origin/main" | while IFS=$'\x1f' read -r commit subject; do
+              [ -z "$commit" ] && continue
+
+              case "$subject" in
+                *"[skip ci]"*|Auto\ bump\ version*|Prepare\ release*|Release\ v*)
+                  continue
+                  ;;
+              esac
+
+              if git diff-tree --no-commit-id --name-only -r "$commit" | grep -qEv '^(\.github/workflows/|README\.md$|CHANGELOG\.md$|docs/)'; then
+                printf '%s\n' "$subject"
+              fi
+            done > "$notes_source"
           fi
 
           changelog_entry=$(mktemp)
