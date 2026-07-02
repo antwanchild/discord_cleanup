@@ -95,7 +95,7 @@ Once that PR is merged into `main`, `docker-publish.yml` takes over:
 
 Merges that only modify `README.md`, `CHANGELOG.md`, `docs/**`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped by the release workflow — no build, no version bump, no release.
 
-Workflow linting runs in CI on pull requests and feature-branch pushes using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
+Workflow linting runs in CI on pull requests and non-`main` pushes using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
 
 ---
 
