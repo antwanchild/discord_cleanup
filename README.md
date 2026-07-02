@@ -80,7 +80,7 @@ Use `release-prep.yml` from the GitHub Actions tab when you are ready to create 
 
 1. Reads the current `VERSION` from `main`
 2. Bumps `VERSION` based on the selected patch, minor, or major release type
-3. Prepends a new `CHANGELOG.md` entry from your optional summary input, one item per line
+3. Prepends a new `CHANGELOG.md` entry from the commits since the last release tag, filtering out workflow-only and release housekeeping commits unless you provide a manual summary override
 4. Creates and pushes a `release/<version>` branch for you
 5. Opens and labels the release pull request into `main`
 
@@ -107,9 +107,9 @@ The recommended local workflow is:
    pre-commit install
    ```
 2. Let `pre-commit` run Black automatically before each commit.
-3. Let GitHub Actions verify formatting with the `Black` workflow and run type checks with `Pyright`.
+3. Let GitHub Actions verify formatting and type checks through the `CI` workflow.
 
-Black is the formatter that rewrites Python files in place. The GitHub Black workflow is check-only, so formatting happens locally through `pre-commit` rather than in CI.
+Black is the formatter that rewrites Python files in place. The standalone Black and Pyright workflows are still available in the Actions tab for manual runs, but the required PR checks should come from `CI`.
 
 ---
 
@@ -121,7 +121,7 @@ The release-prep workflow is started manually from GitHub Actions, and you choos
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
 
-When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from the optional summary input, turning each line into a bullet. You can type plain lines or bullet lines; the workflow normalizes them for you. If you leave it blank, it falls back to a simple release note.
+When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from the commit subjects since the last release tag. It filters out workflow-only commits, `[skip ci]` bumps, and release housekeeping messages. If you want a curated note instead, fill in the optional summary input and each line becomes a bullet. If neither produces anything useful, it falls back to a simple release note.
 
 ---
 
