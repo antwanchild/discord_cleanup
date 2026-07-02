@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.95 - 2026-07-02
+
+### Changes
+- Prevent stale monthly comparisons
+
+
 ## 5.11.94 - 2026-07-01
 
 ### Changes
