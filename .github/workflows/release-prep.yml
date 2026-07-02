@@ -1,12 +1,6 @@
-name: Prepare Release PR
+name: Prepare Release Branch
 
 on:
-  push:
-    branches-ignore:
-      - main
-    paths-ignore:
-      - VERSION
-      - CHANGELOG.md
   workflow_dispatch:
     inputs:
       bump_type:
@@ -19,12 +13,13 @@ on:
           - major
         default: patch
       summary:
-        description: Optional changelog summary. Leave blank to use branch commit subjects.
+        description: Optional changelog summary, one item per line.
         required: false
         type: string
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
@@ -32,38 +27,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout branch
+      - name: Checkout main
         uses: actions/checkout@v7
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Prepare release commit
-        id: prepare
         env:
           BUMP_TYPE_INPUT: ${{ inputs.bump_type }}
           SUMMARY: ${{ inputs.summary || '' }}
+        id: prepare
         run: |
           set -euo pipefail
-
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            echo "This workflow is intended for a feature or release branch, not main."
-            exit 1
-          fi
 
           git fetch origin main --prune --tags
 
           bump_type="${BUMP_TYPE_INPUT:-}"
-          if [ -z "$bump_type" ]; then
-            latest_commit_message=$(git log -1 --format=%B)
-            if printf '%s\n' "$latest_commit_message" | grep -q "#major"; then
-              bump_type="major"
-            elif printf '%s\n' "$latest_commit_message" | grep -q "#minor"; then
-              bump_type="minor"
-            else
-              bump_type="patch"
-            fi
-          fi
-
           current_version=$(cat VERSION)
           major=$(echo "$current_version" | cut -d. -f1)
           minor=$(echo "$current_version" | cut -d. -f2)
@@ -85,40 +65,29 @@ jobs:
               ;;
           esac
 
-          release_date=$(date -u +"%Y-%m-%d")
-          notes_source=$(mktemp)
-
-          if [ -n "${SUMMARY}" ]; then
-            printf '%s\n' "$SUMMARY" > "$notes_source"
-          else
-            base_commit=$(git merge-base HEAD origin/main)
-            git log --format=%s --no-merges "${base_commit}..HEAD" > "$notes_source"
+          branch="release/${new_version}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "Branch ${branch} already exists."
+            exit 1
           fi
 
+          git switch -c "$branch" origin/main
+
+          release_date=$(date -u +"%Y-%m-%d")
           changelog_entry=$(mktemp)
           {
             echo "## ${new_version} - ${release_date}"
             echo
             echo "### Changes"
-
-            found_line=0
-            while IFS= read -r line || [ -n "$line" ]; do
-              trimmed=$(printf '%s' "$line" | sed -E 's/(^|[[:space:]])#(major|minor)\b//g' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')
-              if [ -n "$trimmed" ]; then
-                found_line=1
-                case "$trimmed" in
-                  -\ *|\*\ *)
-                    trimmed="${trimmed#??}"
-                    ;;
-                esac
-                echo "- $trimmed"
-              fi
-            done < "$notes_source"
-
-            if [ "$found_line" -eq 0 ]; then
+            if [ -n "${SUMMARY}" ]; then
+              printf '%s\n' "$SUMMARY" | while IFS= read -r line || [ -n "$line" ]; do
+                line="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+                line="$(printf '%s' "$line" | sed -E 's/^[-*]+[[:space:]]+//')"
+                [ -n "$line" ] && echo "- $line"
+              done
+            else
               echo "- Release ${new_version}"
             fi
-
             echo
           } > "$changelog_entry"
 
@@ -140,30 +109,103 @@ jobs:
           mv CHANGELOG.md.tmp CHANGELOG.md
           echo "$new_version" > VERSION
 
-          rm -f "$notes_source" "$changelog_entry"
+          rm -f "$changelog_entry"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION CHANGELOG.md
           git commit -m "Prepare release v${new_version}"
-          git push origin HEAD:"${GITHUB_REF_NAME}"
+          git push -u origin "$branch"
+          printf 'branch=%s\n' "$branch" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "$new_version" >> "$GITHUB_OUTPUT"
 
-          echo "version=$new_version" >> "$GITHUB_OUTPUT"
-
-      - name: Open pull request
+      - name: Open release pull request
+        uses: actions/github-script@v7
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ github.ref_name }}
+          BRANCH: ${{ steps.prepare.outputs.branch }}
           VERSION: ${{ steps.prepare.outputs.version }}
-        run: |
-          existing_pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
-          if [ -n "$existing_pr" ]; then
-            echo "Pull request #$existing_pr already exists for $BRANCH"
-            exit 0
-          fi
+          SUMMARY: ${{ inputs.summary || '' }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const head = process.env.BRANCH;
+            const version = process.env.VERSION;
+            const summary = process.env.SUMMARY.trim();
+            const labelName = 'release';
 
-          gh pr create \
-            --base main \
-            --head "$BRANCH" \
-            --title "Release v${VERSION}" \
-            --body "Automated version bump and changelog update for v${VERSION}."
+            try {
+              await github.rest.issues.getLabel({
+                owner,
+                repo,
+                name: labelName,
+              });
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: labelName,
+                color: '0E8A16',
+                description: 'Release branch pull request',
+              });
+            }
+
+            const { data: existing } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              head: `${owner}:${head}`,
+              base: 'main',
+              per_page: 100,
+            });
+
+            if (existing.length > 0) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: existing[0].number,
+                labels: [labelName],
+              });
+              core.notice(`Release PR already exists: ${existing[0].html_url}`);
+              core.setOutput('pull_request_url', existing[0].html_url);
+              return;
+            }
+
+            const bodyLines = [
+              'This PR was created by the release-prep workflow.',
+              '',
+              'It bumps `VERSION` and updates `CHANGELOG.md`.',
+            ];
+
+            if (summary) {
+              bodyLines.push('');
+              bodyLines.push('Release summary:');
+              bodyLines.push('');
+              bodyLines.push('```text');
+              bodyLines.push(summary);
+              bodyLines.push('```');
+            }
+
+            const { data: pr } = await github.rest.pulls.create({
+              owner,
+              repo,
+              head,
+              base: 'main',
+              title: `Release v${version}`,
+              body: bodyLines.join('\n'),
+              draft: false,
+            });
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: pr.number,
+              labels: [labelName],
+            });
+
+            core.notice(`Created release PR: ${pr.html_url}`);
+            core.setOutput('pull_request_url', pr.html_url);

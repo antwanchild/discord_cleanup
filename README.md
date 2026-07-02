@@ -56,7 +56,7 @@ An automated Discord bot that cleans up old messages from configured channels on
     │   └── feature_request.yml
     └── workflows/
         ├── ci.yml                     # Validation on PRs and feature-branch pushes
-        ├── release-prep.yml            # Bump VERSION and CHANGELOG on a branch
+        ├── release-prep.yml            # Create a release branch and prep VERSION/CHANGELOG
         ├── docker-publish.yml          # Build and publish workflow after merge
         ├── discord-notify.yml          # Build success/failure notifications
         ├── dependabot-notify.yml       # Dependabot PR notifications
@@ -76,14 +76,13 @@ Feature branches and pull requests trigger validation workflows that:
 3. Runs `pytest` — keeps the regression suite green before merge
 4. Runs `ruff` lint and security checks — warns on issues, build continues
 
-When you push to a feature or release branch, `release-prep.yml` runs automatically. It:
+Use `release-prep.yml` from the GitHub Actions tab when you are ready to create a release branch. It:
 
-1. Bumps `VERSION` based on the selected patch, minor, or major release type, or by reading `#minor` / `#major` from the latest commit message
-2. Prepends a new `CHANGELOG.md` entry from the branch commit subjects, or from your manual summary input
-3. Commits and pushes those changes back to the same branch
-4. Opens a pull request to `main` if one does not already exist
-
-You can also run the same workflow manually with `workflow_dispatch` if you want to override the bump type or changelog summary.
+1. Reads the current `VERSION` from `main`
+2. Bumps `VERSION` based on the selected patch, minor, or major release type
+3. Prepends a new `CHANGELOG.md` entry from your optional summary input, one item per line
+4. Creates and pushes a `release/<version>` branch for you
+5. Opens and labels the release pull request into `main`
 
 Once that PR is merged into `main`, `docker-publish.yml` takes over:
 
@@ -95,7 +94,7 @@ Once that PR is merged into `main`, `docker-publish.yml` takes over:
 
 Merges that only modify `README.md`, `CHANGELOG.md`, `docs/**`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped by the release workflow — no build, no version bump, no release.
 
-Workflow linting runs in CI on pull requests and feature-branch pushes using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
+Workflow linting runs in CI on pull requests and non-`main` pushes using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
 
 ---
 
@@ -116,18 +115,13 @@ Black is the formatter that rewrites Python files in place. The GitHub Black wor
 
 ## Release Prep Conventions
 
-The release-prep workflow uses a manual bump type instead of commit-message tags:
+The release-prep workflow is started manually from GitHub Actions, and you choose the bump type there:
 
 - **Patch** — bug fixes, log improvements, formatting tweaks
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
 
-When you run `release-prep.yml`, it prepends a new `CHANGELOG.md` entry from either:
-
-- the commit subjects on your branch since it diverged from `main`
-- a manual summary input if you want to override the generated notes
-
-That keeps the release notes tied to the branch you are actually merging instead of relying on special commit tags.
+When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from the optional summary input, turning each line into a bullet. You can type plain lines or bullet lines; the workflow normalizes them for you. If you leave it blank, it falls back to a simple release note.
 
 ---
 
