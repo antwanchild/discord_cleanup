@@ -81,7 +81,7 @@ When you push to a feature or release branch, `release-prep.yml` runs automatica
 1. Bumps `VERSION` based on the selected patch, minor, or major release type, or by reading `#minor` / `#major` from the latest commit message
 2. Prepends a new `CHANGELOG.md` entry from the branch commit subjects, or from your manual summary input
 3. Commits and pushes those changes back to the same branch
-4. Opens a pull request to `main` if one does not already exist
+4. Leaves PR creation to you, so the PR comes from your account instead of `github-actions[bot]`
 
 You can still run the same workflow manually with `workflow_dispatch` if you want to override the bump type or changelog summary.
 
@@ -127,7 +127,7 @@ When you run `release-prep.yml`, it prepends a new `CHANGELOG.md` entry from eit
 - the commit subjects on your branch since it diverged from `main`
 - a manual summary input if you want to override the generated notes
 
-That keeps the release notes tied to the branch you are actually merging instead of relying on special commit tags.
+That keeps the release notes tied to the branch you are actually merging instead of relying on special commit tags, and you can open the PR yourself after the branch commit is pushed.
 
 ---
 
