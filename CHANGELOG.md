@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.11.98 - 2026-07-02
+
+### Changes
+- Tweak release prep docs
+
+
 ## 5.11.97 - 2026-07-02
 
 ### Changes
