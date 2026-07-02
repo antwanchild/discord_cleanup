@@ -1,9 +1,9 @@
-name: Prepare Release PR
+name: Prepare Release Branch
 
 on:
   push:
-    branches-ignore:
-      - main
+    branches:
+      - 'release/**'
     paths-ignore:
       - VERSION
       - CHANGELOG.md
@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
 
           if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            echo "This workflow is intended for a feature or release branch, not main."
+            echo "This workflow is intended for a release branch, not main."
             exit 1
           fi
 

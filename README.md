@@ -76,7 +76,7 @@ Feature branches and pull requests trigger validation workflows that:
 3. Runs `pytest` — keeps the regression suite green before merge
 4. Runs `ruff` lint and security checks — warns on issues, build continues
 
-When you push to a feature or release branch, `release-prep.yml` runs automatically. It:
+When you push to a `release/**` branch, `release-prep.yml` runs automatically. It:
 
 1. Bumps `VERSION` based on the selected patch, minor, or major release type, or by reading `#minor` / `#major` from the latest commit message
 2. Prepends a new `CHANGELOG.md` entry from the branch commit subjects, or from your manual summary input
@@ -84,6 +84,14 @@ When you push to a feature or release branch, `release-prep.yml` runs automatica
 4. Leaves PR creation to you, so the PR comes from your account instead of `github-actions[bot]`
 
 You can still run the same workflow manually with `workflow_dispatch` if you want to override the bump type or changelog summary.
+
+To create a release branch quickly, use:
+
+```bash
+bash scripts/create-release-branch.sh 5.11.100
+```
+
+If you omit the version, the script reads it from `VERSION` and creates `release/<that-version>` from `origin/main`.
 
 Once that PR is merged into `main`, `docker-publish.yml` takes over:
 
@@ -116,18 +124,18 @@ Black is the formatter that rewrites Python files in place. The GitHub Black wor
 
 ## Release Prep Conventions
 
-The release-prep workflow uses a manual bump type instead of commit-message tags:
+The release-prep workflow infers bump type from the latest commit message on `release/**` branches, and you can override it manually with `workflow_dispatch`:
 
 - **Patch** — bug fixes, log improvements, formatting tweaks
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
 
-When you run `release-prep.yml`, it prepends a new `CHANGELOG.md` entry from either:
+When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from either:
 
 - the commit subjects on your branch since it diverged from `main`
 - a manual summary input if you want to override the generated notes
 
-That keeps the release notes tied to the branch you are actually merging instead of relying on special commit tags, and you can open the PR yourself after the branch commit is pushed.
+That keeps the release notes tied to the release branch you are actually merging instead of relying on special commit tags, and you can open the PR yourself after the branch commit is pushed.
 
 ---
 
