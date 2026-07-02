@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.11.99 - 2026-07-02
+
+### Changes
+- Clarify workflow lint trigger scope
+- Prepare release v5.11.98
+- Tweak release prep docs
+
+
 ## 5.11.98 - 2026-07-02
 
 ### Changes
