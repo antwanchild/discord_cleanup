@@ -74,18 +74,34 @@ jobs:
           git switch -c "$branch" origin/main
 
           release_date=$(date -u +"%Y-%m-%d")
+          previous_tag="v${current_version}"
+          if ! git rev-parse -q --verify "refs/tags/${previous_tag}" >/dev/null; then
+            previous_tag=$(git describe --tags --abbrev=0)
+          fi
+
+          notes_source=$(mktemp)
+          if [ -n "${SUMMARY}" ]; then
+            printf '%s\n' "$SUMMARY" > "$notes_source"
+          else
+            git log --format=%s --no-merges "${previous_tag}..origin/main" > "$notes_source"
+          fi
+
           changelog_entry=$(mktemp)
           {
             echo "## ${new_version} - ${release_date}"
             echo
             echo "### Changes"
-            if [ -n "${SUMMARY}" ]; then
-              printf '%s\n' "$SUMMARY" | while IFS= read -r line || [ -n "$line" ]; do
-                line="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
-                line="$(printf '%s' "$line" | sed -E 's/^[-*]+[[:space:]]+//')"
-                [ -n "$line" ] && echo "- $line"
-              done
-            else
+            found_line=0
+            while IFS= read -r line || [ -n "$line" ]; do
+              line="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+              line="$(printf '%s' "$line" | sed -E 's/^[-*]+[[:space:]]+//')"
+              if [ -n "$line" ]; then
+                found_line=1
+                echo "- $line"
+              fi
+            done < "$notes_source"
+
+            if [ "$found_line" -eq 0 ]; then
               echo "- Release ${new_version}"
             fi
             echo
@@ -110,6 +126,7 @@ jobs:
           echo "$new_version" > VERSION
 
           rm -f "$changelog_entry"
+          rm -f "$notes_source"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
