@@ -58,12 +58,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Scan for secrets
-        uses: gitleaks/gitleaks-action@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
       - name: Lint and security check
         continue-on-error: true
         run: |

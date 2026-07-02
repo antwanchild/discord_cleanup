@@ -76,12 +76,14 @@ Feature branches and pull requests trigger validation workflows that:
 3. Runs `pytest` — keeps the regression suite green before merge
 4. Runs `ruff` lint and security checks — warns on issues, build continues
 
-When you are ready to cut a release, run `release-prep.yml` on your feature or release branch. It:
+When you push to a feature or release branch, `release-prep.yml` runs automatically. It:
 
-1. Bumps `VERSION` based on the selected patch, minor, or major release type
+1. Bumps `VERSION` based on the selected patch, minor, or major release type, or by reading `#minor` / `#major` from the latest commit message
 2. Prepends a new `CHANGELOG.md` entry from the branch commit subjects, or from your manual summary input
 3. Commits and pushes those changes back to the same branch
 4. Opens a pull request to `main` if one does not already exist
+
+You can also run the same workflow manually with `workflow_dispatch` if you want to override the bump type or changelog summary.
 
 Once that PR is merged into `main`, `docker-publish.yml` takes over:
 
