@@ -1,5 +1,15 @@
 # Changelog
 
+## 5.11.100 - 2026-07-02
+
+### Changes
+- Remove bot-authored PR creation
+- Prepare release v5.11.99
+- Clarify workflow lint trigger scope
+- Prepare release v5.11.98
+- Tweak release prep docs
+
+
 ## 5.11.99 - 2026-07-02
 
 ### Changes
