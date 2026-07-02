@@ -82,7 +82,7 @@ Use `release-prep.yml` from the GitHub Actions tab when you are ready to create 
 2. Bumps `VERSION` based on the selected patch, minor, or major release type
 3. Prepends a new `CHANGELOG.md` entry from the commits since the last release tag, filtering out workflow-only and release housekeeping commits unless you provide a manual summary override
 4. Creates and pushes a `release/<version>` branch for you
-5. Opens and labels the release pull request into `main`
+5. Leaves PR creation to you, so the release PR comes from your account instead of `github-actions[bot]`
 
 Once that PR is merged into `main`, `docker-publish.yml` takes over:
 

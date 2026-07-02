@@ -19,8 +19,6 @@ on:
 
 permissions:
   contents: write
-  issues: write
-  pull-requests: write
 
 jobs:
   prepare:
@@ -146,94 +144,3 @@ jobs:
           git push -u origin "$branch"
           printf 'branch=%s\n' "$branch" >> "$GITHUB_OUTPUT"
           printf 'version=%s\n' "$new_version" >> "$GITHUB_OUTPUT"
-
-      - name: Open release pull request
-        uses: actions/github-script@v7
-        env:
-          BRANCH: ${{ steps.prepare.outputs.branch }}
-          VERSION: ${{ steps.prepare.outputs.version }}
-          SUMMARY: ${{ inputs.summary || '' }}
-        with:
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const head = process.env.BRANCH;
-            const version = process.env.VERSION;
-            const summary = process.env.SUMMARY.trim();
-            const labelName = 'release';
-
-            try {
-              await github.rest.issues.getLabel({
-                owner,
-                repo,
-                name: labelName,
-              });
-            } catch (error) {
-              if (error.status !== 404) {
-                throw error;
-              }
-
-              await github.rest.issues.createLabel({
-                owner,
-                repo,
-                name: labelName,
-                color: '0E8A16',
-                description: 'Release branch pull request',
-              });
-            }
-
-            const { data: existing } = await github.rest.pulls.list({
-              owner,
-              repo,
-              state: 'open',
-              head: `${owner}:${head}`,
-              base: 'main',
-              per_page: 100,
-            });
-
-            if (existing.length > 0) {
-              await github.rest.issues.addLabels({
-                owner,
-                repo,
-                issue_number: existing[0].number,
-                labels: [labelName],
-              });
-              core.notice(`Release PR already exists: ${existing[0].html_url}`);
-              core.setOutput('pull_request_url', existing[0].html_url);
-              return;
-            }
-
-            const bodyLines = [
-              'This PR was created by the release-prep workflow.',
-              '',
-              'It bumps `VERSION` and updates `CHANGELOG.md`.',
-            ];
-
-            if (summary) {
-              bodyLines.push('');
-              bodyLines.push('Release summary:');
-              bodyLines.push('');
-              bodyLines.push('```text');
-              bodyLines.push(summary);
-              bodyLines.push('```');
-            }
-
-            const { data: pr } = await github.rest.pulls.create({
-              owner,
-              repo,
-              head,
-              base: 'main',
-              title: `Release v${version}`,
-              body: bodyLines.join('\n'),
-              draft: false,
-            });
-
-            await github.rest.issues.addLabels({
-              owner,
-              repo,
-              issue_number: pr.number,
-              labels: [labelName],
-            });
-
-            core.notice(`Created release PR: ${pr.html_url}`);
-            core.setOutput('pull_request_url', pr.html_url);
