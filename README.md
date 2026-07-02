@@ -83,7 +83,7 @@ When you push to a feature or release branch, `release-prep.yml` runs automatica
 3. Commits and pushes those changes back to the same branch
 4. Opens a pull request to `main` if one does not already exist
 
-You can also run the same workflow manually with `workflow_dispatch` if you want to override the bump type or changelog summary.
+You can still run the same workflow manually with `workflow_dispatch` if you want to override the bump type or changelog summary.
 
 Once that PR is merged into `main`, `docker-publish.yml` takes over:
 
