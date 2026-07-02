@@ -80,7 +80,7 @@ Use `release-prep.yml` from the GitHub Actions tab when you are ready to create 
 
 1. Reads the current `VERSION` from `main`
 2. Bumps `VERSION` based on the selected patch, minor, or major release type
-3. Prepends a new `CHANGELOG.md` entry from your optional summary input
+3. Prepends a new `CHANGELOG.md` entry from your optional summary input, one line per bullet
 4. Creates and pushes a `release/<version>` branch for you
 
 After that, open a pull request from the new release branch into `main` and merge it when you are ready.
@@ -122,7 +122,7 @@ The release-prep workflow is started manually from GitHub Actions, and you choos
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
 
-When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from the optional summary input, or falls back to a simple release note if you leave it blank.
+When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from the optional summary input, turning each line into a bullet. If you leave it blank, it falls back to a simple release note.
 
 ---
 

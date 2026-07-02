@@ -77,9 +77,12 @@ jobs:
             echo
             echo "### Changes"
             if [ -n "${SUMMARY}" ]; then
-              printf '%s\n' "$SUMMARY" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g' | while IFS= read -r line || [ -n "$line" ]; do
+              while IFS= read -r line || [ -n "$line" ]; do
+                line="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
                 [ -n "$line" ] && echo "- $line"
-              done
+              done <<EOF
+$SUMMARY
+EOF
             else
               echo "- Release ${new_version}"
             fi
