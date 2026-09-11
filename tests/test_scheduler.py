@@ -429,6 +429,11 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
         )
         commands_stats_stub = types.SimpleNamespace()
 
+        class FixedDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return cls(2026, 7, 2, 10, 0, 0, tzinfo=tz)
+
         with isolated_module_import(
             "cleanup_bot",
             {
@@ -447,9 +452,13 @@ class CleanupRuntimeTests(unittest.IsolatedAsyncioTestCase):
                 "discord.ext.tasks": tasks,
             },
         ) as cleanup_bot:
-            set_module_attr(cleanup_bot, "_monthly_report_is_due", lambda _moment: True)
-            cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
-            await cleanup_bot._check_and_catchup_monthly_report(cleanup_bot.bot)
+            original_datetime = cleanup_bot.datetime
+            set_module_attr(cleanup_bot, "datetime", FixedDateTime)
+            try:
+                cleanup_bot.bot.guilds = [types.SimpleNamespace(name="alpha")]
+                await cleanup_bot._check_and_catchup_monthly_report(cleanup_bot.bot)
+            finally:
+                set_module_attr(cleanup_bot, "datetime", original_datetime)
 
         self.assertEqual(missed_notices, ["June 2026"])
         self.assertEqual(posted, [("alpha", "monthly")])
