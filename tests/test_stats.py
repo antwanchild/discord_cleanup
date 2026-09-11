@@ -506,10 +506,20 @@ class StatsTests(unittest.TestCase):
                     f,
                 )
 
+            class FixedDateTime(datetime):
+                @classmethod
+                def now(cls, tz=None):
+                    return cls(2026, 7, 1, 9, 0, 0, tzinfo=tz)
+
             with isolated_module_import(
                 "stats", {"config": self._config_stub(tempdir)}
             ) as stats:
-                source = stats.load_monthly_report_source()
+                original_datetime = stats.datetime
+                set_module_attr(stats, "datetime", FixedDateTime)
+                try:
+                    source = stats.load_monthly_report_source()
+                finally:
+                    set_module_attr(stats, "datetime", original_datetime)
 
             self.assertIsNotNone(source)
             self.assertEqual(source["display"]["deleted"], 5712)
