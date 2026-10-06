@@ -2,6 +2,7 @@ import logging
 import os
 import types
 import unittest
+from unittest.mock import patch
 
 from flask import Blueprint
 
@@ -29,10 +30,7 @@ class WebConfigTests(unittest.TestCase):
         return types.SimpleNamespace(admin=Blueprint("admin", __name__))
 
     def test_invalid_web_port_fails_fast_on_import(self):
-        original = os.environ.get("WEB_PORT")
-        os.environ["WEB_PORT"] = "not-a-number"
-
-        try:
+        with patch.dict(os.environ, {"WEB_PORT": "not-a-number"}):
             with self.assertRaisesRegex(ValueError, "WEB_PORT must be an integer"):
                 with isolated_module_import(
                     "web",
@@ -60,11 +58,6 @@ class WebConfigTests(unittest.TestCase):
                     },
                 ):
                     pass
-        finally:
-            if original is None:
-                os.environ.pop("WEB_PORT", None)
-            else:
-                os.environ["WEB_PORT"] = original
 
     def test_stats_page_includes_stats_repair_action(self):
         config_stub = self._config_stub()
