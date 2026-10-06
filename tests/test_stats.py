@@ -4,9 +4,20 @@ import os
 import tempfile
 import types
 import unittest
+from unittest.mock import patch
 from datetime import datetime
 
-from tests.support import isolated_module_import, set_module_attr
+from tests.support import isolated_module_import
+
+
+def stats_bucket(*, runs, deleted, channels=None, **fields):
+    """Build a valid stats bucket while keeping scenario values explicit."""
+    return {
+        "runs": runs,
+        "deleted": deleted,
+        "channels": {} if channels is None else channels,
+        **fields,
+    }
 
 
 class StatsTests(unittest.TestCase):
@@ -66,14 +77,14 @@ class StatsTests(unittest.TestCase):
             with open(stats_path, "w") as f:
                 json.dump(
                     {
-                        "all_time": {
-                            "runs": "4",
-                            "deleted": "9",
-                            "channels": {
+                        "all_time": stats_bucket(
+                            runs="4",
+                            deleted="9",
+                            channels={
                                 "123": 5,
                                 456: {"name": "build-bot", "count": "7"},
                             },
-                        },
+                        ),
                         "rolling_30": {"reset": "not-a-date"},
                         "monthly": {"catchup_runs": "3", "channels": []},
                         "last_month": {
@@ -124,25 +135,14 @@ class StatsTests(unittest.TestCase):
             with open(stats_path, "w") as f:
                 json.dump(
                     {
-                        "all_time": {"runs": 1, "deleted": 9, "channels": {}},
-                        "rolling_30": {
-                            "runs": 1,
-                            "deleted": 9,
-                            "channels": {},
-                            "reset": "2026-06-01",
-                        },
-                        "monthly": {
-                            "runs": 0,
-                            "deleted": 0,
-                            "channels": {},
-                            "reset": "2026-06-01",
-                        },
-                        "last_month": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {},
-                            "reset": "2026-05-01",
-                        },
+                        "all_time": stats_bucket(runs=1, deleted=9),
+                        "rolling_30": stats_bucket(
+                            runs=1, deleted=9, reset="2026-06-01"
+                        ),
+                        "monthly": stats_bucket(runs=0, deleted=0, reset="2026-06-01"),
+                        "last_month": stats_bucket(
+                            runs=33, deleted=8640, reset="2026-05-01"
+                        ),
                     },
                     f,
                 )
@@ -152,37 +152,34 @@ class StatsTests(unittest.TestCase):
             ) as f:
                 json.dump(
                     {
-                        "all_time": {"runs": 1, "deleted": 9, "channels": {}},
-                        "rolling_30": {
-                            "runs": 1,
-                            "deleted": 9,
-                            "channels": {},
-                            "reset": "2026-06-01",
-                        },
-                        "monthly": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                        "all_time": stats_bucket(runs=1, deleted=9),
+                        "rolling_30": stats_bucket(
+                            runs=1, deleted=9, reset="2026-06-01"
+                        ),
+                        "monthly": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
-                        "last_month": {
-                            "runs": 4,
-                            "deleted": 8186,
-                            "channels": {
+                            reset="2026-05-01",
+                        ),
+                        "last_month": stats_bucket(
+                            runs=4,
+                            deleted=8186,
+                            channels={
                                 "102": {
                                     "name": "crowdsec",
                                     "count": 649,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-04-01",
-                        },
+                            reset="2026-04-01",
+                        ),
                     },
                     f,
                 )
@@ -263,40 +260,31 @@ class StatsTests(unittest.TestCase):
             with open(stats_path, "w") as f:
                 json.dump(
                     {
-                        "all_time": {
-                            "runs": 10,
-                            "deleted": 50,
-                            "catchup_runs": 0,
-                            "channels": {},
-                        },
-                        "rolling_30": {
-                            "runs": 4,
-                            "deleted": 19,
-                            "catchup_runs": 0,
-                            "channels": {},
-                            "reset": "2026-05-20",
-                        },
-                        "monthly": {
-                            "runs": 3,
-                            "deleted": 11,
-                            "catchup_runs": 0,
-                            "channels": {
+                        "all_time": stats_bucket(runs=10, deleted=50, catchup_runs=0),
+                        "rolling_30": stats_bucket(
+                            runs=4, deleted=19, catchup_runs=0, reset="2026-05-20"
+                        ),
+                        "monthly": stats_bucket(
+                            runs=3,
+                            deleted=11,
+                            catchup_runs=0,
+                            channels={
                                 "101": {"name": "plex", "count": 7, "category": "Media"}
                             },
-                            "reset": "2026-05-01",
-                        },
-                        "last_month": {
-                            "runs": 2,
-                            "deleted": 8,
-                            "channels": {
+                            reset="2026-05-01",
+                        ),
+                        "last_month": stats_bucket(
+                            runs=2,
+                            deleted=8,
+                            channels={
                                 "202": {
                                     "name": "sonarr",
                                     "count": 5,
                                     "category": "Media",
                                 }
                             },
-                            "reset": "2026-04-01",
-                        },
+                            reset="2026-04-01",
+                        ),
                     },
                     f,
                 )
@@ -309,15 +297,11 @@ class StatsTests(unittest.TestCase):
             with isolated_module_import(
                 "stats", {"config": self._config_stub(tempdir)}
             ) as stats:
-                original_datetime = stats.datetime
-                set_module_attr(stats, "datetime", FixedDateTime)
-                try:
+                with patch.object(stats, "datetime", FixedDateTime):
                     stats.update_stats(
                         {"101": {"name": "plex", "count": 2, "category": "Media"}}
                     )
                     payload = stats.load_stats(strict=True)
-                finally:
-                    set_module_attr(stats, "datetime", original_datetime)
 
             self.assertEqual(payload["last_month"]["runs"], 3)
             self.assertEqual(payload["last_month"]["deleted"], 11)
@@ -347,12 +331,7 @@ class StatsTests(unittest.TestCase):
                 json.dump(
                     {
                         "all_time": {"runs": 1},
-                        "monthly": {
-                            "runs": 0,
-                            "deleted": 0,
-                            "channels": {},
-                            "reset": "2026-06-01",
-                        },
+                        "monthly": stats_bucket(runs=0, deleted=0, reset="2026-06-01"),
                     },
                     f,
                 )
@@ -362,44 +341,35 @@ class StatsTests(unittest.TestCase):
             ) as f:
                 json.dump(
                     {
-                        "all_time": {
-                            "runs": 1,
-                            "deleted": 9,
-                            "catchup_runs": 0,
-                            "channels": {},
-                        },
-                        "rolling_30": {
-                            "runs": 1,
-                            "deleted": 9,
-                            "catchup_runs": 0,
-                            "channels": {},
-                            "reset": "2026-06-01",
-                        },
-                        "monthly": {
-                            "runs": 1,
-                            "deleted": 156,
-                            "catchup_runs": 0,
-                            "channels": {
+                        "all_time": stats_bucket(runs=1, deleted=9, catchup_runs=0),
+                        "rolling_30": stats_bucket(
+                            runs=1, deleted=9, catchup_runs=0, reset="2026-06-01"
+                        ),
+                        "monthly": stats_bucket(
+                            runs=1,
+                            deleted=156,
+                            catchup_runs=0,
+                            channels={
                                 "999": {
                                     "name": "wrong",
                                     "count": 1,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "last_month": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "last_month": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
+                            reset="2026-05-01",
+                        ),
                     },
                     f,
                 )
@@ -409,44 +379,35 @@ class StatsTests(unittest.TestCase):
             ) as f:
                 json.dump(
                     {
-                        "all_time": {
-                            "runs": 1,
-                            "deleted": 9,
-                            "catchup_runs": 0,
-                            "channels": {},
-                        },
-                        "rolling_30": {
-                            "runs": 1,
-                            "deleted": 9,
-                            "catchup_runs": 0,
-                            "channels": {},
-                            "reset": "2026-06-01",
-                        },
-                        "monthly": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "catchup_runs": 0,
-                            "channels": {
+                        "all_time": stats_bucket(runs=1, deleted=9, catchup_runs=0),
+                        "rolling_30": stats_bucket(
+                            runs=1, deleted=9, catchup_runs=0, reset="2026-06-01"
+                        ),
+                        "monthly": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            catchup_runs=0,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
-                        "last_month": {
-                            "runs": 4,
-                            "deleted": 8186,
-                            "channels": {
+                            reset="2026-05-01",
+                        ),
+                        "last_month": stats_bucket(
+                            runs=4,
+                            deleted=8186,
+                            channels={
                                 "202": {
                                     "name": "crowdsec",
                                     "count": 649,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-04-01",
-                        },
+                            reset="2026-04-01",
+                        ),
                     },
                     f,
                 )
@@ -472,36 +433,36 @@ class StatsTests(unittest.TestCase):
                 json.dump(
                     {
                         "all_time": {"runs": 1},
-                        "monthly": {
-                            "runs": 1,
-                            "deleted": 156,
-                            "channels": {"999": {"name": "partial", "count": 156}},
-                            "reset": "2026-07-01",
-                        },
-                        "last_month": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
+                        "monthly": stats_bucket(
+                            runs=1,
+                            deleted=156,
+                            channels={"999": {"name": "partial", "count": 156}},
+                            reset="2026-07-01",
+                        ),
+                        "last_month": stats_bucket(
+                            runs=31,
+                            deleted=5712,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "previous_month": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "previous_month": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "202": {
                                     "name": "crowdsec",
                                     "count": 649,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
+                            reset="2026-05-01",
+                        ),
                     },
                     f,
                 )
@@ -514,12 +475,8 @@ class StatsTests(unittest.TestCase):
             with isolated_module_import(
                 "stats", {"config": self._config_stub(tempdir)}
             ) as stats:
-                original_datetime = stats.datetime
-                set_module_attr(stats, "datetime", FixedDateTime)
-                try:
+                with patch.object(stats, "datetime", FixedDateTime):
                     source = stats.load_monthly_report_source()
-                finally:
-                    set_module_attr(stats, "datetime", original_datetime)
 
             self.assertIsNotNone(source)
             self.assertEqual(source["display"]["deleted"], 5712)
@@ -535,36 +492,36 @@ class StatsTests(unittest.TestCase):
                 json.dump(
                     {
                         "all_time": {"runs": 1},
-                        "monthly": {
-                            "runs": 31,
-                            "deleted": 156,
-                            "channels": {"999": {"name": "partial", "count": 156}},
-                            "reset": "2026-07-01",
-                        },
-                        "last_month": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
+                        "monthly": stats_bucket(
+                            runs=31,
+                            deleted=156,
+                            channels={"999": {"name": "partial", "count": 156}},
+                            reset="2026-07-01",
+                        ),
+                        "last_month": stats_bucket(
+                            runs=31,
+                            deleted=5712,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "previous_month": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "previous_month": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "202": {
                                     "name": "crowdsec",
                                     "count": 649,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
+                            reset="2026-05-01",
+                        ),
                     },
                     f,
                 )
@@ -572,30 +529,30 @@ class StatsTests(unittest.TestCase):
             with open(os.path.join(tempdir, "monthly_report_source.json"), "w") as f:
                 json.dump(
                     {
-                        "display": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
+                        "display": stats_bucket(
+                            runs=31,
+                            deleted=5712,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "comparison": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "comparison": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "202": {
                                     "name": "crowdsec",
                                     "count": 649,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
+                            reset="2026-05-01",
+                        ),
                         "captured_at": "2026-07-01 11:54:00",
                         "month_key": "2026-06",
                     },
@@ -624,36 +581,36 @@ class StatsTests(unittest.TestCase):
                 json.dump(
                     {
                         "all_time": {"runs": 1},
-                        "monthly": {
-                            "runs": 31,
-                            "deleted": 156,
-                            "channels": {"999": {"name": "partial", "count": 156}},
-                            "reset": "2026-07-01",
-                        },
-                        "last_month": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
+                        "monthly": stats_bucket(
+                            runs=31,
+                            deleted=156,
+                            channels={"999": {"name": "partial", "count": 156}},
+                            reset="2026-07-01",
+                        ),
+                        "last_month": stats_bucket(
+                            runs=31,
+                            deleted=5712,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "previous_month": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "previous_month": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "202": {
                                     "name": "crowdsec",
                                     "count": 649,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
+                            reset="2026-05-01",
+                        ),
                     },
                     f,
                 )
@@ -661,30 +618,30 @@ class StatsTests(unittest.TestCase):
             with open(os.path.join(tempdir, "monthly_report_source.json"), "w") as f:
                 json.dump(
                     {
-                        "display": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
+                        "display": stats_bucket(
+                            runs=31,
+                            deleted=5712,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "comparison": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "comparison": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "202": {
                                     "name": "crowdsec",
                                     "count": 649,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
+                            reset="2026-05-01",
+                        ),
                         "captured_at": "2026-07-01 11:54:00",
                         "month_key": "2026-06",
                     },
@@ -696,37 +653,34 @@ class StatsTests(unittest.TestCase):
             ) as f:
                 json.dump(
                     {
-                        "all_time": {"runs": 1, "deleted": 9, "channels": {}},
-                        "rolling_30": {
-                            "runs": 1,
-                            "deleted": 9,
-                            "channels": {},
-                            "reset": "2026-06-01",
-                        },
-                        "monthly": {
-                            "runs": 1,
-                            "deleted": 156,
-                            "channels": {
+                        "all_time": stats_bucket(runs=1, deleted=9),
+                        "rolling_30": stats_bucket(
+                            runs=1, deleted=9, reset="2026-06-01"
+                        ),
+                        "monthly": stats_bucket(
+                            runs=1,
+                            deleted=156,
+                            channels={
                                 "999": {
                                     "name": "wrong",
                                     "count": 1,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "last_month": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "last_month": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
+                            reset="2026-05-01",
+                        ),
                     },
                     f,
                 )
@@ -747,42 +701,42 @@ class StatsTests(unittest.TestCase):
                 json.dump(
                     {
                         "all_time": {"runs": 1},
-                        "monthly": {
-                            "runs": 31,
-                            "deleted": 156,
-                            "channels": {
+                        "monthly": stats_bucket(
+                            runs=31,
+                            deleted=156,
+                            channels={
                                 "999": {
                                     "name": "partial",
                                     "count": 156,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-07-01",
-                        },
-                        "last_month": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
+                            reset="2026-07-01",
+                        ),
+                        "last_month": stats_bucket(
+                            runs=31,
+                            deleted=5712,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "previous_month": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "previous_month": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "202": {
                                     "name": "crowdsec",
                                     "count": 649,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
+                            reset="2026-05-01",
+                        ),
                     },
                     f,
                 )
@@ -790,30 +744,30 @@ class StatsTests(unittest.TestCase):
             with open(os.path.join(tempdir, "monthly_report_source.json"), "w") as f:
                 json.dump(
                     {
-                        "display": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
+                        "display": stats_bucket(
+                            runs=31,
+                            deleted=5712,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "comparison": {
-                            "runs": 1,
-                            "deleted": 156,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "comparison": stats_bucket(
+                            runs=1,
+                            deleted=156,
+                            channels={
                                 "999": {
                                     "name": "partial",
                                     "count": 156,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-07-01",
-                        },
+                            reset="2026-07-01",
+                        ),
                         "captured_at": "2026-07-01 11:54:00",
                         "month_key": "2026-07",
                     },
@@ -828,12 +782,8 @@ class StatsTests(unittest.TestCase):
             with isolated_module_import(
                 "stats", {"config": self._config_stub(tempdir)}
             ) as stats:
-                original_datetime = stats.datetime
-                set_module_attr(stats, "datetime", FixedDateTime)
-                try:
+                with patch.object(stats, "datetime", FixedDateTime):
                     source = stats.load_monthly_report_source()
-                finally:
-                    set_module_attr(stats, "datetime", original_datetime)
 
             self.assertIsNotNone(source)
             self.assertEqual(source["display"]["deleted"], 5712)
@@ -853,30 +803,30 @@ class StatsTests(unittest.TestCase):
             with open(source_path, "w") as f:
                 json.dump(
                     {
-                        "display": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
+                        "display": stats_bucket(
+                            runs=31,
+                            deleted=5712,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "comparison": {
-                            "runs": 33,
-                            "deleted": 8640,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "comparison": stats_bucket(
+                            runs=33,
+                            deleted=8640,
+                            channels={
                                 "202": {
                                     "name": "crowdsec",
                                     "count": 649,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-05-01",
-                        },
+                            reset="2026-05-01",
+                        ),
                         "captured_at": "2026-06-01 09:00:00",
                         "month_key": "2026-06",
                     },
@@ -891,39 +841,35 @@ class StatsTests(unittest.TestCase):
             with isolated_module_import(
                 "stats", {"config": self._config_stub(tempdir)}
             ) as stats:
-                original_datetime = stats.datetime
-                set_module_attr(stats, "datetime", FixedJune)
-                try:
+                with patch.object(stats, "datetime", FixedJune):
                     stats.save_monthly_report_source(
                         {
-                            "display": {
-                                "runs": 31,
-                                "deleted": 5712,
-                                "channels": {
+                            "display": stats_bucket(
+                                runs=31,
+                                deleted=5712,
+                                channels={
                                     "101": {
                                         "name": "notifications-kometa",
                                         "count": 1342,
                                         "category": "Standalone",
                                     }
                                 },
-                                "reset": "2026-06-01",
-                            },
-                            "comparison": {
-                                "runs": 1,
-                                "deleted": 156,
-                                "channels": {
+                                reset="2026-06-01",
+                            ),
+                            "comparison": stats_bucket(
+                                runs=1,
+                                deleted=156,
+                                channels={
                                     "999": {
                                         "name": "partial",
                                         "count": 156,
                                         "category": "Standalone",
                                     }
                                 },
-                                "reset": "2026-06-01",
-                            },
+                                reset="2026-06-01",
+                            ),
                         }
                     )
-                finally:
-                    set_module_attr(stats, "datetime", original_datetime)
 
             with open(source_path, "r") as f:
                 persisted = json.load(f)
@@ -939,30 +885,30 @@ class StatsTests(unittest.TestCase):
             with open(source_path, "w") as f:
                 json.dump(
                     {
-                        "display": {
-                            "runs": 31,
-                            "deleted": 5712,
-                            "channels": {
+                        "display": stats_bucket(
+                            runs=31,
+                            deleted=5712,
+                            channels={
                                 "101": {
                                     "name": "notifications-kometa",
                                     "count": 1342,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
-                        "comparison": {
-                            "runs": 1,
-                            "deleted": 156,
-                            "channels": {
+                            reset="2026-06-01",
+                        ),
+                        "comparison": stats_bucket(
+                            runs=1,
+                            deleted=156,
+                            channels={
                                 "999": {
                                     "name": "partial",
                                     "count": 156,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-07-01",
-                        },
+                            reset="2026-07-01",
+                        ),
                         "captured_at": "2026-06-01 09:00:00",
                         "month_key": "2026-06",
                     },
@@ -977,39 +923,35 @@ class StatsTests(unittest.TestCase):
             with isolated_module_import(
                 "stats", {"config": self._config_stub(tempdir)}
             ) as stats:
-                original_datetime = stats.datetime
-                set_module_attr(stats, "datetime", FixedJuly)
-                try:
+                with patch.object(stats, "datetime", FixedJuly):
                     stats.save_monthly_report_source(
                         {
-                            "display": {
-                                "runs": 31,
-                                "deleted": 5712,
-                                "channels": {
+                            "display": stats_bucket(
+                                runs=31,
+                                deleted=5712,
+                                channels={
                                     "101": {
                                         "name": "notifications-kometa",
                                         "count": 1342,
                                         "category": "Standalone",
                                     }
                                 },
-                                "reset": "2026-06-01",
-                            },
-                            "comparison": {
-                                "runs": 33,
-                                "deleted": 8640,
-                                "channels": {
+                                reset="2026-06-01",
+                            ),
+                            "comparison": stats_bucket(
+                                runs=33,
+                                deleted=8640,
+                                channels={
                                     "202": {
                                         "name": "crowdsec",
                                         "count": 649,
                                         "category": "Standalone",
                                     }
                                 },
-                                "reset": "2026-05-01",
-                            },
+                                reset="2026-05-01",
+                            ),
                         }
                     )
-                finally:
-                    set_module_attr(stats, "datetime", original_datetime)
 
             with open(source_path, "r") as f:
                 persisted = json.load(f)
@@ -1022,56 +964,56 @@ class StatsTests(unittest.TestCase):
     def test_save_monthly_report_source_writes_month_scoped_snapshot_files(self):
         with tempfile.TemporaryDirectory() as tempdir:
             june_source = {
-                "display": {
-                    "runs": 31,
-                    "deleted": 5712,
-                    "channels": {
+                "display": stats_bucket(
+                    runs=31,
+                    deleted=5712,
+                    channels={
                         "101": {
                             "name": "notifications-kometa",
                             "count": 1342,
                             "category": "Standalone",
                         }
                     },
-                    "reset": "2026-06-01",
-                },
-                "comparison": {
-                    "runs": 33,
-                    "deleted": 8640,
-                    "channels": {
+                    reset="2026-06-01",
+                ),
+                "comparison": stats_bucket(
+                    runs=33,
+                    deleted=8640,
+                    channels={
                         "202": {
                             "name": "crowdsec",
                             "count": 649,
                             "category": "Standalone",
                         }
                     },
-                    "reset": "2026-05-01",
-                },
+                    reset="2026-05-01",
+                ),
             }
             july_source = {
-                "display": {
-                    "runs": 1,
-                    "deleted": 156,
-                    "channels": {
+                "display": stats_bucket(
+                    runs=1,
+                    deleted=156,
+                    channels={
                         "999": {
                             "name": "partial",
                             "count": 156,
                             "category": "Standalone",
                         }
                     },
-                    "reset": "2026-07-01",
-                },
-                "comparison": {
-                    "runs": 31,
-                    "deleted": 5712,
-                    "channels": {
+                    reset="2026-07-01",
+                ),
+                "comparison": stats_bucket(
+                    runs=31,
+                    deleted=5712,
+                    channels={
                         "101": {
                             "name": "notifications-kometa",
                             "count": 1342,
                             "category": "Standalone",
                         }
                     },
-                    "reset": "2026-06-01",
-                },
+                    reset="2026-06-01",
+                ),
             }
 
             class FixedJune(datetime):
@@ -1087,18 +1029,11 @@ class StatsTests(unittest.TestCase):
             with isolated_module_import(
                 "stats", {"config": self._config_stub(tempdir)}
             ) as stats:
-                original_datetime = stats.datetime
-                set_module_attr(stats, "datetime", FixedJune)
-                try:
+                with patch.object(stats, "datetime", FixedJune):
                     stats.save_monthly_report_source(june_source)
-                finally:
-                    set_module_attr(stats, "datetime", original_datetime)
 
-                set_module_attr(stats, "datetime", FixedJuly)
-                try:
+                with patch.object(stats, "datetime", FixedJuly):
                     stats.save_monthly_report_source(july_source)
-                finally:
-                    set_module_attr(stats, "datetime", original_datetime)
 
             june_path = os.path.join(tempdir, "monthly_report_source-2026-06.json")
             july_path = os.path.join(tempdir, "monthly_report_source-2026-07.json")
@@ -1132,54 +1067,51 @@ class StatsTests(unittest.TestCase):
             with open(old_source_path, "w") as f:
                 json.dump(
                     {
-                        "display": {
-                            "runs": 1,
-                            "deleted": 1,
-                            "channels": {
+                        "display": stats_bucket(
+                            runs=1,
+                            deleted=1,
+                            channels={
                                 "1": {
                                     "name": "old",
                                     "count": 1,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-01-01",
-                        },
-                        "comparison": {
-                            "runs": 1,
-                            "deleted": 0,
-                            "channels": {},
-                            "reset": "2025-12-01",
-                        },
+                            reset="2026-01-01",
+                        ),
+                        "comparison": stats_bucket(
+                            runs=1, deleted=0, reset="2025-12-01"
+                        ),
                     },
                     f,
                 )
             with open(current_source_path, "w") as f:
                 json.dump(
                     {
-                        "display": {
-                            "runs": 1,
-                            "deleted": 2,
-                            "channels": {
+                        "display": stats_bucket(
+                            runs=1,
+                            deleted=2,
+                            channels={
                                 "2": {
                                     "name": "new",
                                     "count": 2,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-07-01",
-                        },
-                        "comparison": {
-                            "runs": 1,
-                            "deleted": 1,
-                            "channels": {
+                            reset="2026-07-01",
+                        ),
+                        "comparison": stats_bucket(
+                            runs=1,
+                            deleted=1,
+                            channels={
                                 "1": {
                                     "name": "old",
                                     "count": 1,
                                     "category": "Standalone",
                                 }
                             },
-                            "reset": "2026-06-01",
-                        },
+                            reset="2026-06-01",
+                        ),
                     },
                     f,
                 )

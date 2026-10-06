@@ -4,6 +4,7 @@ import tempfile
 import threading
 import types
 import unittest
+from unittest.mock import patch
 from datetime import datetime
 
 from tests.support import isolated_module_import
@@ -346,18 +347,7 @@ class ConfigUtilsTests(unittest.TestCase):
                 )
 
             config_stub = self._build_config_stub(tempdir)
-            original_env = {
-                key: os.environ.get(key)
-                for key in [
-                    "DISCORD_TOKEN",
-                    "REPORT_GROUP_WEEKLY",
-                    "WEB_HOST",
-                    "GITHUB_TOKEN",
-                    "WARN_UNCONFIGURED",
-                ]
-            }
-
-            try:
+            with patch.dict(os.environ):
                 with isolated_module_import(
                     "config_utils", {"config": config_stub}
                 ) as config_utils:
@@ -375,12 +365,6 @@ class ConfigUtilsTests(unittest.TestCase):
                 self.assertEqual(preview["counts"]["updated"], 3)
                 self.assertTrue(preview["restores"]["restart_required"])
                 self.assertIn("WEB_HOST", preview["restores"]["startup_only_changed"])
-            finally:
-                for key, value in original_env.items():
-                    if value is None:
-                        os.environ.pop(key, None)
-                    else:
-                        os.environ[key] = value
 
     def test_restore_env_backup_restores_current_file_and_creates_backup(self):
         with tempfile.TemporaryDirectory() as tempdir:
@@ -408,18 +392,7 @@ class ConfigUtilsTests(unittest.TestCase):
                 f.write(backup_content)
 
             config_stub = self._build_config_stub(tempdir)
-            original_env = {
-                key: os.environ.get(key)
-                for key in [
-                    "DISCORD_TOKEN",
-                    "REPORT_GROUP_WEEKLY",
-                    "WEB_HOST",
-                    "GITHUB_TOKEN",
-                    "WARN_UNCONFIGURED",
-                ]
-            }
-
-            try:
+            with patch.dict(os.environ):
                 with isolated_module_import(
                     "config_utils", {"config": config_stub}
                 ) as config_utils:
@@ -440,12 +413,6 @@ class ConfigUtilsTests(unittest.TestCase):
                     self.assertEqual(f.read(), current_content)
                 self.assertEqual(os.getenv("REPORT_GROUP_WEEKLY"), "false")
                 self.assertEqual(os.getenv("WEB_HOST"), "127.0.0.1")
-            finally:
-                for key, value in original_env.items():
-                    if value is None:
-                        os.environ.pop(key, None)
-                    else:
-                        os.environ[key] = value
 
 
 if __name__ == "__main__":
