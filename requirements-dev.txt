@@ -1,0 +1,6 @@
+-r requirements-test.txt
+black==26.5.1
+pre-commit==4.5.1
+pre-commit-hooks==6.0.0
+pyright==1.1.410
+ruff==0.15.8

@@ -1,15 +1,55 @@
+minimum_pre_commit_version: "4.5.1"
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+
+# Install requirements-dev.txt in your active environment before installing hooks.
 repos:
   - repo: local
     hooks:
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+        entry: python -m pre_commit_hooks.trailing_whitespace_fixer
+        language: system
+        types: [text]
+        args: [--markdown-linebreak-ext=md]
+
+      - id: end-of-file-fixer
+        name: Fix end of files
+        entry: python -m pre_commit_hooks.end_of_file_fixer
+        language: system
+        types: [text]
+
+      - id: check-yaml
+        name: Check YAML
+        entry: python -m pre_commit_hooks.check_yaml
+        language: system
+        types: [yaml]
+
       - id: black
         name: Black
-        entry: black
+        entry: python -m black
+        language: system
+        types: [python]
+
+      - id: ruff
+        name: Ruff
+        entry: python -m ruff check --select F
         language: system
         types: [python]
 
       - id: pyright
         name: Pyright
-        entry: pyright
+        entry: python -m pyright
         language: system
         pass_filenames: false
         types: [python]
+        require_serial: true
+
+      - id: pytest
+        name: Full test suite
+        entry: python -m pytest -q --durations=10
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+        require_serial: true
