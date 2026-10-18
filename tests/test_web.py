@@ -11,10 +11,34 @@ from tests.support import isolated_module_import
 
 class WebConfigTests(unittest.TestCase):
     def _config_stub(self):
-        return types.SimpleNamespace(
-            CONFIG_DIR="/tmp",
-            log=logging.getLogger("test-web"),
+        config_stub = types.SimpleNamespace(
+            CONFIG_DIR="/tmp", log=logging.getLogger("test-web")
         )
+        config_stub.BOT_VERSION = "1.0.0"
+        config_stub.CLEAN_TIMES = ["03:00"]
+        config_stub.DEFAULT_RETENTION = 7
+        config_stub.LOG_LEVEL = "INFO"
+        config_stub.WARN_UNCONFIGURED = False
+        config_stub.REPORT_FREQUENCY = "monthly"
+        config_stub.LOG_MAX_FILES = 7
+        config_stub.STATS_BACKUP_RETENTION_DAYS = 10
+        config_stub.REPORT_GROUP_MONTHLY = True
+        config_stub.REPORT_GROUP_WEEKLY = True
+        config_stub.SCHEDULE_SKIP_DATES = []
+        config_stub.SCHEDULE_SKIP_WEEKDAYS = []
+        return config_stub
+
+    def _utils_stub(self, **overrides):
+        defaults = dict(
+            get_bot=lambda: None,
+            get_run_owner=lambda: None,
+            is_run_in_progress=lambda: False,
+            read_cleanup_log=lambda *_a, **_k: {},
+            read_latest_cleanup_log=lambda *_a, **_k: {},
+            get_uptime_str=lambda: "1m",
+            get_next_run_str=lambda: "tomorrow",
+        )
+        return types.SimpleNamespace(**(defaults | overrides))
 
     def _api_stub(self):
         api_blueprint = Blueprint("api", __name__)
@@ -40,13 +64,7 @@ class WebConfigTests(unittest.TestCase):
                             list_channel_backups=lambda: [],
                             list_env_backups=lambda: [],
                         ),
-                        "utils": types.SimpleNamespace(
-                            get_bot=lambda: None,
-                            get_run_owner=lambda: None,
-                            is_run_in_progress=lambda: False,
-                            read_cleanup_log=lambda *_a, **_k: {},
-                            read_latest_cleanup_log=lambda *_a, **_k: {},
-                        ),
+                        "utils": self._utils_stub(),
                         "stats": types.SimpleNamespace(
                             list_stats_backups=lambda: [],
                             load_stats=lambda: {},
@@ -61,18 +79,6 @@ class WebConfigTests(unittest.TestCase):
 
     def test_stats_page_includes_stats_repair_action(self):
         config_stub = self._config_stub()
-        config_stub.BOT_VERSION = "1.0.0"
-        config_stub.CLEAN_TIMES = ["03:00"]
-        config_stub.DEFAULT_RETENTION = 7
-        config_stub.LOG_LEVEL = "INFO"
-        config_stub.WARN_UNCONFIGURED = False
-        config_stub.REPORT_FREQUENCY = "monthly"
-        config_stub.LOG_MAX_FILES = 7
-        config_stub.STATS_BACKUP_RETENTION_DAYS = 10
-        config_stub.REPORT_GROUP_MONTHLY = True
-        config_stub.REPORT_GROUP_WEEKLY = True
-        config_stub.SCHEDULE_SKIP_DATES = []
-        config_stub.SCHEDULE_SKIP_WEEKDAYS = []
 
         stats_payload = {
             "all_time": {"runs": 1, "deleted": 5, "catchup_runs": 0, "channels": {}},
@@ -106,15 +112,7 @@ class WebConfigTests(unittest.TestCase):
                 "cleanup": types.SimpleNamespace(
                     build_channel_map=lambda *_a, **_k: {}
                 ),
-                "utils": types.SimpleNamespace(
-                    get_bot=lambda: None,
-                    get_run_owner=lambda: None,
-                    is_run_in_progress=lambda: False,
-                    read_cleanup_log=lambda *_a, **_k: {},
-                    read_latest_cleanup_log=lambda *_a, **_k: {},
-                    get_uptime_str=lambda: "1m",
-                    get_next_run_str=lambda: "tomorrow",
-                ),
+                "utils": self._utils_stub(),
                 "stats": types.SimpleNamespace(
                     list_stats_backups=lambda: [],
                     load_stats=lambda: stats_payload,
@@ -168,18 +166,6 @@ class WebConfigTests(unittest.TestCase):
 
     def test_stats_page_shows_ten_of_each_backup_type(self):
         config_stub = self._config_stub()
-        config_stub.BOT_VERSION = "1.0.0"
-        config_stub.CLEAN_TIMES = ["03:00"]
-        config_stub.DEFAULT_RETENTION = 7
-        config_stub.LOG_LEVEL = "INFO"
-        config_stub.WARN_UNCONFIGURED = False
-        config_stub.REPORT_FREQUENCY = "monthly"
-        config_stub.LOG_MAX_FILES = 7
-        config_stub.STATS_BACKUP_RETENTION_DAYS = 10
-        config_stub.REPORT_GROUP_MONTHLY = True
-        config_stub.REPORT_GROUP_WEEKLY = True
-        config_stub.SCHEDULE_SKIP_DATES = []
-        config_stub.SCHEDULE_SKIP_WEEKDAYS = []
 
         stats_backups = [
             {
@@ -213,15 +199,7 @@ class WebConfigTests(unittest.TestCase):
                 "cleanup": types.SimpleNamespace(
                     build_channel_map=lambda *_a, **_k: {}
                 ),
-                "utils": types.SimpleNamespace(
-                    get_bot=lambda: None,
-                    get_run_owner=lambda: None,
-                    is_run_in_progress=lambda: False,
-                    read_cleanup_log=lambda *_a, **_k: {},
-                    read_latest_cleanup_log=lambda *_a, **_k: {},
-                    get_uptime_str=lambda: "1m",
-                    get_next_run_str=lambda: "tomorrow",
-                ),
+                "utils": self._utils_stub(),
                 "stats": types.SimpleNamespace(
                     list_stats_backups=lambda: stats_backups + last_run_backups,
                     load_stats=lambda: {
@@ -273,18 +251,6 @@ class WebConfigTests(unittest.TestCase):
 
     def test_stats_page_falls_back_to_history_data_when_bot_is_unavailable(self):
         config_stub = self._config_stub()
-        config_stub.BOT_VERSION = "1.0.0"
-        config_stub.CLEAN_TIMES = ["03:00"]
-        config_stub.DEFAULT_RETENTION = 7
-        config_stub.LOG_LEVEL = "INFO"
-        config_stub.WARN_UNCONFIGURED = False
-        config_stub.REPORT_FREQUENCY = "monthly"
-        config_stub.LOG_MAX_FILES = 7
-        config_stub.STATS_BACKUP_RETENTION_DAYS = 10
-        config_stub.REPORT_GROUP_MONTHLY = True
-        config_stub.REPORT_GROUP_WEEKLY = True
-        config_stub.SCHEDULE_SKIP_DATES = []
-        config_stub.SCHEDULE_SKIP_WEEKDAYS = []
 
         stats_payload = {
             "all_time": {
@@ -339,15 +305,7 @@ class WebConfigTests(unittest.TestCase):
                 "cleanup": types.SimpleNamespace(
                     build_channel_map=lambda *_a, **_k: {}
                 ),
-                "utils": types.SimpleNamespace(
-                    get_bot=lambda: None,
-                    get_run_owner=lambda: None,
-                    is_run_in_progress=lambda: False,
-                    read_cleanup_log=lambda *_a, **_k: {},
-                    read_latest_cleanup_log=lambda *_a, **_k: {},
-                    get_uptime_str=lambda: "1m",
-                    get_next_run_str=lambda: "tomorrow",
-                ),
+                "utils": self._utils_stub(),
                 "stats": types.SimpleNamespace(
                     list_stats_backups=lambda: [],
                     load_stats=lambda: stats_payload,
@@ -370,18 +328,6 @@ class WebConfigTests(unittest.TestCase):
 
     def test_stats_page_honors_selected_drilldown_channel_query(self):
         config_stub = self._config_stub()
-        config_stub.BOT_VERSION = "1.0.0"
-        config_stub.CLEAN_TIMES = ["03:00"]
-        config_stub.DEFAULT_RETENTION = 7
-        config_stub.LOG_LEVEL = "INFO"
-        config_stub.WARN_UNCONFIGURED = False
-        config_stub.REPORT_FREQUENCY = "monthly"
-        config_stub.LOG_MAX_FILES = 7
-        config_stub.STATS_BACKUP_RETENTION_DAYS = 10
-        config_stub.REPORT_GROUP_MONTHLY = True
-        config_stub.REPORT_GROUP_WEEKLY = True
-        config_stub.SCHEDULE_SKIP_DATES = []
-        config_stub.SCHEDULE_SKIP_WEEKDAYS = []
 
         stats_payload = {
             "all_time": {
@@ -450,15 +396,7 @@ class WebConfigTests(unittest.TestCase):
                 "cleanup": types.SimpleNamespace(
                     build_channel_map=lambda *_a, **_k: {}
                 ),
-                "utils": types.SimpleNamespace(
-                    get_bot=lambda: None,
-                    get_run_owner=lambda: None,
-                    is_run_in_progress=lambda: False,
-                    read_cleanup_log=lambda *_a, **_k: {},
-                    read_latest_cleanup_log=lambda *_a, **_k: {},
-                    get_uptime_str=lambda: "1m",
-                    get_next_run_str=lambda: "tomorrow",
-                ),
+                "utils": self._utils_stub(),
                 "stats": types.SimpleNamespace(
                     list_stats_backups=lambda: [],
                     load_stats=lambda: stats_payload,

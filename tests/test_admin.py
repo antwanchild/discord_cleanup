@@ -10,6 +10,48 @@ from tests.support import isolated_module_import
 
 
 class AdminTests(unittest.TestCase):
+    def _build_config_stub(self):
+        return types.SimpleNamespace(
+            log=logging.getLogger("test-admin"),
+            SCHEDULE_SKIP_DATES=[],
+            SCHEDULE_SKIP_WEEKDAYS=[],
+            CLEAN_TIMES=["03:00"],
+        )
+
+    def _build_utils_stub(self):
+        return types.SimpleNamespace(
+            get_bot=lambda: None,
+            get_bot_loop=lambda: None,
+            release_run=lambda: None,
+            try_acquire_run=lambda *_a, **_k: True,
+        )
+
+    def _build_config_utils_stub(self):
+        return types.SimpleNamespace(
+            preview_channel_restore=lambda *_a, **_k: (_ for _ in ()).throw(
+                RuntimeError("unused")
+            ),
+            preview_env_restore=lambda *_a, **_k: (_ for _ in ()).throw(
+                RuntimeError("unused")
+            ),
+            restore_channels_backup=lambda *_a, **_k: (_ for _ in ()).throw(
+                RuntimeError("unused")
+            ),
+            restore_env_backup=lambda *_a, **_k: (_ for _ in ()).throw(
+                RuntimeError("unused")
+            ),
+            preview_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(
+                RuntimeError("unused")
+            ),
+            save_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(
+                RuntimeError("unused")
+            ),
+            update_schedule_skip_dates=lambda dates: (True, ",".join(dates)),
+            update_schedule_skip_weekdays=lambda weekdays: (True, ",".join(weekdays)),
+            update_report_grouping=lambda *_a, **_k: (True, "true"),
+            validate_channels_content=lambda *_a, **_k: (True, "ok", []),
+        )
+
     def test_admin_restore_routes_expose_backup_preview_and_restore(self):
         config_stub = types.SimpleNamespace(
             BOT_VERSION="1.0.0",
@@ -155,6 +197,9 @@ class AdminTests(unittest.TestCase):
             "admin",
             {
                 "config": config_stub,
+                "cleanup": types.SimpleNamespace(
+                    build_channel_map=lambda *_a, **_k: {}
+                ),
                 "config_utils": config_utils_stub,
                 "utils": utils_stub,
                 "stats": stats_stub,
@@ -209,42 +254,9 @@ class AdminTests(unittest.TestCase):
         )
 
     def test_admin_stats_repair_route_exposes_repair_action(self):
-        config_stub = types.SimpleNamespace(
-            log=logging.getLogger("test-admin"),
-            SCHEDULE_SKIP_DATES=[],
-            SCHEDULE_SKIP_WEEKDAYS=[],
-            CLEAN_TIMES=["03:00"],
-        )
-        utils_stub = types.SimpleNamespace(
-            get_bot=lambda: None,
-            get_bot_loop=lambda: None,
-            release_run=lambda: None,
-            try_acquire_run=lambda *_a, **_k: True,
-        )
-        config_utils_stub = types.SimpleNamespace(
-            preview_channel_restore=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            preview_env_restore=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            restore_channels_backup=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            restore_env_backup=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            preview_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            save_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            update_schedule_skip_dates=lambda dates: (True, ",".join(dates)),
-            update_schedule_skip_weekdays=lambda weekdays: (True, ",".join(weekdays)),
-            update_report_grouping=lambda *_a, **_k: (True, "true"),
-            validate_channels_content=lambda *_a, **_k: (True, "ok", []),
-        )
+        config_stub = self._build_config_stub()
+        utils_stub = self._build_utils_stub()
+        config_utils_stub = self._build_config_utils_stub()
         stats_stub = types.SimpleNamespace(
             reset_stats=lambda *_a, **_k: True,
             repair_stats_snapshots=lambda: (
@@ -258,6 +270,9 @@ class AdminTests(unittest.TestCase):
             "admin",
             {
                 "config": config_stub,
+                "cleanup": types.SimpleNamespace(
+                    build_channel_map=lambda *_a, **_k: {}
+                ),
                 "config_utils": config_utils_stub,
                 "utils": utils_stub,
                 "stats": stats_stub,
@@ -275,12 +290,7 @@ class AdminTests(unittest.TestCase):
         self.assertIn("repaired", response.get_json()["message"].lower())
 
     def test_admin_stats_repair_and_repost_route_schedules_monthly_report(self):
-        config_stub = types.SimpleNamespace(
-            log=logging.getLogger("test-admin"),
-            SCHEDULE_SKIP_DATES=[],
-            SCHEDULE_SKIP_WEEKDAYS=[],
-            CLEAN_TIMES=["03:00"],
-        )
+        config_stub = self._build_config_stub()
         utils_stub = types.SimpleNamespace(
             get_bot=lambda: types.SimpleNamespace(
                 guilds=[types.SimpleNamespace(name="alpha")]
@@ -289,30 +299,7 @@ class AdminTests(unittest.TestCase):
             release_run=lambda: None,
             try_acquire_run=lambda *_a, **_k: True,
         )
-        config_utils_stub = types.SimpleNamespace(
-            preview_channel_restore=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            preview_env_restore=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            restore_channels_backup=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            restore_env_backup=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            preview_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            save_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            update_schedule_skip_dates=lambda dates: (True, ",".join(dates)),
-            update_schedule_skip_weekdays=lambda weekdays: (True, ",".join(weekdays)),
-            update_report_grouping=lambda *_a, **_k: (True, "true"),
-            validate_channels_content=lambda *_a, **_k: (True, "ok", []),
-        )
+        config_utils_stub = self._build_config_utils_stub()
         stats_stub = types.SimpleNamespace(
             reset_stats=lambda *_a, **_k: True,
             repair_stats_snapshots=lambda: (
@@ -341,6 +328,9 @@ class AdminTests(unittest.TestCase):
             "admin",
             {
                 "config": config_stub,
+                "cleanup": types.SimpleNamespace(
+                    build_channel_map=lambda *_a, **_k: {}
+                ),
                 "config_utils": config_utils_stub,
                 "notifications": notifications_stub,
                 "utils": utils_stub,
@@ -366,42 +356,9 @@ class AdminTests(unittest.TestCase):
         self.assertIn("report repost queued", payload["message"].lower())
 
     def test_admin_schedule_exception_routes_update_env(self):
-        config_stub = types.SimpleNamespace(
-            log=logging.getLogger("test-admin"),
-            SCHEDULE_SKIP_DATES=[],
-            SCHEDULE_SKIP_WEEKDAYS=[],
-            CLEAN_TIMES=["03:00"],
-        )
-        utils_stub = types.SimpleNamespace(
-            get_bot=lambda: None,
-            get_bot_loop=lambda: None,
-            release_run=lambda: None,
-            try_acquire_run=lambda *_a, **_k: True,
-        )
-        config_utils_stub = types.SimpleNamespace(
-            preview_channel_restore=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            preview_env_restore=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            restore_channels_backup=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            restore_env_backup=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            preview_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            save_channels_content=lambda *_a, **_k: (_ for _ in ()).throw(
-                RuntimeError("unused")
-            ),
-            update_schedule_skip_dates=lambda dates: (True, ",".join(dates)),
-            update_schedule_skip_weekdays=lambda weekdays: (True, ",".join(weekdays)),
-            update_report_grouping=lambda *_a, **_k: (True, "true"),
-            validate_channels_content=lambda *_a, **_k: (True, "ok", []),
-        )
+        config_stub = self._build_config_stub()
+        utils_stub = self._build_utils_stub()
+        config_utils_stub = self._build_config_utils_stub()
         stats_stub = types.SimpleNamespace(
             reset_stats=lambda *_a, **_k: True,
             repair_stats_snapshots=lambda: (False, "No stats repair was needed"),
@@ -411,6 +368,9 @@ class AdminTests(unittest.TestCase):
             "admin",
             {
                 "config": config_stub,
+                "cleanup": types.SimpleNamespace(
+                    build_channel_map=lambda *_a, **_k: {}
+                ),
                 "config_utils": config_utils_stub,
                 "utils": utils_stub,
                 "stats": stats_stub,

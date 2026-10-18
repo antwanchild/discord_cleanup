@@ -8,31 +8,32 @@ import importlib
 import sys
 from contextlib import contextmanager
 from collections.abc import Mapping
+from pathlib import Path
 from types import ModuleType
 from typing import Any, cast
+
+_PROJECT_MODULES = frozenset(
+    path.stem for path in Path(__file__).resolve().parents[1].glob("*.py")
+)
 
 
 @contextmanager
 def isolated_module_import(module_name: str, stub_modules: Mapping[str, object]):
     """Temporarily injects stub modules while importing the requested module."""
-    original_target = sys.modules.get(module_name)
-    original_stubs = {name: sys.modules.get(name) for name in stub_modules}
-
+    # Project modules bind dependencies at import time. Reimport the whole local
+    # graph so cached wrappers cannot retain a previous test's config or locks.
+    managed = _PROJECT_MODULES | {module_name} | set(stub_modules)
+    originals = {name: sys.modules[name] for name in managed if name in sys.modules}
     try:
-        sys.modules.pop(module_name, None)
+        for name in managed:
+            sys.modules.pop(name, None)
         for name, module in stub_modules.items():
             sys.modules[name] = cast(ModuleType, module)
-        imported = importlib.import_module(module_name)
-        yield imported
+        yield importlib.import_module(module_name)
     finally:
-        sys.modules.pop(module_name, None)
-        if original_target is not None:
-            sys.modules[module_name] = original_target
-        for name, module in original_stubs.items():
-            if module is None:
-                sys.modules.pop(name, None)
-            else:
-                sys.modules[name] = module
+        for name in managed:
+            sys.modules.pop(name, None)
+        sys.modules.update(originals)
 
 
 def set_module_attr(module: object, name: str, value: object) -> None:

@@ -76,6 +76,13 @@ Feature branches and pull requests trigger validation workflows that:
 3. Runs `pytest` — keeps the regression suite green before merge
 4. Runs `ruff` lint and security checks — warns on issues, build continues
 
+Run the suite locally with Python 3.11, matching CI:
+
+```sh
+python3 -m pip install -r requirements-test.txt
+python3 -m pytest -q --durations=10
+```
+
 Use `release-prep.yml` from the GitHub Actions tab when you are ready to create a release branch. It:
 
 1. Reads the current `VERSION` from `main`
@@ -98,18 +105,38 @@ Workflow linting runs in CI on pull requests and non-`main` pushes using `action
 
 ---
 
-## Local Formatting and Type Checks
+## Local Development Checks
 
-The recommended local workflow is:
+Use Python 3.11 to match CI. Create a virtual environment, install the pinned
+development dependencies, and install both Git hooks:
 
-1. Install the hooks once:
-   ```bash
-   pre-commit install
-   ```
-2. Let `pre-commit` run Black automatically before each commit.
-3. Let GitHub Actions verify formatting and type checks through the `CI` workflow.
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+python -m pre_commit install
+```
 
-Black is the formatter that rewrites Python files in place. The standalone Black and Pyright workflows are still available in the Actions tab for manual runs, but the required PR checks should come from `CI`.
+Keep that environment active when committing or pushing. The hooks use its Python
+and the tool versions pinned in `requirements-dev.txt`; no global tools are needed.
+Run the install command again in existing clones to enable the new pre-push hook.
+
+Before each commit, hooks trim trailing whitespace, fix final newlines, validate
+YAML, format Python with Black, run Ruff's `F` checks, and run Pyright. Markdown's
+two-space line breaks are preserved. If a formatter changes files, review and
+stage those edits before committing again.
+
+Before each push, the full test suite runs once, including pushes that only change
+documentation or templates. It does not run during commits. To run either stage
+manually:
+
+```bash
+python -m pre_commit run --all-files
+python -m pre_commit run --all-files --hook-stage pre-push
+```
+
+GitHub Actions still verifies formatting, type checks, and tests on pull requests.
+The standalone Black and Pyright workflows remain available for manual runs.
 
 ---
 
