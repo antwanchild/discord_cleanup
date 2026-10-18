@@ -1,45 +1,33 @@
-import os
 import runpy
 import unittest
 from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import mock_open, patch
 
 
 class HealthcheckTests(unittest.TestCase):
-    def setUp(self):
-        self.health_path = "/tmp/health"
-        self.original = None
-        if os.path.exists(self.health_path):
-            with open(self.health_path, "r") as f:
-                self.original = f.read()
-
-    def tearDown(self):
-        if self.original is None:
-            try:
-                os.remove(self.health_path)
-            except FileNotFoundError:
-                pass
-        else:
-            with open(self.health_path, "w") as f:
-                f.write(self.original)
+    def _check(self, *, content="", error=None):
+        opened = mock_open(read_data=content)
+        if error is not None:
+            opened.side_effect = error
+        with patch("builtins.open", opened):
+            with self.assertRaises(SystemExit) as ctx:
+                runpy.run_path(
+                    str(Path(__file__).resolve().parents[1] / "healthcheck.py"),
+                    run_name="__main__",
+                )
+        opened.assert_called_once_with("/tmp/health")
+        return ctx.exception.code
 
     def test_healthcheck_exits_zero_when_timestamp_is_recent(self):
-        with open(self.health_path, "w") as f:
-            f.write(datetime.now().isoformat())
-
-        with self.assertRaises(SystemExit) as ctx:
-            runpy.run_path("healthcheck.py", run_name="__main__")
-
-        self.assertEqual(ctx.exception.code, 0)
+        self.assertEqual(self._check(content=datetime.now().isoformat()), 0)
 
     def test_healthcheck_exits_one_when_timestamp_is_stale(self):
-        with open(self.health_path, "w") as f:
-            f.write((datetime.now() - timedelta(minutes=10)).isoformat())
+        timestamp = datetime.now() - timedelta(minutes=10)
+        self.assertEqual(self._check(content=timestamp.isoformat()), 1)
 
-        with self.assertRaises(SystemExit) as ctx:
-            runpy.run_path("healthcheck.py", run_name="__main__")
+    def test_healthcheck_exits_one_when_file_is_missing(self):
+        self.assertEqual(self._check(error=FileNotFoundError()), 1)
 
-        self.assertEqual(ctx.exception.code, 1)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_healthcheck_exits_one_when_timestamp_is_invalid(self):
+        self.assertEqual(self._check(content="invalid"), 1)

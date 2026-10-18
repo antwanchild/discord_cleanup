@@ -1,6 +1,7 @@
 import types
 import unittest
 import asyncio
+from unittest.mock import AsyncMock, Mock, patch
 
 from tests.support import isolated_module_import
 
@@ -240,7 +241,7 @@ class BuildChannelMapTests(unittest.TestCase):
         def save_last_run_stub(*_a, **_k):
             raise OSError("disk full")
 
-        stats_stub.save_last_run = save_last_run_stub
+        stats_stub.save_last_run = Mock(side_effect=save_last_run_stub)
         stats_stub.update_stats = lambda *_a, **_k: None
         stats_stub.record_channel_history = lambda *_a, **_k: None
         stats_stub.load_stats = lambda: {
@@ -252,7 +253,7 @@ class BuildChannelMapTests(unittest.TestCase):
         utils_stub.update_health = lambda *_a, **_k: None
         utils_stub.get_next_run_str = lambda: "tomorrow"
         notifications_stub = types.SimpleNamespace(
-            safe_send_embed=lambda *_a, **_k: True,
+            safe_send_embed=AsyncMock(return_value=True),
         )
 
         with isolated_module_import(
@@ -270,7 +271,18 @@ class BuildChannelMapTests(unittest.TestCase):
                 name="test-guild", get_channel=lambda *_a, **_k: None
             )
 
-            asyncio.run(cleanup.run_cleanup(bot, guild, raw_channels=[]))
+            with patch.object(cleanup.log, "exception") as unexpected:
+                asyncio.run(cleanup.run_cleanup(bot, guild, raw_channels=[]))
+            unexpected.assert_not_called()
+            stats_stub.save_last_run.assert_called_once()
+            self.assertEqual(
+                stats_stub.save_last_run.call_args.args[0]["status"], "clean"
+            )
+            notifications_stub.safe_send_embed.assert_awaited_once()
+            self.assertEqual(
+                notifications_stub.safe_send_embed.await_args.kwargs["context"],
+                "daily cleanup report",
+            )
 
 
 if __name__ == "__main__":

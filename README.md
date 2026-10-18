@@ -76,6 +76,13 @@ Feature branches and pull requests trigger validation workflows that:
 3. Runs `pytest` — keeps the regression suite green before merge
 4. Runs `ruff` lint and security checks — warns on issues, build continues
 
+Run the suite locally with Python 3.11, matching CI:
+
+```sh
+python3 -m pip install -r requirements-test.txt
+python3 -m pytest -q --durations=10
+```
+
 Use `release-prep.yml` from the GitHub Actions tab when you are ready to create a release branch. It:
 
 1. Reads the current `VERSION` from `main`
