@@ -32,8 +32,10 @@ HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
 ARG VERSION
 ARG BUILD_DATE
 ARG SOURCE_URL
+ARG GIT_SHA=unknown
 
 LABEL org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.title="Discord Cleanup Bot" \
       org.opencontainers.image.description="Automated Discord message cleanup bot" \

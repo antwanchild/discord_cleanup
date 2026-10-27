@@ -28,6 +28,12 @@ jobs:
         id: version
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
+      - name: Extract short SHA
+        id: sha
+        env:
+          GIT_SHA: ${{ github.sha }}
+        run: echo "short=${GIT_SHA::7}" >> "$GITHUB_OUTPUT"
+
       - name: Prepare release notes
         id: notes
         env:
@@ -78,8 +84,10 @@ jobs:
           tags: |
             type=raw,value=latest
             type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=sha-${{ steps.sha.outputs.short }}
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build and push image
         uses: docker/build-push-action@v7
@@ -94,14 +102,14 @@ jobs:
             VERSION=${{ steps.version.outputs.version }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
             SOURCE_URL=https://github.com/${{ github.repository }}
+            GIT_SHA=${{ github.sha }}
 
       - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
-        continue-on-error: true
         with:
           image-ref: ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.version.outputs.version }}
           format: table
-          exit-code: 0
+          exit-code: 1
           severity: CRITICAL,HIGH
 
       - name: Create GitHub Release
