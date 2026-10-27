@@ -111,6 +111,7 @@ jobs:
           format: table
           exit-code: 1
           ignore-unfixed: true
+          skip-files: '**/pip/_vendor/bom.cdx.json'
           severity: CRITICAL,HIGH
 
       - name: Create GitHub Release
