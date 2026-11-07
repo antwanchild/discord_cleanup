@@ -93,7 +93,7 @@ jobs:
             "$DISCORD_WEBHOOK"
 
   notify-merged:
-    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha != null
+    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -136,7 +136,7 @@ jobs:
             "$DISCORD_WEBHOOK"
 
   notify-closed:
-    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merge_commit_sha == null
+    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.event.action == 'closed' && github.event.pull_request.merged == false
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
