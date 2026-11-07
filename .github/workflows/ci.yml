@@ -2,13 +2,15 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches-ignore:
-      - main
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   actionlint:

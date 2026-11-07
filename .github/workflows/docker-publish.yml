@@ -11,8 +11,18 @@ on:
       - '.github/dependabot.yml'
       - '.gitignore'
 
+concurrency:
+  group: publish-main
+  cancel-in-progress: false
+
 jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   build-and-push:
+    needs: checks
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -93,7 +103,9 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: true
+          push: false
+          load: true
+          provenance: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -106,6 +118,8 @@ jobs:
 
       - name: Scan image for vulnerabilities
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_IMAGE_SRC: docker
         with:
           image-ref: ghcr.io/${{ github.repository_owner }}/discord_cleanup:${{ steps.version.outputs.version }}
           format: table
@@ -113,6 +127,15 @@ jobs:
           ignore-unfixed: true
           skip-files: '**/pip/_vendor/bom.cdx.json'
           severity: CRITICAL,HIGH
+
+      - name: Publish scanned image
+        env:
+          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            docker push "$tag"
+          done <<< "$IMAGE_TAGS"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
