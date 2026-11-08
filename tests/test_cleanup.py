@@ -128,6 +128,37 @@ class BuildChannelMapTests(unittest.TestCase):
         self.assertEqual(channel_map[20]["days"], 4)
         self.assertTrue(channel_map[20]["is_override"])
 
+    def test_standalone_channel_uses_configured_category_default(self):
+        config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([])
+
+        with isolated_module_import(
+            "cleanup",
+            {
+                "config": config_stub,
+                "stats": stats_stub,
+                "utils": utils_stub,
+                "discord": discord_stub,
+            },
+        ) as cleanup:
+            category = types.SimpleNamespace(id=10, name="Github", text_channels=[])
+            channel = types.SimpleNamespace(id=20, name="build-bot", category=category)
+            guild = types.SimpleNamespace(
+                get_channel=lambda channel_id: {10: category, 20: channel}.get(
+                    channel_id
+                )
+            )
+
+            channel_map = cleanup.build_channel_map(
+                guild,
+                raw_channels=[
+                    {"id": 10, "name": "Github", "type": "category", "days": 14},
+                    {"id": 20, "name": "build-bot", "days": 7},
+                ],
+            )
+
+        self.assertEqual(channel_map[20]["category_name"], "Github")
+        self.assertEqual(channel_map[20]["category_default"], 14)
+
     def test_daily_breakdown_keeps_channels_separate(self):
         config_stub, stats_stub, utils_stub, discord_stub = self._cleanup_stubs([])
 

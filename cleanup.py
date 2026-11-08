@@ -166,10 +166,9 @@ def build_channel_map(guild, raw_channels=None):
 
         if discord_channel and discord_channel.category:
             cat_name = discord_channel.category.name
-            for cat_id, cat_data in category_map.items():
-                if discord_channel.category.id == cat_id:
-                    cat_default = cat_data["days"]
-                    break
+            category_data = category_map.get(discord_channel.category.id)
+            if category_data:
+                cat_default = category_data["days"]
 
         channel_map[ch_id] = {
             "days": days,
