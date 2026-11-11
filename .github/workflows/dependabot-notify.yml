@@ -44,7 +44,7 @@ jobs:
             "$DISCORD_WEBHOOK"
 
   notify-merged:
-    if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.merged_by.login != 'github-actions[bot]' && contains(github.event.pull_request.labels.*.name, 'dependencies')
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'dependencies')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
@@ -52,12 +52,13 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ALERT_TITLE: ${{ github.event.pull_request.merged_by.type == 'Bot' && '✅ Dependabot PR Auto-Merged' || '✅ Dependabot PR Merged' }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
           payload=$(jq -n \
-            --arg title "✅ Dependabot PR Merged" \
+            --arg title "$ALERT_TITLE" \
             --arg color "3066993" \
             --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
             --arg footer "Discord Cleanup Bot • github.com/antwanchild/discord_cleanup" \
