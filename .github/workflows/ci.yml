@@ -62,10 +62,10 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install project dependencies
+      - name: Install project and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-test.txt
 
       - name: Install Pyright
         run: npm install -g pyright
