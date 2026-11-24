@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- Format Discord release summaries with readable category labels and bullets, without raw Markdown headings, and truncate long notes at complete lines.
+
 - Publish versioned images and GitHub Releases only when VERSION changes, preventing ordinary merges from republishing stale release notes.
 
 ## 5.11.101 - 2026-07-02
