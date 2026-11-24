@@ -87,19 +87,19 @@ Use `release-prep.yml` from the GitHub Actions tab when you are ready to create 
 
 1. Reads the current `VERSION` from `main`
 2. Bumps `VERSION` based on the selected patch, minor, or major release type
-3. Prepends a new `CHANGELOG.md` entry from the commits since the last release tag, filtering out workflow-only and release housekeeping commits unless you provide a manual summary override
+3. Moves the categorized `[Unreleased]` notes into a dated `[vX.Y.Z]` section and creates a fresh `[Unreleased]` section; empty notes stop release preparation
 4. Creates and pushes a `release/<version>` branch for you
 5. Adds a direct release PR link to the workflow summary, so the PR comes from your account instead of `github-actions[bot]`
 
-Once that PR is merged into `main`, `docker-publish.yml` takes over:
+Once that PR changes `VERSION` on `main`, `docker-publish.yml` takes over:
 
-1. Reads the merged `VERSION` and `CHANGELOG.md`
+1. Validates that `VERSION` changed, its tag does not already exist, and matching categorized release notes exist in `CHANGELOG.md`
 2. Builds and pushes the Docker image to GHCR with `:latest` and `:version` tags
 3. Creates a GitHub Release for the merged version
 4. Cleans up old GHCR images keeping the last 10
 5. Posts a success or failure notification to Discord
 
-Merges that only modify `README.md`, `CHANGELOG.md`, `docs/**`, `dependabot.yml`, `.gitignore`, or `.dockerignore` are skipped by the release workflow — no build, no version bump, no release.
+Only pushes to `main` that change `VERSION` trigger publishing. Ordinary code and documentation merges accumulate for the next release and run PR checks without republishing the current version. Release tags point to the exact commit built. The last 10 GitHub Releases and GHCR images are retained; `CHANGELOG.md` preserves the full history.
 
 Workflow linting runs in CI on pull requests and non-`main` pushes using `actionlint`, which validates YAML syntax, expression correctness, and shellcheck compliance across all `.github/workflows/` files.
 
@@ -148,7 +148,21 @@ The release-prep workflow is started manually from GitHub Actions, and you choos
 - **Minor** — new features, new `.env` variables, new `channels.yml` options, new slash commands
 - **Major** — breaking changes that require updates to `.env` or `channels.yml`
 
-When `release-prep.yml` runs, it prepends a new `CHANGELOG.md` entry from the commit subjects since the last release tag. It filters out workflow-only commits, `[skip ci]` bumps, and release housekeeping messages. If you want a curated note instead, fill in the optional summary input and each line becomes a bullet. If neither produces anything useful, it falls back to a simple release note.
+Every meaningful PR should include a concise, user-facing entry under `## [Unreleased]` in `CHANGELOG.md`. Describe the behavior and why it matters, rather than copying commit messages. Minor typo corrections do not need an entry.
+
+Use Kometa-style categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`, `Requirements`, `Performance`, and `Docs`. Only include sections with entries, using `- ` bullets. For example:
+
+```markdown
+## [Unreleased]
+
+### Fixed
+
+- Restore the previous channel settings when a configuration save fails.
+```
+
+Release preparation automatically renames these notes to `## [vX.Y.Z] - YYYY-MM-DD` (UTC date), inserts a fresh `[Unreleased]` section, and updates `VERSION` on the release branch. Review the notes in the release PR before merging. Empty notes and duplicate or non-increasing versions are rejected; commit messages are no longer used as a fallback. Publishing copies that version's section into the GitHub Release and fails if the notes are missing. Existing historical entries retain their original format.
+
+To check the prepared release notes locally, run `python3 scripts/changelog.py notes X.Y.Z`. To preview release preparation in a disposable checkout, run `python3 scripts/changelog.py prepare X.Y.Z`; this edits `VERSION` and `CHANGELOG.md`.
 
 ---
 
