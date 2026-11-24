@@ -53,6 +53,7 @@ runs:
       if: inputs.webhook != ''
       shell: bash
       env:
+        ACTION_PATH: ${{ github.action_path }}
         WEBHOOK: ${{ inputs.webhook }}
         GH_TOKEN: ${{ inputs.token }}
         PROJECT: ${{ inputs.project }}
@@ -122,14 +123,15 @@ runs:
           IMAGE=''
         fi
 
-        jq -n \
+        jq -n -L "$ACTION_PATH" \
           --arg title "$icon $PROJECT · $EVENT $status" --argjson color "$color" \
           --arg repo "$GITHUB_REPOSITORY" --arg version "$VERSION" --arg sha "$SOURCE_SHA" \
           --arg commit_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$SOURCE_SHA" \
           --arg run "$RUN_URL" --arg actor "$ACTOR" --arg branch "$BRANCH" \
           --arg details "$DETAILS" --arg failed "$failed_jobs" --arg release "$RELEASE_URL" \
           --arg duration "$duration" --arg changes "$changes" --arg image "$IMAGE" \
-          'def field($name; $value; $inline): {name: $name, value: $value[0:1024], inline: $inline};
+          'include "format-notes";
+          def field($name; $value; $inline): {name: $name, value: $value[0:1024], inline: $inline};
           {allowed_mentions: {parse: []}, embeds: [{
             title: $title, url: $run, color: $color, timestamp: (now | todateiso8601),
             fields: ([
@@ -141,7 +143,7 @@ runs:
               + (if $duration != "" then [field("Duration"; $duration; true)] else [] end)
               + (if $failed != "" then [field("Failure location"; $failed; false)] else [] end)
               + (if $image != "" then [field("Published image"; $image; false)] else [] end)
-              + (if $changes != "" then [field("What changed"; $changes; false)] else [] end)
+              + (if $changes != "" then [field("What changed"; ($changes | discord_notes); false)] else [] end)
               + (if $details != "" then [field("Details"; $details; false)] else [] end)
               + (if $release != "" then [field("Release"; ("[View release](" + $release + ")"); true)] else [] end)
               + [field("Actions"; ("[View run](" + $run + ")"); true)])
