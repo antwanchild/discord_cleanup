@@ -12,6 +12,10 @@
 
 - Publish versioned images and GitHub Releases only when VERSION changes, preventing ordinary merges from republishing stale release notes.
 
+### Docs
+
+- Add shared coding-agent guidance for development checks, changelog entries, releases, and pull request cleanup.
+
 ## 5.11.101 - 2026-07-02
 
 ### Changes
