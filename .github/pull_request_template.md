@@ -15,3 +15,4 @@
 - [ ] Code follows the existing style
 - [ ] No sensitive data (tokens, IDs) included
 - [ ] Docs updated if needed (`docs/SETUP.md`, `docs/API.md`)
+- [ ] User-facing changes documented under `[Unreleased]` in `CHANGELOG.md` (or not applicable)

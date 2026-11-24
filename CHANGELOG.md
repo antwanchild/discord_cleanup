@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Maintain categorized release notes alongside changes and automatically roll them into a dated release during release preparation.
+
+### Fixed
+
+- Publish versioned images and GitHub Releases only when VERSION changes, preventing ordinary merges from republishing stale release notes.
+
 ## 5.11.101 - 2026-07-02
 
 ### Changes

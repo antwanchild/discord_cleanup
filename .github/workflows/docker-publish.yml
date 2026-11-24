@@ -4,12 +4,8 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'README.md'
-      - 'CHANGELOG.md'
-      - 'docs/**'
-      - '.github/dependabot.yml'
-      - '.gitignore'
+    paths:
+      - 'VERSION'
 
 concurrency:
   group: publish-main
@@ -32,7 +28,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Read version
         id: version
@@ -44,36 +40,29 @@ jobs:
           GIT_SHA: ${{ github.sha }}
         run: echo "short=${GIT_SHA::7}" >> "$GITHUB_OUTPUT"
 
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
       - name: Prepare release notes
         id: notes
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
-          release_notes=$(mktemp)
-          awk -v version="$VERSION" '
-            BEGIN { found = 0 }
-            /^## / {
-              if (found) {
-                exit
-              }
-              if ($0 ~ "^## " version " - ") {
-                found = 1
-                next
-              }
-            }
-            found {
-              print
-            }
-          ' CHANGELOG.md > "$release_notes"
-
-          if [ ! -s "$release_notes" ]; then
-            {
-              echo "## ${VERSION}"
-              echo
-              echo "Release ${VERSION}"
-            } > "$release_notes"
+          set -euo pipefail
+          previous_version=$(git show "$BEFORE_SHA:VERSION")
+          if [ "$previous_version" = "$VERSION" ]; then
+            echo "VERSION must change before publishing a release."
+            exit 1
           fi
-
+          if git rev-parse --verify "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "Release tag v${VERSION} already exists."
+            exit 1
+          fi
+          release_notes=$(mktemp)
+          python scripts/changelog.py notes "$VERSION" > "$release_notes"
           echo "release_notes=$release_notes" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GHCR
@@ -141,6 +130,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
           name: v${{ steps.version.outputs.version }}
           body_path: ${{ steps.notes.outputs.release_notes }}
           generate_release_notes: false
